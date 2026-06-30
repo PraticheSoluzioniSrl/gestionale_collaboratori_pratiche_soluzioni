@@ -1,0 +1,2625 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PraticHub — Gestionale</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;600;700;800&family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone@7.23.5/babel.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --navy:#0A2A6C; --navy2:#1B2A4E; --sky:#42A8F0; --teal:#10B4A2;
+  --bg:#F2F6FB; --ink:#152238; --mut:#5A6B85; --line:#E2EAF4;
+  --amber:#B97A00; --amberbg:#FFF4D6; --red:#C2403A; --redbg:#FDE8E7; --tealbg:#E0F7F4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Hanken Grotesk',sans-serif;background:var(--bg);color:var(--ink);font-size:15px}
+h1,h2,h3,.disp{font-family:'Bricolage Grotesque',sans-serif}
+.mono{font-family:'JetBrains Mono',monospace}
+button{font-family:inherit;cursor:pointer;border:none;background:none}
+input,select,textarea{font-family:inherit;font-size:14px}
+::placeholder{color:#93A4BC}
+
+/* LOGIN */
+.lwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,var(--navy) 0%,#123A8C 60%,#0E5FA8 100%);padding:20px}
+.lcard{background:#fff;border-radius:20px;padding:36px 34px;width:min(440px,100%);box-shadow:0 24px 70px rgba(4,16,44,.45)}
+.lcard .logo{font-family:'Bricolage Grotesque';font-weight:800;font-size:26px;letter-spacing:-.5px;display:flex;align-items:center;gap:9px;margin-bottom:6px}
+.lcard .logo b{color:var(--sky)}
+.lcard .logo .dot{width:10px;height:10px;border-radius:50%;background:var(--teal)}
+.lcard .sub{color:var(--mut);font-size:13.5px;margin-bottom:24px}
+.lfld{margin-bottom:14px}
+.lfld label{font-size:11.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:6px}
+.lfld input{width:100%;border:1.5px solid var(--line);border-radius:11px;padding:13px 14px;font-size:15px;outline:none}
+.lfld input:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(66,168,240,.15)}
+.lerr{background:var(--redbg);color:var(--red);font-size:13px;font-weight:600;border-radius:10px;padding:10px 13px;margin-bottom:14px}
+.lbtn{width:100%;background:var(--navy);color:#fff;font-weight:700;font-size:15px;border-radius:11px;padding:14px}
+.lbtn:hover{background:#0D3585}
+.ldemo{margin-top:22px;border-top:1px solid var(--line);padding-top:16px;font-size:12.5px;color:var(--mut);line-height:1.7}
+.ldemo b{color:var(--ink)}
+.ldemo .mono{background:#F0F5FC;border-radius:5px;padding:1px 6px;font-size:11.5px}
+.lpick{display:flex;align-items:center;gap:11px;border:1.5px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:.15s}
+.lpick:hover{border-color:var(--sky);background:#F7FAFE}
+.lpick .av{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Bricolage Grotesque';font-size:14px;flex-shrink:0}
+.lpick .nm{font-weight:700;font-size:14px}
+.lpick .rl{font-size:12px;color:var(--mut)}
+.lpick .go{color:var(--sky);font-weight:700;margin-left:auto}
+
+/* APP */
+.app{display:flex;min-height:100vh}
+.side{width:240px;background:var(--navy);color:#fff;padding:22px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto}
+.logo{font-family:'Bricolage Grotesque';font-weight:800;font-size:21px;letter-spacing:-.5px;padding:0 10px 16px;display:flex;align-items:center;gap:8px}
+.logo b{color:var(--sky)}
+.logo .dot{width:9px;height:9px;border-radius:50%;background:var(--teal)}
+.navlabel{font-size:10.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#7d93c4;padding:14px 12px 6px}
+.navlabel:first-of-type{padding-top:4px}
+.nav-it{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#C7D6F2;font-weight:600;font-size:14px;width:100%;text-align:left}
+.nav-it:hover{background:rgba(255,255,255,.08);color:#fff}
+.nav-it.on{background:var(--sky);color:#fff}
+.nav-it .ic{width:20px;text-align:center;font-size:15px}
+.nav-it .bdg{margin-left:auto;background:var(--red);color:#fff;font-size:11px;font-weight:700;border-radius:9px;padding:1px 7px}
+.nav-it .lock{margin-left:auto;font-size:10px;opacity:.7}
+.side .who{margin-top:auto;padding:12px 10px;border-top:1px solid rgba(255,255,255,.12);font-size:12.5px;color:#A8BCE5;line-height:1.5}
+.side .who b{color:#fff;display:block}
+.side .out{color:#FCA9A4;font-weight:700;font-size:12.5px;padding:6px 0;text-align:left}
+
+.main{flex:1;min-width:0;padding:26px 30px 100px}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
+.top h1{font-size:24px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.top .sub{color:var(--mut);font-size:13.5px;margin-top:3px}
+.btn{display:inline-flex;align-items:center;gap:7px;border-radius:10px;padding:10px 16px;font-weight:700;font-size:14px}
+.btn-p{background:var(--navy);color:#fff}.btn-p:hover{background:#0D3585}
+.btn-t{background:var(--teal);color:#fff}.btn-t:hover{filter:brightness(1.06)}
+.btn-g{background:#fff;border:1.5px solid var(--line);color:var(--ink)}.btn-g:hover{border-color:var(--sky)}
+.btn-r{background:var(--red);color:#fff}.btn-r:hover{filter:brightness(1.06)}
+.btn-sky{background:var(--sky);color:#fff}.btn-sky:hover{filter:brightness(1.06)}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.lockpill{font-size:11px;font-weight:700;background:var(--navy2);color:#fff;border-radius:99px;padding:4px 11px}
+
+.searchwrap{position:relative;margin-bottom:14px}
+.search{width:100%;padding:14px 16px 14px 46px;border:1.5px solid var(--line);border-radius:13px;background:#fff;font-size:15px;outline:none}
+.search:focus{border-color:var(--sky)}
+.searchwrap .lens{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#93A4BC;font-size:17px}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
+.chip{padding:7px 13px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--mut)}
+.chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.cnt{font-size:13px;color:var(--mut);margin-bottom:10px}
+
+.card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:10px;cursor:pointer;display:flex;gap:14px;align-items:flex-start}
+.card:hover{border-color:var(--sky);box-shadow:0 4px 14px rgba(10,42,108,.07)}
+.ava{width:44px;height:44px;border-radius:12px;background:linear-gradient(135deg,var(--sky),var(--teal));color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-family:'Bricolage Grotesque';font-size:15px;flex-shrink:0}
+.card .bd{flex:1;min-width:0}
+.card .nm{font-weight:700;font-size:15.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.card .loc{font-size:12.5px;color:var(--mut);margin-top:2px}
+.codes{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+.code{display:inline-flex;align-items:center;gap:5px;background:#F0F5FC;border:1px solid #DCE7F5;border-radius:7px;padding:3px 8px}
+.code .k{font-weight:700;color:var(--mut);font-size:10px;letter-spacing:.4px}
+.code .v{font-family:'JetBrains Mono';font-weight:600;color:var(--navy);font-size:11.5px}
+.code.open{background:var(--redbg);border-color:#F2C4C2}.code.open .v{color:var(--red)}
+.code.warn{background:var(--amberbg);border-color:#F0DCA0}.code.warn .v{color:var(--amber)}
+.st{font-size:11px;font-weight:700;border-radius:99px;padding:3px 10px}
+.st-ok{background:var(--tealbg);color:#0A7E72}
+.st-open{background:var(--redbg);color:var(--red)}
+.st-warn{background:var(--amberbg);color:var(--amber)}
+.note-flag{font-size:12px;color:var(--amber);font-weight:600;margin-top:7px}
+.riskmini{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:7px;padding:4px 9px;margin-top:6px}
+.r-hi{background:var(--redbg);color:var(--red)}
+.r-md{background:var(--amberbg);color:var(--amber)}
+.r-ok{background:var(--tealbg);color:#0A7E72}
+.boll{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:7px;padding:4px 9px;margin-top:6px}
+.boll.paid{background:var(--tealbg);color:#0A7E72}
+.boll.due{background:var(--redbg);color:var(--red)}
+.card .meta{text-align:right;flex-shrink:0;font-size:12px;color:var(--mut)}
+
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:11px;margin-bottom:20px}
+.kpi{background:#fff;border:1px solid var(--line);border-radius:14px;padding:15px 17px}
+.kpi .kv{font-family:'Bricolage Grotesque';font-weight:800;font-size:22px}
+.kpi .kl{font-size:11.5px;color:var(--mut);font-weight:600;margin-top:2px}
+.kpi.alert .kv{color:var(--red)}
+.kpi.good .kv{color:var(--teal)}
+.kpi.navy .kv{color:var(--navy)}
+
+.panel{background:#fff;border:1px solid var(--line);border-radius:15px;margin-bottom:16px;overflow:hidden}
+.panel .ph{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.panel .ph h3{font-size:15px;font-weight:700}
+.panel .ph .sp{margin-left:auto;display:flex;gap:8px}
+.panel .pad{padding:18px}
+.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);text-align:right;padding:9px 14px;border-bottom:1px solid var(--line);background:#F8FAFD}
+.tbl th:first-child{text-align:left}
+.tbl td{padding:9px 14px;border-bottom:1px solid #EFF4FA;text-align:right;font-variant-numeric:tabular-nums}
+.tbl td:first-child{text-align:left;font-weight:600}
+.tbl tr.cat td{background:#F0F5FC;font-weight:800;font-size:11px;letter-spacing:.6px;text-transform:uppercase;color:var(--navy);text-align:left}
+.tbl tr.tot td{font-weight:800;background:#F8FAFD;border-top:2px solid var(--line)}
+.tbl .e{color:var(--mut)}
+.tbl .neg{color:var(--red);font-weight:700}
+.tbl tr.clk:hover{background:#F7FAFE;cursor:pointer}
+.selrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
+.selrow select{border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;background:#fff;font-weight:600;min-width:150px}
+
+.saldo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
+.sbox{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 15px}
+.sbox .l{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut)}
+.sbox .v{font-family:'Bricolage Grotesque';font-weight:800;font-size:20px;margin-top:3px}
+.sbox.final{background:var(--navy);border-color:var(--navy)}
+.sbox.final .l{color:#A8BCE5}
+.sbox.final .v{color:#fff}
+.sbox .v.neg{color:var(--red)}
+
+/* import / banca */
+.dz{border:2px dashed #B9CFEA;border-radius:15px;background:#fff;padding:34px 20px;text-align:center;color:var(--mut);margin-bottom:16px;cursor:pointer;transition:.15s}
+.dz.over{border-color:var(--sky);background:#EAF3FD;transform:scale(1.005)}
+.dz .big{font-size:32px;margin-bottom:8px}
+.batch{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 16px;margin-bottom:8px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.batch .fi{width:36px;height:36px;border-radius:9px;background:#EAF3FD;display:flex;align-items:center;justify-content:center;font-size:16px}
+.batch .bn{font-weight:700;font-size:13.5px}
+.batch .bm{font-size:12px;color:var(--mut)}
+.bst{font-size:10.5px;font-weight:700;border-radius:99px;padding:3px 10px;margin-left:auto}
+.bst.ok{background:var(--tealbg);color:#0A7E72}
+.bst.prev{background:var(--amberbg);color:var(--amber)}
+.bst.ann{background:#EDF1F7;color:var(--mut)}
+.unk{background:var(--amberbg);border:1px solid #F0DCA0;border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.unk .ut{font-weight:700;font-size:13.5px;color:#6B4A00;margin-bottom:9px}
+.unkrow{display:flex;align-items:center;gap:9px;margin-bottom:7px;flex-wrap:wrap}
+.unkrow .mono{background:#fff;border-radius:6px;padding:3px 8px;font-size:12px;font-weight:600}
+.unkrow select{border:1.5px solid #E5D193;border-radius:8px;padding:6px 9px;background:#fff;font-size:12.5px}
+.bkrow{background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:7px;display:flex;align-items:center;gap:11px;flex-wrap:wrap;font-size:13px}
+.bkrow.matched{border-left:4px solid var(--teal)}
+.bkrow.um{border-left:4px solid #E0B100;background:#FFFDF4}
+.bkrow .d{font-weight:700;font-family:'JetBrains Mono';font-size:12px}
+.bkrow .descr{flex:1;min-width:170px;color:var(--mut)}
+.bkrow .imp{font-weight:800;font-family:'Bricolage Grotesque'}
+.bkrow select{border:1.5px solid var(--line);border-radius:8px;padding:6px 9px;background:#fff;font-size:12.5px}
+.bkmatch{font-size:11.5px;font-weight:700;color:#0A7E72;background:var(--tealbg);border-radius:99px;padding:3px 10px}
+
+/* dettaglio collaboratore — pagina intera */
+.dpage-h{background:var(--navy);color:#fff;border-radius:18px;padding:22px 26px;margin-bottom:18px;position:relative}
+.dpage-h h2{font-size:22px;font-weight:700;padding-right:40px}
+.dpage-h .as{font-size:13px;color:#A8BCE5;margin-top:5px}
+.dpage-h .back{position:absolute;top:18px;right:18px;color:#B9C9E8;font-weight:700;font-size:13px;background:rgba(255,255,255,.1);border-radius:9px;padding:8px 14px}
+.dpage-h .back:hover{background:rgba(255,255,255,.2);color:#fff}
+.dtabs{display:flex;gap:4px;margin-top:16px;flex-wrap:wrap}
+.dtabs button{padding:8px 15px;border-radius:9px;font-size:13px;font-weight:700;color:#A8BCE5}
+.dtabs button.on{background:rgba(255,255,255,.18);color:#fff}
+.sec{margin-bottom:24px}
+.sec h3{font-size:11.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--mut);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sec h3:after{content:'';flex:1;height:1px;background:var(--line)}
+.cgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px}
+.cbox{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.cbox .k{font-size:10.5px;font-weight:700;letter-spacing:.5px;color:var(--mut)}
+.cbox .v{font-family:'JetBrains Mono';font-weight:600;font-size:14px;color:var(--navy);margin-top:3px}
+.cbox.open{background:var(--redbg)}.cbox.open .v{color:var(--red)}
+.row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid #EFF4FA;font-size:14px;gap:10px;background:transparent}
+.row:last-child{border-bottom:none}
+.row .l{color:var(--mut);font-size:12.5px;flex-shrink:0}
+.row .r{font-weight:600;text-align:right;word-break:break-word}
+.bolrow{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:10px;padding:11px 14px;margin-bottom:7px}
+.bolrow .y{font-family:'Bricolage Grotesque';font-weight:700;font-size:15px}
+.docrow{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;margin-bottom:7px;background:#fff}
+.docrow.hidden-doc{background:#F7F9FC;border-style:dashed}
+.docrow .fi{width:34px;height:34px;border-radius:8px;background:#EAF3FD;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.docrow .dn{font-weight:600;font-size:13.5px}
+.docrow .dm{font-size:11.5px;color:var(--mut)}
+.notebox{background:var(--amberbg);border:1px solid #F0DCA0;border-radius:10px;padding:12px 14px;font-size:13.5px;color:#6B4A00;font-weight:500;margin-bottom:16px}
+.infobox{background:#F0F5FC;border:1px solid #DCE7F5;border-radius:10px;padding:12px 14px;font-size:13.5px;color:var(--navy);font-weight:500;margin-bottom:16px}
+.dlink{margin-left:auto;color:var(--sky);font-weight:700;font-size:12.5px}
+.vtog{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:700;border-radius:99px;padding:4px 10px;margin-left:auto;flex-shrink:0;border:1.5px solid transparent}
+.vtog.vis{background:var(--tealbg);color:#0A7E72}
+.vtog.hid{background:#EDF1F7;color:var(--mut);border-color:var(--line)}
+.cred{background:#fff;border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:13.5px;margin-bottom:12px}
+.swrow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:12px;padding:13px 16px;margin-bottom:9px}
+.swrow .t{flex:1}
+.swrow .t b{display:block;font-size:14px}
+.swrow .t span{font-size:12px;color:var(--mut)}
+.sw{width:46px;height:26px;border-radius:99px;background:#D5DEEC;position:relative;flex-shrink:0;transition:.18s}
+.sw:after{content:'';position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.sw.on{background:var(--teal)}
+.sw.on:after{left:23px}
+.permgroup{margin-bottom:18px}
+.permgroup .pgt{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:var(--mut);margin-bottom:8px}
+
+/* pagamenti/sanzioni */
+.tabs2{display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap}
+.tabs2 button{padding:9px 16px;border-radius:10px;font-size:13.5px;font-weight:700;color:var(--mut);background:#fff;border:1.5px solid var(--line)}
+.tabs2 button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.formrow{display:flex;gap:9px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px;margin-bottom:16px;align-items:flex-end}
+.formrow .f{flex:1;min-width:120px}
+.formrow label{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:5px}
+.formrow input,.formrow select,.formrow textarea{width:100%;border:1.5px solid var(--line);border-radius:9px;padding:9px 11px;background:#FBFDFF}
+.spill{font-size:10.5px;font-weight:700;border-radius:99px;padding:3px 10px}
+.spill.no{background:var(--redbg);color:var(--red)}
+.spill.si{background:var(--tealbg);color:#0A7E72}
+
+/* scadenze */
+.due-card{background:#fff;border:1px solid var(--line);border-radius:13px;padding:15px 17px;margin-bottom:9px;display:flex;gap:13px;align-items:center}
+.due-card .dt{width:52px;text-align:center;flex-shrink:0;background:#F0F5FC;border-radius:10px;padding:7px 4px}
+.due-card .dt .d{font-family:'Bricolage Grotesque';font-weight:800;font-size:17px;color:var(--navy);line-height:1}
+.due-card .dt .m{font-size:10px;font-weight:700;letter-spacing:.6px;color:var(--mut);text-transform:uppercase;margin-top:2px}
+.due-card.urgent .dt{background:var(--redbg)}.due-card.urgent .dt .d{color:var(--red)}
+.due-card .bd{flex:1;min-width:0}
+.due-card .tt{font-weight:700;font-size:14.5px}
+.due-card .ss{font-size:12.5px;color:var(--mut);margin-top:2px}
+.tpill{font-size:10.5px;font-weight:700;border-radius:6px;padding:2px 7px}
+.tp-bol{background:#EAF3FD;color:var(--navy)}
+.tp-del{background:#F1E8FB;color:#6B3FA0}
+.tp-adm{background:var(--tealbg);color:#0A7E72}
+.tp-prod{background:var(--redbg);color:var(--red)}
+
+/* comunicazioni */
+.comp{background:#fff;border:1px solid var(--line);border-radius:15px;padding:20px;margin-bottom:22px}
+.comp label{font-size:12px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:7px}
+.comp select,.comp textarea,.comp input[type=text]{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 13px;outline:none;background:#FBFDFF}
+.comp textarea{min-height:80px;resize:vertical}
+.fld{margin-bottom:14px}
+.dest-prev{background:#F0F5FC;border-radius:10px;padding:10px 13px;font-size:13px;color:var(--navy);font-weight:600;margin-bottom:14px}
+.hist{background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px 17px;margin-bottom:9px}
+.hist .hh{display:flex;align-items:flex-start;gap:10px}
+.hist .ht{font-weight:700;font-size:14px}
+.hist .hm{font-size:12.5px;color:var(--mut);margin-top:3px}
+.hist .hd{font-size:13.5px;margin-top:7px;color:#33415C}
+
+/* spark / produzione */
+.spark{display:flex;align-items:flex-end;gap:4px;height:46px;min-width:120px}
+.spark .b{width:14px;border-radius:4px 4px 2px 2px;background:#CBDDF3;position:relative}
+.spark .b.last{background:var(--sky)}
+.spark .b.bad{background:#F0B6B3}
+.spark .b.bad.last{background:var(--red)}
+.spark .b span{position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-size:9px;font-weight:700;color:var(--mut)}
+.prod-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:10px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.prod-card.hi{border-left:4px solid var(--red)}
+.prod-card.md{border-left:4px solid #E0B100}
+.prod-card.ok{border-left:4px solid var(--teal)}
+.prod-card .who{flex:1;min-width:170px}
+.prod-card .who .n{font-weight:700;font-size:15px}
+.prod-card .who .c{font-size:12px;color:var(--mut);margin-top:2px}
+.pstats{display:flex;gap:18px;flex-wrap:wrap}
+.pstat{text-align:right;min-width:74px}
+.pstat .v{font-family:'Bricolage Grotesque';font-weight:800;font-size:17px}
+.pstat .v.neg{color:var(--red)}.pstat .v.pos{color:var(--teal)}
+.pstat .l{font-size:10.5px;color:var(--mut);font-weight:700;text-transform:uppercase}
+.payrow{font-size:12px;font-weight:600;margin-top:4px}
+.payrow.late{color:var(--red)}.payrow.okp{color:#0A7E72}
+
+/* portale collaboratore */
+.cport-h{background:linear-gradient(135deg,var(--navy),#123A8C);border-radius:16px;color:#fff;padding:22px 24px;margin-bottom:20px}
+.cport-h h2{font-size:20px;font-weight:700}
+.cport-h .s{color:#A8BCE5;font-size:13px;margin-top:4px}
+.toast-wrap{position:fixed;right:20px;bottom:20px;z-index:100;display:flex;flex-direction:column;gap:10px}
+.toast-wrap .toast{position:static;transform:none;left:auto;bottom:auto}
+.toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:var(--navy2);color:#fff;font-size:13.5px;font-weight:600;border-radius:12px;padding:12px 20px;z-index:99;box-shadow:0 10px 30px rgba(4,16,44,.4);display:flex;align-items:center;gap:10px;min-width:200px}
+.empty{text-align:center;padding:50px 20px;color:var(--mut)}
+.empty .big{font-size:38px;margin-bottom:10px}
+
+/* modale */
+.movl{position:fixed;inset:0;background:rgba(10,26,56,.5);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal-bg{position:fixed;inset:0;background:rgba(10,26,56,.5);z-index:60;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:18px;padding:0;width:min(460px,100%);box-shadow:0 24px 70px rgba(4,16,44,.4);max-height:88vh;overflow:auto}
+.modal.wide{max-width:760px}
+.modal-h{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--line)}
+.modal-h h3{font-size:17px;font-weight:700}
+.modal-h .x{font-size:22px;color:var(--mut);line-height:1;padding:2px 6px;border-radius:8px}
+.modal-h .x:hover{background:#F0F5FC;color:var(--ink)}
+.modal .mf{margin-bottom:13px}
+.modal label{font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);display:block;margin-bottom:5px}
+.modal input,.modal select{width:100%;border:1.5px solid var(--line);border-radius:10px;padding:11px 12px;background:#FBFDFF}
+
+/* ===== modulo pratiche — elementi specifici ===== */
+.grid2{display:grid;grid-template-columns:1.6fr 1fr;gap:18px}
+@media(max-width:1100px){.grid2{grid-template-columns:1fr}}
+.badge-st{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:700}
+.dotst{width:7px;height:7px;border-radius:50%}
+.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.pill.req{background:var(--redbg);color:var(--red)}
+.pill.use{background:var(--amberbg);color:var(--amber)}
+.pill.opt{background:#eef2fa;color:var(--mut)}
+.tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tabs button{padding:12px 16px;border-bottom:3px solid transparent;font-weight:700;font-size:13.5px;color:var(--mut)}
+.tabs button.on{color:var(--navy);border-bottom-color:var(--sky)}
+.filecard{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);border-radius:11px;padding:11px 14px;margin-bottom:8px}
+.doc-ic{width:38px;height:38px;border-radius:10px;background:#F0F5FC;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.doc-ic.uploaded{background:#EAF3FD}
+.hashtag{font-family:'JetBrains Mono';font-size:10.5px;color:var(--mut);background:#F0F5FC;border-radius:6px;padding:2px 7px}
+.lock-box{display:flex;align-items:flex-start;gap:10px;background:#F0F5FC;border:1px solid #DCE7F5;border-radius:11px;padding:12px 14px;font-size:12.5px;color:var(--mut)}
+.muted{color:var(--mut)}
+.small{font-size:12.5px}
+.timeline-row{display:flex;gap:10px;align-items:flex-start;margin-bottom:14px;position:relative}
+.timeline-row .tdot{width:10px;height:10px;border-radius:50%;background:var(--sky);margin-top:4px;flex-shrink:0;position:relative;z-index:1}
+.timeline-row .tline{position:absolute;left:4px;top:14px;bottom:-14px;width:2px;background:var(--line)}
+.timeline-row:last-child .tline{display:none}
+.timeline-row .tt{font-weight:700;font-size:13.5px}
+.timeline-row .ts{font-size:11.5px;color:var(--mut);margin-top:2px}
+.timeline-row .tn{font-size:12.5px;color:#6B4A00;background:var(--amberbg);border-radius:8px;padding:6px 9px;margin-top:5px}
+.chatbox{max-height:280px;overflow-y:auto;display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.chatmsg{max-width:84%;padding:9px 12px;border-radius:12px;font-size:13px}
+.chatmsg.me{align-self:flex-end;background:var(--navy);color:#fff}
+.chatmsg.them{align-self:flex-start;background:#F0F5FC;color:var(--ink)}
+.chatmsg .cm-meta{font-size:10.5px;opacity:.7;margin-top:3px}
+.chatform{display:flex;gap:8px}
+.chatform input{flex:1;border:1.5px solid var(--line);border-radius:10px;padding:9px 12px}
+.upload-slot{border:1.5px dashed var(--line);border-radius:11px;padding:13px 14px;margin-bottom:8px;display:flex;align-items:center;gap:11px;background:#FAFCFF}
+.upload-slot.filled{border-style:solid;border-color:var(--teal);background:#fff}
+.upload-slot.locked{background:#F7F9FC;border-color:var(--line)}
+.field-row{margin-bottom:13px}
+.field-row label{font-size:12px;font-weight:700;color:var(--mut);display:block;margin-bottom:6px}
+.stepper{display:flex;gap:6px;margin-bottom:22px;flex-wrap:wrap}
+.stepper .stp{flex:1;min-width:90px;text-align:center;padding:10px 8px;border-radius:10px;font-size:12px;font-weight:700;background:#F0F5FC;color:var(--mut)}
+.stepper .stp.on{background:var(--navy);color:#fff}
+.stepper .stp.done{background:var(--tealbg);color:#0A7E72}
+.tplist-row{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:14px 16px;margin-bottom:9px;cursor:pointer}
+.tplist-row:hover{border-color:var(--sky)}
+.tplist-row .ti{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--sky),var(--teal));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-family:'Bricolage Grotesque'}
+.bnav{display:none}
+@media(max-width:920px){
+  .side{display:none}
+  .main{padding:18px 14px 96px}
+  .card .meta{display:none}
+  .tbl{font-size:12px}
+  .tbl th,.tbl td{padding:7px 8px}
+  .bnav{display:flex;position:fixed;bottom:0;left:0;right:0;background:var(--navy);z-index:30;padding:8px 4px calc(8px + env(safe-area-inset-bottom));overflow-x:auto}
+  .bnav button{flex:1;min-width:64px;color:#9FB4DD;font-size:10px;font-weight:700;display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;border-radius:10px}
+  .bnav button .i{font-size:18px}
+  .bnav button.on{color:#fff;background:rgba(66,168,240,.25)}
+}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useMemo,useRef,useEffect} = React;
+const eur = n => "€ " + n.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2});
+const oggi = () => new Date().toISOString().slice(0,10);
+const itDate = iso => {const [y,m,d]=iso.split("-");return d+"/"+m+"/"+y;};
+/* ============ LISTINI TARIFFARI (multipli) ============ */
+const VOCI_T = ["Punto reale patronato","Punto telematico","Punto RDC","Punto REM","Punto org. patronato","Punti estero",
+ "MOD 730 senza modifiche","MOD 730 esonero pres.","MOD 730 con modifiche","MOD 730 con integrazione",
+ "ISEE I fascia","ISEE II fascia","ISEE III fascia","RED asseverati","RED autocertificati","RED brevi","ICRIC01-ICLAV-ACCAS/PS"];
+const LISTINI0 = {
+ "Standard":{
+  2024:[36,36,1.5,15,3000,5,18.27,13.71,19.12,19.80,10.81,14.33,17.35,8.10,4.12,2.88,5.50],
+  2025:[36,36,1.5,15,3000,5,18.45,13.90,19.30,20.05,11.00,14.60,17.70,8.10,4.12,2.88,5.50]},
+ "Sedi Cosenza":{
+  2024:[34,34,1.5,15,3000,5,17.50,13.00,18.40,19.00,10.20,13.80,16.90,7.80,4.00,2.70,5.20],
+  2025:[34,34,1.5,15,3000,5,17.70,13.20,18.60,19.20,10.40,14.00,17.10,7.80,4.00,2.70,5.20]},
+};
+
+/* ============ PERMESSI: chiavi sezioni gestionali (riservate, abilitabili a singoli collaboratori) ============
+   Quando attive su un collaboratore, l'accesso è SEMPRE filtrato ai soli dati che lo riguardano. */
+const GESTIONE_KEYS = [
+  ["g_lista","👥","Collaboratori"],
+  ["g_comp","💶","Compensi"],
+  ["g_imp","📥","Import"],
+  ["g_tar","🏷","Tariffari"],
+  ["g_prod","📊","Produzione"],
+  ["g_cont","🧾","Pagam./Sanzioni"],
+  ["g_pratiche","📁","Pratiche"],
+  ["g_templates","🧩","Tipi di pratica"],
+];
+/* chiavi sezioni "portale personale" del collaboratore */
+const PORTALE_KEYS = [
+  ["compensi","💶","Compensi"],
+  ["codici","🔢","Codici"],
+  ["mie_pratiche","📁","Le mie pratiche"],
+  ["nuova_pratica","➕","Nuova pratica"],
+  ["impdocs","📌","Documenti importanti"],
+];
+
+/* ============ ANAGRAFICA COLLABORATORI (unica fonte dati, condivisa Compensi + Pratiche) ============ */
+const COLLAB0 = [
+ {id:1,nome:"ALOI ANGELICA",cf:"LAONGL85A41B617Y",assoc:"",stato:"ok",f730:true,listino:"Standard",
+  codici:{caf:"RC0982",del:"URC0264",misia:"9",naspi:"RC0094",gest:"RC0982"},
+  tel:["3283830568"],email:[],citta:"Via Kaulon 23, Caulonia",
+  boll:{2024:"paid",2025:"paid",2026:"due"},note:"",
+  cfg:[["730","perc",0.60],["CAF","perc",0.65],["Patronato","perc",0.60],["NASPI","perc",0.60]],
+  prod:[14,16,15,13,15,14],pag:{ult:"05/06/2026",ins:0,reg:true},
+  portal:{compensi:false,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:false,g_cont:false,g_pratiche:false,g_templates:false},
+  docs:[{n:"Convenzione CAF 2025.pdf",c:"Convenzioni",d:"12/01/2025",vis:true},{n:"Documento identità.pdf",c:"Anagrafica",d:"03/06/2024",vis:false}],
+  utente:{username:"LAONGL85A41B617Y",mustChange:true,email:"angelica.aloi@studio.it",color:"#42A8F0"}},
+ {id:4,nome:"COMMISSO STEFANO",cf:"CMSSFN79D15E041X",assoc:"",stato:"ok",f730:true,listino:"Standard",
+  codici:{caf:"RC0945",del:"URC0204",misia:"50",naspi:"RC0093",gest:"RC0945"},
+  tel:["3291324831","3296722260"],email:["stefanocom79@gmail.com"],citta:"Via Carlo Maria 84, 89046 Marina di Gioiosa Ionica",
+  boll:{2024:"paid",2025:"paid",2026:"paid"},note:"",
+  cfg:[["730","perc",0.60],["CAF","perc",0.65],["Patronato","perc",0.70],["INPS","perc",0.60],["NASPI","perc",0.75]],
+  prod:[22,25,24,26,23,25],pag:{ult:"06/06/2026",ins:0,reg:true},
+  portal:{compensi:true,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:true,g_cont:true,g_pratiche:false,g_templates:false},
+  docs:[{n:"Incarico sindacale URC0204.pdf",c:"Deleghe",d:"08/02/2025",vis:true},{n:"Convenzione CAF 2025.pdf",c:"Convenzioni",d:"12/01/2025",vis:true},{n:"Attestato formazione.pdf",c:"Formazione",d:"19/11/2025",vis:true}],
+  utente:{username:"CMSSFN79D15E041X",mustChange:false,email:"stefanocom79@gmail.com",color:"#10B4A2"}},
+ {id:3,nome:"CARIDI ROCCO",cf:"CRDRCC68M12H224W",assoc:"",stato:"warn",f730:true,listino:"Standard",
+  codici:{caf:"COLLAB5",del:"",misia:"14",naspi:"",gest:"COLLAB5"},
+  tel:["0965650585","3476496925"],email:["caridi.rocco@alice.it"],citta:"Via Manfroce II Tv. 9, 89122 Reggio Calabria",
+  boll:{2024:"paid",2025:"paid",2026:"paid"},note:"Verificare posizione codice COLLAB5",
+  cfg:[["INPS","fisso",1.00],["730","perc",0.50],["CAF","perc",0.50],["Patronato","perc",0.30]],
+  prod:[11,12,10,11,12,11],pag:{ult:"02/06/2026",ins:0,reg:true},
+  portal:{compensi:false,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:false,g_cont:false,g_pratiche:false,g_templates:false},
+  docs:[{n:"Delega operativa.pdf",c:"Deleghe",d:"15/09/2025",vis:true}],utente:null},
+ {id:5,nome:"FALCONE ALFONSO",cf:"FLCLNS72T03D005Q",assoc:"",stato:"warn",f730:true,listino:"Sedi Cosenza",
+  codici:{caf:"CS2801",del:"UCS0002",misia:"CS2801",naspi:"CS0022",gest:"CS2801"},
+  tel:["0983856218","3887925039"],email:[],citta:"Via delle Ninfee 18, 87064 Corigliano-Rossano",
+  boll:{2024:"paid",2025:"due",2026:"due"},note:"Posizione da verificare (segnalata in elenco)",
+  cfg:[["730","perc",0.55],["CAF","perc",0.60],["Patronato","perc",0.55]],
+  prod:[18,15,12,9,6,3],pag:{ult:"14/03/2026",ins:340,reg:false},
+  portal:{compensi:false,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:false,g_cont:false,g_pratiche:false,g_templates:false},
+  docs:[],utente:null},
+ {id:2,nome:"ANGHELONE ANTONIO GUSTAVO (AMELIA)",cf:"NGHNNG70C22H224R",assoc:"UNSIC Reggio Calabria – RC/448",stato:"open",f730:false,listino:"Standard",
+  codici:{caf:"RC118*",del:"",misia:"",naspi:"",gest:""},
+  tel:["3282037592"],email:["at.unsic.rc448@gmail.com"],citta:"Via Torricelli Pescatori 13, 89129 Reggio Calabria",
+  boll:{2024:"paid",2025:"due",2026:"due"},note:"Codice CAF in apertura — sollecitare pratica",
+  cfg:[],prod:[0,0,2,1,0,0],pag:{ult:"18/02/2026",ins:120,reg:false},
+  portal:{compensi:false,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:false,g_cont:false,g_pratiche:false,g_templates:false},
+  docs:[{n:"Richiesta apertura codice.pdf",c:"Pratiche apertura",d:"22/04/2026",vis:false}],utente:null},
+ {id:7,nome:"LATELLA KATIA",cf:"LTLKTA80A50F112V",assoc:"UNSIC Melito Porto Salvo – RC/219",stato:"ok",f730:true,listino:"Standard",
+  codici:{caf:"RC0954",del:"URC0260",misia:"42",naspi:"RC0021",gest:"RC0954"},
+  tel:["0965 788777","3283253829"],email:["katia.latella@enasc.it"],citta:"Via Quarnaro II 34, Gallico, 89135 Reggio Calabria",
+  boll:{2024:"paid",2025:"paid",2026:"due"},note:"",
+  cfg:[["730","perc",0.60],["CAF","perc",0.65],["Patronato","perc",0.60],["NASPI","perc",0.60]],
+  prod:[16,17,15,18,17,19],pag:{ult:"04/06/2026",ins:0,reg:true},
+  portal:{compensi:false,codici:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
+  gestione:{g_lista:false,g_comp:false,g_imp:false,g_tar:false,g_prod:false,g_cont:false,g_pratiche:true,g_templates:false},
+  docs:[{n:"Convenzione patronato.pdf",c:"Convenzioni",d:"28/03/2025",vis:true}],utente:null},
+];
+
+/* ============ COMPENSI — dettaglio (demo) ============ */
+const CDET = {
+ 1:{riporto:142.50,rows:[
+   ["730","MOD 730 senza modifiche",30,18.27,"perc",0.60],
+   ["730","MOD 730 con modifiche",41,19.12,"perc",0.60],
+   ["730","MOD 730 con integrazione",12,19.80,"perc",0.60],
+   ["CAF — ISEE / RED","ISEE I fascia",55,10.81,"perc",0.65],
+   ["CAF — ISEE / RED","ISEE II fascia",23,14.33,"perc",0.65],
+   ["CAF — ISEE / RED","RED asseverati",8,8.10,"perc",0.65],
+   ["Patronato","Punti reali",96,36.00,"perc",0.60],
+   ["Patronato","Punti telematici",34,36.00,"perc",0.60],
+   ["NASPI","Trattamenti (importo importato)",14,null,"perc",0.60,489.20],
+ ]},
+ 4:{riporto:0,rows:[
+   ["Mensilità","Deleghe INPS (netto importato)",38,null,"perc",0.60,1118.40],
+   ["730","MOD 730 senza modifiche",55,18.27,"perc",0.60],
+   ["730","MOD 730 con modifiche",112,19.12,"perc",0.60],
+   ["730","MOD 730 con integrazione",47,19.80,"perc",0.60],
+   ["730","MOD 730 esonero pres.",18,13.71,"perc",0.60],
+   ["CAF — ISEE / RED","ISEE I fascia",140,10.81,"perc",0.65],
+   ["CAF — ISEE / RED","ISEE II fascia",61,14.33,"perc",0.65],
+   ["CAF — ISEE / RED","ISEE III fascia",12,17.35,"perc",0.65],
+   ["Patronato","Punti reali",210,36.00,"perc",0.70],
+   ["Patronato","Punti telematici",88,36.00,"perc",0.70],
+   ["Patronato","Punti RDC",60,1.50,"perc",0.70],
+   ["NASPI","Trattamenti (importo importato)",26,null,"perc",0.75,902.10],
+ ]},
+ 3:{riporto:-75.00,rows:[
+   ["Mensilità","Deleghe INPS (€ 1,00 fisso/delega)",22,null,"fisso",1.00,null],
+   ["730","MOD 730 con modifiche",34,19.12,"perc",0.50],
+   ["CAF — ISEE / RED","ISEE I fascia",48,10.81,"perc",0.50],
+   ["Patronato","Punti reali",40,36.00,"perc",0.30],
+ ]},
+ 5:{riporto:0,rows:[
+   ["730","MOD 730 con modifiche",137,18.40,"perc",0.55],
+   ["730","MOD 730 con integrazione",191,19.00,"perc",0.55],
+   ["730","MOD 730 senza modifiche",30,17.50,"perc",0.55],
+   ["730","MOD 730 esonero pres.",75,13.00,"perc",0.55],
+   ["CAF — ISEE / RED","ISEE (DSU inviate)",363,12.00,"perc",0.60],
+   ["CAF — ISEE / RED","RED (ass.+aut.+brevi)",26,5.00,"perc",0.60],
+   ["CAF — ISEE / RED","ICRIC/ICLAV/ACCAS",12,5.20,"perc",0.60],
+ ]},
+};
+function rowCalc(r){
+  const [cat,voce,qty,tar,tipo,val,base]=r;
+  const imp = base!=null ? base : (tar?qty*tar:0);
+  const comp = tipo==="fisso" ? qty*val : imp*val;
+  return {cat,voce,qty,tar,tipo,val,imp,comp};
+}
+function saldoData(cid,anno,pagamenti,sanzioni){
+  const det=CDET[cid];
+  if(!det) return null;
+  const rows=det.rows.map(rowCalc);
+  const maturato=rows.reduce((a,r)=>a+r.comp,0);
+  const sz=sanzioni.filter(s=>s.cid===cid&&s.anno===anno&&!s.pagata).reduce((a,s)=>a+s.importo,0);
+  const acc=pagamenti.filter(p=>p.cid===cid&&p.anno===anno).reduce((a,p)=>a+p.importo,0);
+  return {rows,maturato,sz,acc,riporto:det.riporto,saldo:det.riporto+maturato-sz-acc};
+}
+
+/* ============ PAGAMENTI / SANZIONI / BATCHES / COMMS / SCADENZE ============ */
+const PAG0 = [
+ {id:1,data:"2024-03-15",anno:2024,cid:4,importo:1200,causale:"Acconto compensi"},
+ {id:2,data:"2024-06-28",anno:2024,cid:4,importo:1500,causale:"Acconto compensi"},
+ {id:3,data:"2024-05-10",anno:2024,cid:1,importo:800,causale:"Acconto compensi"},
+ {id:4,data:"2024-07-22",anno:2024,cid:5,importo:2000,causale:"Acconto compensi"},
+ {id:5,data:"2024-11-30",anno:2024,cid:3,importo:400,causale:"Contributo sindacale"},
+];
+const SANZ0 = [
+ {id:1,data:"12/04/2024",anno:2024,tip:"SANZIONI 730/2016",importo:29.00,zona:"CS2801",cid:5,cf:"PPRSVT78M16D005T",pagata:false},
+ {id:2,data:"12/04/2024",anno:2024,tip:"SANZIONI 730/2016",importo:18.75,zona:"CS2801",cid:5,cf:"RSLGPP63A12D005S",pagata:false},
+ {id:3,data:"12/04/2024",anno:2024,tip:"SANZIONI 730/2016",importo:206.40,zona:"COLLAB9",cid:null,cf:"CSBGPP58S07B918J",pagata:false},
+ {id:4,data:"12/04/2024",anno:2024,tip:"SANZIONI 730/2016",importo:66.35,zona:"ME11SEDE",cid:null,cf:"CMACLN54C43D824Z",pagata:false},
+ {id:5,data:"03/06/2024",anno:2024,tip:"SANZIONI 730/2018",importo:52.00,zona:"RC0982",cid:1,cf:"DKELLN86C24Z129N",pagata:true},
+];
+const BATCH0 = [
+ {id:1,anno:2024,fonte:"CAF",file:"Export_CAF_UNSIC_2024.xlsx",data:"02/02/2025",righe:58,assoc:55,stato:"confermato"},
+ {id:2,anno:2024,fonte:"PATRONATO",file:"Punti_Patronato_2024.xlsx",data:"02/02/2025",righe:94,assoc:90,stato:"confermato"},
+ {id:3,anno:2024,fonte:"MENSILITA",file:"Mensilita_2024.xlsx",data:"05/02/2025",righe:34,assoc:34,stato:"confermato"},
+ {id:4,anno:2024,fonte:"NASPI",file:"NASPI_2024.xlsx",data:"05/02/2025",righe:31,assoc:29,stato:"confermato"},
+];
+const SCAD = [
+ {id:0,d:"OGGI",urgent:true, tipo:"prod",tt:"Calo produzione — Falcone Alfonso",ss:"-67% negli ultimi 3 mesi · rischio abbandono · contattare",cid:5},
+ {id:1,d:"15 GIU",urgent:true, tipo:"bol",tt:"Bollettino annuale 2026 — Anghelone A.G.",ss:"2025 e 2026 da pagare · UNSIC RC/448",cid:2},
+ {id:3,d:"30 GIU",urgent:false,tipo:"adm",tt:"Invio 730/2026 — scadenza lotto collaboratori",ss:"Collaboratori con flag 730 attivo",cid:null},
+ {id:4,d:"08 LUG",urgent:false,tipo:"del",tt:"Rinnovo incarico sindacale URC0204 — Commisso S.",ss:"Delega in scadenza · preparare modulo rinnovo",cid:4},
+];
+const COMMS0 = [
+ {id:1,dt:"04/06/2026",dest:"Tutti con incarico sindacale (URC/UCS)",tt:"Rinnovo deleghe 2026–2027",tx:"Vi ricordiamo di trasmettere il modulo di rinnovo entro il 31/07.",vis:true},
+ {id:2,dt:"21/05/2026",dest:"Collaboratori con flag 730",tt:"Apertura campagna 730/2026",tx:"Da oggi è possibile trasmettere le dichiarazioni. Credenziali invariate.",vis:true},
+ {id:3,dt:"12/05/2026",dest:"Tutti i collaboratori",tt:"[Bozza interna] Revisione listino compensi",tx:"Nota interna in lavorazione — non pubblicare fino a conferma.",vis:false},
+];
+/* estratto conto demo */
+const BANK_DEMO = [
+ {data:"2024-09-12",descr:"BONIFICO A FAVORE COMMISSO STEFANO ACC COMPENSI",importo:1000},
+ {data:"2024-09-12",descr:"BONIFICO A FAVORE ALOI ANGELICA",importo:600},
+ {data:"2024-09-15",descr:"BONIFICO SEPA RIF 88412 STUDIO FALCONE",importo:1500},
+ {data:"2024-09-20",descr:"BONIFICO A FAVORE LATELLA KATIA SALDO PRAT",importo:850},
+ {data:"2024-09-28",descr:"GIROCONTO COLLABORAZIONE RC0907",importo:300},
+];
+
+/* ============ HELPERS ============ */
+const STL = {ok:["Attivo","st-ok"],open:["In apertura","st-open"],warn:["Da verificare","st-warn"]};
+const ini = n => n.split(" ").slice(0,2).map(w=>w[0]).join("");
+const codeCls = (v,stato)=> v.includes("*")?"open":(stato==="warn"?"warn":"");
+const CK = [["caf","CAF"],["del","DELEGA"],["misia","MISIA"],["naspi","NASPI/DS"],["gest","GEST."]];
+/* ============================== MODULO PRATICHE — CONFIG STATI ============================== */
+const STATUSES = {
+  bozza:               {label:"Bozza",                color:"#5b6b85", bg:"#eef2fa"},
+  inviata:             {label:"Inviata",              color:"var(--navy)", bg:"#e6f1fb"},
+  in_lavorazione:      {label:"In lavorazione",       color:"var(--amber)", bg:"var(--amberbg)"},
+  richiesta_documenti: {label:"Richiesta documenti",  color:"var(--red)", bg:"var(--redbg)"},
+  trasmessa:           {label:"Trasmessa",            color:"#0A7E72", bg:"var(--tealbg)"},
+  ricevute_disponibili:{label:"Ricevute disponibili", color:"#0a6b2e", bg:"#e7f6ec"},
+};
+const FLOW = ["inviata","in_lavorazione","richiesta_documenti","trasmessa","ricevute_disponibili"];
+const canEditFreely = (st)=> st==="bozza";
+const canAppend = (st)=> st==="richiesta_documenti";
+
+/* ============================== LIBRERIA TEMPLATE PRATICHE ============================== */
+const BASE_FIELDS = [
+  {id:"f_cognome",label:"Cognome",type:"text",required:true},
+  {id:"f_nome",label:"Nome",type:"text",required:true},
+  {id:"f_cf",label:"Codice fiscale",type:"text",required:true},
+  {id:"f_nascita",label:"Data di nascita",type:"date",required:true},
+  {id:"f_luogo",label:"Luogo di nascita",type:"text",required:true},
+  {id:"f_indirizzo",label:"Indirizzo di residenza",type:"text",required:true},
+  {id:"f_tel",label:"Telefono",type:"text",required:false},
+];
+const BASE_DOCS = [
+  {label:"Documento d'identità (fronte/retro)",cat:"obbligatorio"},
+  {label:"Tessera sanitaria / Codice fiscale",cat:"obbligatorio"},
+  {label:"Coordinate bancarie (IBAN)",cat:"obbligatorio"},
+];
+const LIBRARY = {
+  "NASpI — Disoccupazione": {ente:"INPS", docs:[
+    {label:"Lettera di licenziamento / cessazione",cat:"obbligatorio"},
+    {label:"Ultime due buste paga",cat:"obbligatorio"},
+    {label:"Modello Unilav / comunicazione cessazione",cat:"utile"},
+    {label:"CU (Certificazione Unica) ultimo anno",cat:"utile"},
+    {label:"Eventuale verbale di conciliazione",cat:"opzionale"},
+  ], extra:[{label:"Data ultimo giorno di lavoro",type:"date",required:true}]},
+  "Invalidità civile": {ente:"INPS", docs:[
+    {label:"Certificato medico introduttivo (SS3)",cat:"obbligatorio"},
+    {label:"Documentazione sanitaria / referti",cat:"obbligatorio"},
+    {label:"Verbali precedenti (se presenti)",cat:"utile"},
+    {label:"Cartelle cliniche",cat:"opzionale"},
+  ], extra:[{label:"Numero certificato medico",type:"text",required:false}]},
+  "Assegno Unico Universale": {ente:"INPS", docs:[
+    {label:"ISEE in corso di validità",cat:"obbligatorio"},
+    {label:"Documento dei figli a carico",cat:"utile"},
+    {label:"Eventuale sentenza affido",cat:"opzionale"},
+  ], extra:[{label:"Numero di figli a carico",type:"number",required:true}]},
+  "Pensione di vecchiaia": {ente:"INPS", docs:[
+    {label:"Estratto contributivo",cat:"obbligatorio"},
+    {label:"Ultima busta paga / cessazione",cat:"utile"},
+    {label:"Documentazione servizio militare",cat:"opzionale"},
+  ], extra:[]},
+  "Ricostituzione pensione": {ente:"INPS", docs:[
+    {label:"Cedolino pensione",cat:"obbligatorio"},
+    {label:"Documentazione redditi sopravvenuti",cat:"utile"},
+  ], extra:[]},
+  "Infortunio sul lavoro (INAIL)": {ente:"INAIL", docs:[
+    {label:"Certificato medico di infortunio",cat:"obbligatorio"},
+    {label:"Denuncia di infortunio del datore di lavoro",cat:"obbligatorio"},
+    {label:"Referto pronto soccorso",cat:"utile"},
+    {label:"Eventuali testimonianze",cat:"opzionale"},
+  ], extra:[{label:"Data infortunio",type:"date",required:true}]},
+  "Malattia professionale (INAIL)": {ente:"INAIL", docs:[
+    {label:"Certificato medico di malattia professionale",cat:"obbligatorio"},
+    {label:"Documentazione esposizione a rischio",cat:"utile"},
+    {label:"Storico contributivo / mansioni",cat:"utile"},
+  ], extra:[]},
+  "Assegno di inclusione (ADI)": {ente:"INPS", docs:[
+    {label:"ISEE in corso di validità",cat:"obbligatorio"},
+    {label:"Stato di famiglia",cat:"utile"},
+    {label:"Patto di attivazione digitale",cat:"opzionale"},
+  ], extra:[]},
+  "Maternità / Congedo parentale": {ente:"INPS", docs:[
+    {label:"Certificato di gravidanza / nascita",cat:"obbligatorio"},
+    {label:"Domanda al datore di lavoro",cat:"utile"},
+  ], extra:[{label:"Data presunta parto",type:"date",required:false}]},
+  "Assegno sociale": {ente:"INPS", docs:[
+    {label:"Dichiarazione redditi",cat:"obbligatorio"},
+    {label:"Stato di famiglia",cat:"utile"},
+  ], extra:[]},
+  "Disoccupazione agricola": {ente:"INPS", docs:[
+    {label:"Giornate lavorate (certificazione)",cat:"obbligatorio"},
+    {label:"CU agricola",cat:"utile"},
+  ], extra:[]},
+  "APE Sociale": {ente:"INPS", docs:[
+    {label:"Estratto contributivo",cat:"obbligatorio"},
+    {label:"Documentazione condizione (disoccupato/caregiver)",cat:"obbligatorio"},
+  ], extra:[]},
+  "Pensione ai superstiti (reversibilità)": {ente:"INPS", docs:[
+    {label:"Certificato di morte",cat:"obbligatorio"},
+    {label:"Stato di famiglia del defunto",cat:"obbligatorio"},
+    {label:"Cedolino pensione del defunto",cat:"utile"},
+  ], extra:[]},
+  "Assegno ordinario di invalidità (AOI)": {ente:"INPS", docs:[
+    {label:"Certificato medico introduttivo",cat:"obbligatorio"},
+    {label:"Documentazione sanitaria",cat:"obbligatorio"},
+    {label:"Estratto contributivo",cat:"utile"},
+  ], extra:[]},
+  "Bonus / Assegno natalità": {ente:"INPS", docs:[
+    {label:"Certificato di nascita",cat:"obbligatorio"},
+    {label:"ISEE",cat:"utile"},
+  ], extra:[]},
+};
+const LIBRARY_KEYS = Object.keys(LIBRARY);
+
+const DEFAULT_DOC_BODY =
+`Il/la sottoscritto/a {{cognome}} {{nome}}, codice fiscale {{codice_fiscale}},
+nato/a a {{luogo_nascita}} il {{data_nascita}}, residente in {{indirizzo}},
+
+DELEGA
+
+il patronato alla presentazione e gestione della pratica indicata in oggetto,
+autorizzando il trattamento dei dati e la trasmissione agli enti competenti.
+
+Data: {{data_firma}}                    Firma: ______________________`;
+
+let _id = 100;
+const nid = (p)=> p+(++_id);
+
+function seedTemplate(name){
+  const lib = LIBRARY[name];
+  const extra = (lib.extra||[]).map(e=>({id:nid("f_"),label:e.label,type:e.type,required:e.required}));
+  return {
+    id:nid("tpl_"),
+    name,
+    ente:lib.ente,
+    fields:[...BASE_FIELDS.map(f=>({...f})), ...extra],
+    docs:[
+      {id:nid("d_"),label:"Modulo di delega (da far firmare)",cat:"obbligatorio",model:{kind:"text",body:DEFAULT_DOC_BODY}},
+      ...BASE_DOCS, ...lib.docs
+    ].map(d=>({id:d.id||nid("d_"),label:d.label,cat:d.cat,model:d.model||null})),
+    docTitle:`Delega — ${name}`,
+    docBody:DEFAULT_DOC_BODY,
+  };
+}
+
+function seedPraticheState(){
+  const templates = ["NASpI — Disoccupazione","Invalidità civile","Infortunio sul lavoro (INAIL)","Assegno Unico Universale"].map(seedTemplate);
+  return { templates, pratiche: [], impDocs: [] };
+}
+
+/* ============================== HELPERS MODULO PRATICHE ============================== */
+async function sha256(blob){
+  try{
+    const buf = await blob.arrayBuffer();
+    const h = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("");
+  }catch(e){ return Math.random().toString(16).slice(2)+Date.now().toString(16); }
+}
+const fmtDate = (d)=> d? new Date(d).toLocaleDateString("it-IT",{day:"2-digit",month:"short",year:"numeric"}):"—";
+const fmtDT = (d)=> d? new Date(d).toLocaleString("it-IT",{day:"2-digit",month:"2-digit",year:"2-digit",hour:"2-digit",minute:"2-digit"}):"—";
+const human = (bytes)=>{ if(!bytes)return "—"; const u=["B","KB","MB","GB"]; let i=0,n=bytes; while(n>=1024&&i<3){n/=1024;i++;} return n.toFixed(n<10&&i>0?1:0)+" "+u[i]; };
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob); const a=document.createElement("a");
+  a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function phMap(values){
+  values=values||{};
+  return {cognome:values.f_cognome,nome:values.f_nome,codice_fiscale:values.f_cf,
+          luogo_nascita:values.f_luogo,data_nascita:values.f_nascita,indirizzo:values.f_indirizzo,
+          data_firma:new Date().toLocaleDateString("it-IT")};
+}
+function fillBody(body,values){
+  const m=phMap(values); let out=body||"";
+  Object.keys(m).forEach(k=> out=out.split("{{"+k+"}}").join(m[k]||"__________"));
+  return out;
+}
+function downloadDoc(title,body){
+  const html=`<html><head><meta charset=utf-8><title>${title}</title><style>body{font-family:Georgia,serif;max-width:680px;margin:40px auto;padding:0 30px;line-height:1.7}h1{font-size:20px;border-bottom:2px solid #0A2A6C;padding-bottom:8px}pre{font-family:Georgia,serif;white-space:pre-wrap;font-size:15px}</style></head><body><h1>${title}</h1><pre>${body}</pre></body></html>`;
+  downloadBlob(new Blob([html],{type:"text/html"}), (title||"documento").replace(/\s+/g,"_")+".html");
+}
+const unreadChat=(p,meId)=> (p.messages||[]).filter(m=>m.authorId!==meId && !(m.readBy&&m.readBy[meId])).length;
+function trend(p){
+  const a=p[0]+p[1]+p[2], b=p[3]+p[4]+p[5];
+  if(a===0&&b===0) return {pct:0,lvl:"md",lbl:"Mai partito"};
+  if(a===0) return {pct:100,lvl:"ok",lbl:"In crescita"};
+  const pct=Math.round((b-a)/a*100);
+  if(pct<=-40) return {pct,lvl:"hi",lbl:"Rischio abbandono"};
+  if(pct<0) return {pct,lvl:"md",lbl:"In calo"};
+  return {pct,lvl:"ok",lbl:pct>10?"In crescita":"Stabile"};
+}
+function Spark({p,bad}){
+  const mx=Math.max(...p,1);
+  return <div className="spark">{p.map((v,i)=>
+    <div key={i} className={"b"+(i===p.length-1?" last":"")+(bad?" bad":"")} style={{height:Math.max(4,v/mx*46)+"px"}}>
+      {i===p.length-1&&<span>{v}</span>}
+    </div>)}</div>;
+}
+function VTog({vis,onClick}){
+  return <button className={"vtog "+(vis?"vis":"hid")} onClick={e=>{e.stopPropagation();onClick();}}>
+    {vis?"👁 Visibile al collaboratore":"🚫 Solo interno"}
+  </button>;
+}
+function matchBank(descr){
+  const d=descr.toUpperCase();
+  const hit=COLLAB0.find(c=>{
+    const parts=c.nome.split(" ").filter(w=>w.length>3);
+    return parts.some(w=>d.includes(w));
+  });
+  return hit?hit.id:null;
+}
+
+/* ============ PARSER REALI (lettura file nel browser) ============ */
+if(window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const normS=s=>String(s==null?"":s).trim().toUpperCase();
+
+async function readRows(file){
+  const buf=await file.arrayBuffer();
+  const wb=XLSX.read(buf,{type:"array"});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(ws,{header:1,defval:""});
+}
+
+/* --- Produzione: rileva header, colonna codice, conta righe e codici --- */
+const FONTE_CODEKEYS={CAF:["caf","gest"],PATRONATO:["caf","gest","del","naspi","misia"],MENSILITA:["misia"],NASPI:["naspi"],DS_AGRICOLE:["naspi"],STIPENDI:[]};
+const HDR_CODE=["OPERATORE","CODICE","SEDE","STRUTTURA","ZONA","COD."];
+async function parseProduzione(file,fonte,collab){
+  const rows=await readRows(file);
+  let hRow=-1, codeCol=0;
+  for(let i=0;i<Math.min(rows.length,15)&&hRow<0;i++){
+    const r=rows[i].map(normS);
+    for(let j=0;j<r.length;j++){
+      if(HDR_CODE.some(h=>r[j]===h||r[j].startsWith(h))){hRow=i;codeCol=j;break;}
+    }
+  }
+  const start=hRow>=0?hRow+1:0;
+  const counts={};
+  let righe=0;
+  for(let i=start;i<rows.length;i++){
+    const code=normS(rows[i][codeCol]);
+    if(!code||/TOTALE|TOTAL/.test(code))continue;
+    if(hRow<0&&i===0)continue; // salta eventuale intestazione non riconosciuta
+    righe++; counts[code]=(counts[code]||0)+1;
+  }
+  const keys=FONTE_CODEKEYS[fonte]&&FONTE_CODEKEYS[fonte].length?FONTE_CODEKEYS[fonte]:["caf","gest","del","naspi","misia"];
+  const known=new Set();
+  collab.forEach(c=>keys.forEach(k=>{const v=normS(c.codici[k]).replace("*","");if(v)known.add(v);}));
+  const unknown=Object.keys(counts).filter(c=>!known.has(c)).map(c=>({codice:c,righe:counts[c],assegnato:null}));
+  const assoc=righe-unknown.reduce((a,u)=>a+u.righe,0);
+  return {righe,assoc,unknown,headerTrovato:hRow>=0};
+}
+
+/* --- Estratto conto: CSV/XLSX con rilevamento colonne, PDF con estrazione testo --- */
+const parseItNum=s=>{
+  if(typeof s==="number")return s;
+  const t=String(s).replace(/\./g,"").replace(",",".").replace(/[^\d.\-]/g,"");
+  const v=parseFloat(t);return isNaN(v)?null:v;
+};
+const serialToISO=n=>new Date(Math.round((n-25569)*86400*1000)).toISOString().slice(0,10);
+const itToISO=s=>{
+  const m=String(s).match(/(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})/);
+  if(!m)return null;
+  const y=m[3].length===2?"20"+m[3]:m[3];
+  return y+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0");
+};
+async function parseBancaTabella(file){
+  const rows=await readRows(file);
+  let h=-1,dCol=-1,xCol=-1,iCol=-1,soloUscite=false;
+  for(let i=0;i<Math.min(rows.length,12)&&h<0;i++){
+    const r=rows[i].map(normS);
+    const di=r.findIndex(c=>c.startsWith("DATA"));
+    const xi=r.findIndex(c=>/DESCRI|CAUSALE|OPERAZ|DETTAGL/.test(c));
+    if(di>=0&&xi>=0){
+      h=i;dCol=di;xCol=xi;
+      iCol=r.findIndex(c=>/USCITE|ADDEBIT|DARE/.test(c));
+      if(iCol>=0)soloUscite=true;else iCol=r.findIndex(c=>/IMPORTO/.test(c));
+    }
+  }
+  if(h<0)return [];
+  const out=[];
+  for(let i=h+1;i<rows.length;i++){
+    const r=rows[i];
+    const dRaw=r[dCol];
+    const data=typeof dRaw==="number"?serialToISO(dRaw):itToISO(dRaw);
+    const imp=parseItNum(r[iCol]);
+    if(!data||imp==null||imp===0)continue;
+    if(!soloUscite&&imp>0)continue;       // colonna IMPORTO unica: le uscite sono i negativi
+    out.push({data,descr:String(r[xCol]||"").trim(),importo:Math.abs(imp)});
+  }
+  return out;
+}
+async function parseBancaPdf(file){
+  if(!window.pdfjsLib)throw new Error("Libreria PDF non caricata");
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  let lines=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const byY={};
+    tc.items.forEach(it=>{
+      const y=Math.round(it.transform[5]);
+      (byY[y]=byY[y]||[]).push({x:it.transform[4],s:it.str});
+    });
+    Object.keys(byY).sort((a,b)=>b-a).forEach(y=>{
+      lines.push(byY[y].sort((a,b)=>a.x-b.x).map(o=>o.s).join(" "));
+    });
+  }
+  if(lines.join("").trim().length===0)throw new Error("PDF senza testo (scansione): scarica il CSV/XLSX dalla banca");
+  const out=[];
+  lines.forEach(L=>{
+    const dm=L.match(/(\d{1,2}[\/\.]\d{1,2}[\/\.]\d{2,4})/);
+    const ams=L.match(/-?\d{1,3}(?:\.\d{3})*,\d{2}/g);
+    if(!dm||!ams)return;
+    const imp=parseItNum(ams[ams.length-1]);
+    if(imp==null||imp===0)return;
+    let descr=L.replace(dm[0],"");
+    ams.forEach(a=>{descr=descr.replace(a,"");});
+    descr=descr.replace(/\s+/g," ").trim();
+    if(descr.length<4)return;
+    out.push({data:itToISO(dm[0]),descr,importo:Math.abs(imp)});
+  });
+  return out;
+}
+async function parseBanca(file){
+  if(/\.pdf$/i.test(file.name))return parseBancaPdf(file);
+  return parseBancaTabella(file);
+}
+
+/* ============ STAMPA (A4 singola) ============ */
+function printHTML(title,body){
+  const w=window.open("","_blank");
+  w.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+title+'</title><style>'+
+   '@page{size:A4;margin:11mm}'+
+   'body{font-family:Helvetica,Arial,sans-serif;color:#152238;font-size:10.5pt;margin:0}'+
+   '.hd{display:flex;justify-content:space-between;align-items:baseline;border-bottom:2.5px solid #0A2A6C;padding-bottom:6px;margin-bottom:10px}'+
+   '.hd .lg{font-size:15pt;font-weight:800;color:#0A2A6C}.hd .lg span{color:#42A8F0}'+
+   '.hd .dt{font-size:8.5pt;color:#5A6B85}'+
+   'h1{font-size:13pt;margin:0 0 2px;color:#0A2A6C}h2{font-size:9pt;color:#5A6B85;font-weight:600;margin:0 0 10px}'+
+   'table{width:100%;border-collapse:collapse;font-size:8.8pt;margin-bottom:8px}'+
+   'th{background:#F0F5FC;color:#5A6B85;font-size:7.5pt;text-transform:uppercase;letter-spacing:.4px;text-align:right;padding:4px 7px;border-bottom:1px solid #C9D7EA}'+
+   'th:first-child{text-align:left}'+
+   'td{padding:3.5px 7px;border-bottom:.5px solid #E2EAF4;text-align:right}td:first-child{text-align:left;font-weight:600}'+
+   'tr.cat td{background:#F0F5FC;font-weight:800;font-size:7.5pt;text-transform:uppercase;color:#0A2A6C;text-align:left}'+
+   'tr.tot td{font-weight:800;border-top:1.5px solid #0A2A6C}'+
+   '.sgrid{display:flex;gap:6px;margin:8px 0 12px}'+
+   '.sb{flex:1;border:1px solid #C9D7EA;border-radius:6px;padding:6px 8px}'+
+   '.sb .l{font-size:6.8pt;text-transform:uppercase;letter-spacing:.4px;color:#5A6B85;font-weight:700}'+
+   '.sb .v{font-size:11pt;font-weight:800;margin-top:1px}'+
+   '.sb.f{background:#0A2A6C;border-color:#0A2A6C}.sb.f .l{color:#A8BCE5}.sb.f .v{color:#fff}'+
+   '.ft{margin-top:10px;font-size:7.5pt;color:#5A6B85;border-top:.5px solid #E2EAF4;padding-top:5px}'+
+   '.kv{margin:2px 0;font-size:9.5pt}.kv b{display:inline-block;min-width:130px;color:#5A6B85;font-weight:600;font-size:8pt;text-transform:uppercase}'+
+   '</style></head><body>'+body+
+   '<scr'+'ipt>window.onload=function(){window.print();}</scr'+'ipt></body></html>');
+  w.document.close();
+}
+const printHead = sub => '<div class="hd"><div class="lg">Pratic<span>Hub</span> · Pratiche Soluzioni SRL</div><div class="dt">Stampato il '+new Date().toLocaleDateString("it-IT")+'</div></div>'+sub;
+
+function buildProspetto(c,anno,d,sanzioni,pagamenti){
+  let lastCat=null, rowsH="";
+  d.rows.forEach(r=>{
+    if(r.cat!==lastCat){rowsH+='<tr class="cat"><td colspan="6">'+r.cat+'</td></tr>';lastCat=r.cat;}
+    rowsH+='<tr><td>'+r.voce+'</td><td>'+r.qty+'</td><td>'+(r.tar?eur(r.tar):"—")+'</td><td>'+eur(r.imp)+'</td><td>'+(r.tipo==="fisso"?eur(r.val)+" /prat.":(r.val*100).toFixed(0)+"%")+'</td><td><b>'+eur(r.comp)+'</b></td></tr>';
+  });
+  rowsH+='<tr class="tot"><td colspan="5">TOTALE MATURATO '+anno+'</td><td>'+eur(d.maturato)+'</td></tr>';
+  const sz=sanzioni.filter(s=>s.cid===c.id&&s.anno===anno);
+  const ac=pagamenti.filter(p=>p.cid===c.id&&p.anno===anno);
+  let extra="";
+  if(sz.length) extra+='<table><tr><th>Sanzioni '+anno+'</th><th>CF cliente</th><th>Importo</th><th>Stato</th></tr>'+sz.map(s=>'<tr><td>'+s.tip+'</td><td>'+s.cf+'</td><td>− '+eur(s.importo)+'</td><td>'+(s.pagata?"Saldata":"Da trattenere")+'</td></tr>').join("")+'</table>';
+  if(ac.length) extra+='<table><tr><th>Acconti ricevuti '+anno+'</th><th>Causale</th><th>Importo</th></tr>'+ac.map(p=>'<tr><td>'+itDate(p.data)+'</td><td>'+p.causale+'</td><td>'+eur(p.importo)+'</td></tr>').join("")+'</table>';
+  return printHead('<h1>Prospetto compensi '+anno+' — '+c.nome+'</h1><h2>'+(c.assoc||"")+' Listino: '+c.listino+'</h2>')+
+   '<div class="sgrid">'+
+   '<div class="sb"><div class="l">Riporto prec.</div><div class="v">'+eur(d.riporto)+'</div></div>'+
+   '<div class="sb"><div class="l">Maturato '+anno+'</div><div class="v">'+eur(d.maturato)+'</div></div>'+
+   '<div class="sb"><div class="l">Sanzioni</div><div class="v">− '+eur(d.sz)+'</div></div>'+
+   '<div class="sb"><div class="l">Acconti</div><div class="v">− '+eur(d.acc)+'</div></div>'+
+   '<div class="sb f"><div class="l">Saldo</div><div class="v">'+eur(d.saldo)+'</div></div></div>'+
+   '<table><tr><th>Voce</th><th>Quantità</th><th>Tariffa</th><th>Importo base</th><th>Compenso</th><th>Spettante</th></tr>'+rowsH+'</table>'+extra+
+   '<div class="ft">Documento generato da PraticHub — valori calcolati su produzione importata, tariffario "'+c.listino+'" '+anno+' e schema compenso del collaboratore.</div>';
+}
+function buildScheda(c){
+  const cod=CK.map(([k,l])=>c.codici[k]?'<div class="kv"><b>'+l+'</b> '+c.codici[k].replace("*","")+(c.codici[k].includes("*")?" (in apertura)":"")+'</div>':"").join("");
+  const cfg=c.cfg.map(([v,t,val])=>'<div class="kv"><b>'+v+'</b> '+(t==="fisso"?eur(val)+" / pratica":(val*100).toFixed(0)+"% sull'importo")+'</div>').join("");
+  const ct=c.tel.map((t,i)=>'<div class="kv"><b>Telefono '+(i+1)+'</b> '+t+'</div>').join("")+c.email.map(e=>'<div class="kv"><b>Email</b> '+e+'</div>').join("");
+  return printHead('<h1>Scheda collaboratore — '+c.nome+'</h1><h2>'+(c.assoc||"Nessuna associazione territoriale")+'</h2>')+
+   (c.note?'<div class="kv"><b>Note</b> '+c.note+'</div>':"")+
+   '<h2 style="margin-top:10px">Codici identificativi</h2>'+cod+
+   '<h2 style="margin-top:10px">Schema compenso</h2>'+(cfg||"Non configurato")+
+   '<h2 style="margin-top:10px">Contatti</h2>'+ct+'<div class="kv"><b>Indirizzo</b> '+c.citta+'</div>'+
+   '<h2 style="margin-top:10px">Bollettino annuale</h2>'+[2026,2025,2024].map(y=>'<div class="kv"><b>'+y+'</b> '+(c.boll[y]==="paid"?"Pagato":"Da pagare")+'</div>').join("");
+}
+function buildDocs(c){
+  return printHead('<h1>Documenti — '+c.nome+'</h1><h2>Archivio documentale</h2>')+
+   '<table><tr><th>Documento</th><th>Categoria</th><th>Data</th><th>Visibilità</th></tr>'+
+   c.docs.map(d=>'<tr><td>'+d.n+'</td><td>'+d.c+'</td><td>'+d.d+'</td><td>'+(d.vis?"Portale collaboratore":"Solo interno")+'</td></tr>').join("")+'</table>';
+}
+
+/* ============ DROPZONE (drag&drop + click) ============ */
+function DropZone({accept,onFile,children}){
+  const [over,setOver]=useState(false);
+  const inp=useRef(null);
+  return <div className={"dz"+(over?" over":"")}
+    onDragOver={e=>{e.preventDefault();e.stopPropagation();setOver(true);}}
+    onDragEnter={e=>{e.preventDefault();setOver(true);}}
+    onDragLeave={e=>{e.preventDefault();setOver(false);}}
+    onDrop={e=>{e.preventDefault();e.stopPropagation();setOver(false);
+      const f=e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0];
+      if(f) onFile(f);}}
+    onClick={()=>inp.current&&inp.current.click()}>
+    <input ref={inp} type="file" accept={accept} style={{display:"none"}}
+      onChange={e=>{const f=e.target.files&&e.target.files[0];if(f)onFile(f);e.target.value="";}}/>
+    {children}
+  </div>;
+}
+
+/* ============ MODALE ACCONTO ============ */
+function AccontoModal({collab,cid,onClose,onSave}){
+  const [c,setC]=useState(cid||0);
+  const [imp,setImp]=useState("");
+  const [data,setData]=useState(oggi());
+  const [caus,setCaus]=useState("Acconto compensi");
+  return <div className="movl" onClick={onClose}><div className="modal" onClick={e=>e.stopPropagation()}>
+    <h3>Registra acconto</h3>
+    <div className="mf"><label>Collaboratore</label>
+      <select value={c} onChange={e=>setC(+e.target.value)}><option value={0}>Seleziona…</option>
+      {collab.map(x=><option key={x.id} value={x.id}>{x.nome}</option>)}</select></div>
+    <div className="mf"><label>Data pagamento (modificabile)</label>
+      <input type="date" value={data} onChange={e=>setData(e.target.value)}/></div>
+    <div className="mf"><label>Importo €</label>
+      <input value={imp} onChange={e=>setImp(e.target.value)} placeholder="0,00" autoFocus/></div>
+    <div className="mf"><label>Causale</label>
+      <select value={caus} onChange={e=>setCaus(e.target.value)}><option>Acconto compensi</option><option>Contributo sindacale</option><option>Fattura CAF nazionale</option><option>Altro</option></select></div>
+    <div style={{display:"flex",gap:9,marginTop:18}}>
+      <button className="btn btn-t" style={{flex:1,justifyContent:"center"}} onClick={()=>{
+        const v=parseFloat(String(imp).replace(",","."));
+        if(c&&v>0){onSave(c,v,caus,data);onClose();}
+      }}>✓ Registra</button>
+      <button className="btn btn-g" onClick={onClose}>Annulla</button>
+    </div>
+  </div></div>;
+}
+
+/* ============ TABELLA COMPENSI ============ */
+function CompensiTable({c,anno,pagamenti,sanzioni,onAcconto,readOnly}){
+  const d=saldoData(c.id,anno,pagamenti,sanzioni);
+  if(!d) return <div className="empty"><div className="big">📭</div>Nessuna produzione importata per il {anno}.</div>;
+  let lastCat=null;
+  const mieSanz=sanzioni.filter(s=>s.cid===c.id&&s.anno===anno);
+  const mieiAcc=pagamenti.filter(p=>p.cid===c.id&&p.anno===anno);
+  return <React.Fragment>
+    <div className="saldo">
+      <div className="sbox"><div className="l">Riporto prec.</div><div className={"v"+(d.riporto<0?" neg":"")}>{eur(d.riporto)}</div></div>
+      <div className="sbox"><div className="l">Maturato {anno}</div><div className="v">{eur(d.maturato)}</div></div>
+      <div className="sbox"><div className="l">Sanzioni</div><div className={"v"+(d.sz>0?" neg":"")}>− {eur(d.sz)}</div></div>
+      <div className="sbox"><div className="l">Acconti ricevuti</div><div className="v">− {eur(d.acc)}</div></div>
+      <div className="sbox final"><div className="l">Saldo</div><div className="v">{eur(d.saldo)}</div></div>
+    </div>
+    <div className="panel">
+      <div className="ph"><h3>Dettaglio compenso {anno}</h3>
+        <span style={{fontSize:11.5,color:"var(--mut)",fontWeight:600}}>Listino: {c.listino}</span>
+        <span className="sp">
+          <button className="btn btn-g btn-sm" onClick={()=>printHTML("Prospetto "+c.nome,buildProspetto(c,anno,d,sanzioni,pagamenti))}>🖨 Stampa prospetto A4</button>
+          {!readOnly&&<button className="btn btn-t btn-sm" onClick={onAcconto}>+ Registra acconto</button>}
+        </span>
+      </div>
+      <div style={{overflowX:"auto"}}>
+      <table className="tbl">
+        <thead><tr><th>Voce</th><th>Quantità</th><th>Tariffa</th><th>Importo base</th><th>Compenso</th><th>Spettante</th></tr></thead>
+        <tbody>
+          {d.rows.map((r,i)=>{
+            const catRow=r.cat!==lastCat?<tr className="cat" key={"c"+i}><td colSpan="6">{r.cat}</td></tr>:null;
+            lastCat=r.cat;
+            return <React.Fragment key={i}>{catRow}
+              <tr><td>{r.voce}</td><td>{r.qty}</td><td className="e">{r.tar?eur(r.tar):"—"}</td>
+                <td>{eur(r.imp)}</td><td className="e">{r.tipo==="fisso"?eur(r.val)+" /pratica":(r.val*100).toFixed(0)+"%"}</td>
+                <td style={{fontWeight:700}}>{eur(r.comp)}</td></tr>
+            </React.Fragment>;})}
+          <tr className="tot"><td colSpan="5">TOTALE MATURATO {anno}</td><td>{eur(d.maturato)}</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    {mieSanz.length>0&&<div className="panel"><div className="ph"><h3>Sanzioni {anno}</h3></div>
+      <table className="tbl"><thead><tr><th>Data</th><th>Tipologia</th><th>CF cliente</th><th>Importo</th><th>Stato</th></tr></thead><tbody>
+      {mieSanz.map(s=><tr key={s.id}><td>{s.data}</td><td className="e" style={{textAlign:"right"}}>{s.tip}</td><td className="mono e">{s.cf}</td><td className="neg">− {eur(s.importo)}</td><td>{s.pagata?<span className="spill si">Saldata</span>:<span className="spill no">Da trattenere</span>}</td></tr>)}
+      </tbody></table></div>}
+    {mieiAcc.length>0&&<div className="panel"><div className="ph"><h3>Acconti ricevuti {anno}</h3></div>
+      <table className="tbl"><thead><tr><th>Data</th><th>Causale</th><th>Importo</th></tr></thead><tbody>
+      {mieiAcc.map(p=><tr key={p.id}><td>{itDate(p.data)}</td><td className="e" style={{textAlign:"right"}}>{p.causale}</td><td style={{fontWeight:700}}>{eur(p.importo)}</td></tr>)}
+      </tbody></table></div>}
+  </React.Fragment>;
+}
+
+/* ============ LOGIN ============ */
+/* ============ LOGIN UNICO ============ */
+function Login({onLogin}){
+  const [u,setU]=useState(""),[p,setP]=useState(""),[err,setErr]=useState("");
+  const go=()=>{
+    const uu=u.trim().toUpperCase();
+    if(uu==="TITOLARE"&&p==="demo") return onLogin({role:"titolare"});
+    const c=COLLAB0.find(c=>c.utente&&c.utente.username===uu);
+    if(c&&p==="demo") return onLogin({role:"collab",cid:c.id,mustChange:c.utente.mustChange});
+    setErr("Credenziali non valide. Riprova.");
+  };
+  return <div className="lwrap"><div className="lcard">
+    <div className="logo"><span className="dot"/>Pratic<b>Hub</b></div>
+    <div className="sub">Pratiche Soluzioni SRL — Gestionale collaboratori e pratiche</div>
+    {err&&<div className="lerr">{err}</div>}
+    <div className="lfld"><label>Codice fiscale / utente</label>
+      <input value={u} onChange={e=>setU(e.target.value)} placeholder="ES. RSSMRA80A41F205X" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
+    <div className="lfld"><label>Password</label>
+      <input type="password" value={p} onChange={e=>setP(e.target.value)} placeholder="••••••••" onKeyDown={e=>e.key==="Enter"&&go()}/></div>
+    <button className="lbtn" onClick={go}>Accedi</button>
+    <div className="ldemo"><b>Credenziali demo</b><br/>
+      Titolare / Ufficio: <span className="mono">titolare</span> / <span className="mono">demo</span><br/>
+      Collaboratore: <span className="mono">CMSSFN79D15E041X</span> / <span className="mono">demo</span> (Commisso, responsabile con permessi estesi)<br/>
+      Collaboratore: <span className="mono">LTLKTA80A50F112V</span> / <span className="mono">demo</span> (Latella, gestisce le proprie pratiche)<br/>
+      Primo accesso: <span className="mono">LAONGL85A41B617Y</span> / <span className="mono">demo</span> (Aloi)</div>
+  </div></div>;
+}
+function ChangePassword({onDone}){
+  const [p1,setP1]=useState(""),[p2,setP2]=useState(""),[err,setErr]=useState("");
+  const go=()=>{
+    if(p1.length<8) return setErr("La password deve avere almeno 8 caratteri.");
+    if(p1!==p2) return setErr("Le password non coincidono.");
+    onDone();
+  };
+  return <div className="lwrap"><div className="lcard">
+    <div className="logo"><span className="dot"/>Pratic<b>Hub</b></div>
+    <div className="sub">Primo accesso — imposta una nuova password per continuare</div>
+    {err&&<div className="lerr">{err}</div>}
+    <div className="lfld"><label>Nuova password</label><input type="password" value={p1} onChange={e=>setP1(e.target.value)}/></div>
+    <div className="lfld"><label>Conferma password</label><input type="password" value={p2} onChange={e=>setP2(e.target.value)}/></div>
+    <button className="lbtn" onClick={go}>Imposta e accedi</button>
+  </div></div>;
+}
+
+/* ============ LISTA + DETTAGLIO PAGINA INTERA ============ */
+function Card({c,onOpen}){
+  const [lb,cls]=STL[c.stato];
+  const due=c.boll[2026]==="due";
+  const t=trend(c.prod);
+  const hasGestione = Object.values(c.gestione||{}).some(Boolean);
+  return <div className="card" onClick={()=>onOpen(c.id)}>
+    <div className="ava">{ini(c.nome)}</div>
+    <div className="bd">
+      <div className="nm">{c.nome}<span className={"st "+cls}>{lb}</span>{c.f730&&<span className="st" style={{background:"#EAF3FD",color:"var(--navy)"}}>730</span>}{c.utente&&<span className="st" style={{background:"#F1E8FB",color:"#6B3FA0"}}>🔑 utenza attiva</span>}{hasGestione&&<span className="st" style={{background:"var(--tealbg)",color:"#0A7E72"}}>⭐ responsabile</span>}</div>
+      <div className="loc">{c.assoc?c.assoc+" · ":""}{c.citta}</div>
+      <div className="codes">{CK.map(([k,l])=>c.codici[k]?<span key={k} className={"code "+codeCls(c.codici[k],c.stato)}><span className="k">{l}</span><span className="v">{c.codici[k].replace("*","")}</span></span>:null)}</div>
+      {c.note&&<div className="note-flag">⚠ {c.note}</div>}
+    </div>
+    <div className="meta">
+      {c.tel[0]&&<div className="mono" style={{fontWeight:600,color:"var(--ink)"}}>{c.tel[0]}</div>}
+      <div className={"boll "+(due?"due":"paid")}>{due?"● Bollettino 2026 da pagare":"✓ Bollettino 2026 pagato"}</div>
+      {t.lvl==="hi"&&<div><span className="riskmini r-hi">📉 {t.lbl}</span></div>}
+    </div>
+  </div>;
+}
+
+function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListino,listini,pagamenti,sanzioni,onAcconto,tabInit}){
+  const [tab,setTab]=useState(tabInit||"scheda");
+  const [lb,cls]=STL[c.stato];
+  return <React.Fragment>
+    <div className="dpage-h">
+      <button className="back" onClick={onBack}>← Torna all'elenco</button>
+      <h2>{c.nome}</h2>
+      <div className="as">{c.assoc||"Nessuna associazione territoriale"} · <span className={"st "+cls}>{lb}</span> · CF <span className="mono">{c.cf}</span></div>
+      <div className="dtabs">
+        {[["scheda","Scheda"],["compensi","Compensi"],["docs","Documenti"],["cred","Credenziali e portale"],["perm","Permessi"]].map(([k,l])=>
+          <button key={k} className={tab===k?"on":""} onClick={()=>setTab(k)}>{l}</button>)}
+      </div>
+    </div>
+
+    {tab==="scheda"&&<React.Fragment>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:12}}>
+        <button className="btn btn-g btn-sm" onClick={()=>printHTML("Scheda "+c.nome,buildScheda(c))}>🖨 Stampa / Esporta scheda</button></div>
+      {c.note&&<div className="notebox">⚠ {c.note}</div>}
+      <div className="sec"><h3>Codici identificativi</h3>
+        <div className="cgrid">
+          {CK.map(([k,l])=>{const v=c.codici[k];if(!v)return null;const cl=codeCls(v,c.stato);
+            return <div key={k} className={"cbox "+cl}><div className="k">{l}</div><div className="v">{v.replace("*","")}</div></div>;})}
+          <div className="cbox"><div className="k">730</div><div className="v">{c.f730?"Abilitato":"—"}</div></div>
+        </div></div>
+      <div className="sec"><h3>Schema compenso e listino</h3>
+        <div className="cred" style={{display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+          <span style={{fontWeight:700}}>Listino tariffario:</span>
+          <select value={c.listino} onChange={e=>onSetListino(c.id,e.target.value)} style={{border:"1.5px solid var(--line)",borderRadius:9,padding:"8px 11px",fontWeight:600}}>
+            {Object.keys(listini).map(l=><option key={l}>{l}</option>)}
+          </select>
+        </div>
+        {c.cfg.map(([voce,tipo,val],i)=>
+          <div className="row" key={i} style={{background:"#fff",borderRadius:10,padding:"9px 14px",marginBottom:6,border:"1px solid var(--line)"}}>
+            <span className="l">{voce}</span><span className="r">{tipo==="fisso"?eur(val)+" / pratica":(val*100).toFixed(0)+"% sull'importo"}</span></div>)}
+      </div>
+      <div className="sec"><h3>Contatti</h3>
+        <div className="cred">
+        {c.tel.map((t,i)=><div className="row" key={i}><span className="l">Telefono {i+1}</span><span className="r mono">{t}</span></div>)}
+        {c.email.map((e,i)=><div className="row" key={"e"+i}><span className="l">Email</span><span className="r">{e}</span></div>)}
+        <div className="row"><span className="l">Indirizzo</span><span className="r">{c.citta}</span></div></div></div>
+      <div className="sec"><h3>Bollettino annuale</h3>
+        {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
+          <span className={"boll "+(c.boll[y]==="paid"?"paid":"due")}>{c.boll[y]==="paid"?"✓ Pagato":"● Da pagare"}</span></div>)}
+      </div>
+    </React.Fragment>}
+
+    {tab==="compensi"&&<CompensiTable c={c} anno={2024} pagamenti={pagamenti} sanzioni={sanzioni} onAcconto={()=>onAcconto(c.id)}/>}
+
+    {tab==="docs"&&<React.Fragment>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
+        <button className="btn btn-g btn-sm" onClick={()=>printHTML("Documenti "+c.nome,buildDocs(c))}>🖨 Stampa / Esporta elenco</button>
+        <button className="btn btn-p btn-sm">+ Carica documento</button></div>
+      {c.docs.length===0&&<div className="empty"><div className="big">📂</div>Nessun documento caricato.</div>}
+      {c.docs.map((d,i)=>
+        <div className={"docrow"+(d.vis?"":" hidden-doc")} key={i}>
+          <div className="fi">📄</div>
+          <div style={{minWidth:0}}><div className="dn">{d.n}</div><div className="dm">{d.c} · {d.d}</div></div>
+          <VTog vis={d.vis} onClick={()=>onTogDoc(c.id,i)}/>
+        </div>)}
+    </React.Fragment>}
+
+    {tab==="cred"&&<React.Fragment>
+      <div className="sec"><h3>Credenziali di accesso</h3>
+        {c.utente?<div className="cred">
+          🔑 Utenza attiva — username <b className="mono">{c.utente.username}</b><br/>
+          {c.utente.mustChange?"⏳ In attesa del primo accesso (cambio password obbligatorio)":"✓ Password impostata dal collaboratore"}<br/><br/>
+          <button className="btn btn-g btn-sm">↺ Reset password</button> <button className="btn btn-g btn-sm" style={{color:"var(--red)"}}>Disattiva utenza</button>
+        </div>:<div className="cred">Nessuna utenza creata.<br/><br/>
+          <button className="btn btn-p btn-sm">+ Crea credenziali (username = codice fiscale)</button></div>}
+      </div>
+      <div className="sec"><h3>Sezioni base sempre attive</h3>
+        <div className="swrow">
+          <div className="t"><b>Documenti e Comunicazioni</b><span>Sempre attive (solo gli elementi pubblicati)</span></div>
+          <div className="sw on" style={{opacity:.45,cursor:"default"}}/>
+        </div>
+        <div style={{fontSize:12.5,color:"var(--mut)"}}>Per attivare le altre sezioni del portale o concedere accessi gestionali, vai alla scheda <b>Permessi</b>.</div>
+      </div>
+    </React.Fragment>}
+
+    {tab==="perm"&&<React.Fragment>
+      <div className="infobox">ℹ️ Le sezioni <b>Il mio portale</b> mostrano al collaboratore solo i propri dati. Le sezioni <b>Gestione</b> danno accesso a un'area normalmente riservata al titolare, ma sempre <b>filtrata</b> ai soli dati di {c.nome.split(" ")[0]} — non vedrà mai i dati degli altri collaboratori.</div>
+
+      <div className="permgroup">
+        <div className="pgt">Il mio portale</div>
+        {PORTALE_KEYS.map(([k,ic,label])=>
+          <div className="swrow" key={k}>
+            <div className="t"><b>{ic} {label}</b></div>
+            <button className={"sw"+(c.portal[k]?" on":"")} onClick={()=>onTogPortal(c.id,k)}/>
+          </div>)}
+      </div>
+
+      <div className="permgroup">
+        <div className="pgt">Gestione (accesso filtrato ai propri dati)</div>
+        {GESTIONE_KEYS.map(([k,ic,label])=>
+          <div className="swrow" key={k}>
+            <div className="t"><b>{ic} {label}</b><span>Come il titolare, ma vede solo i dati che lo riguardano</span></div>
+            <button className={"sw"+(c.gestione[k]?" on":"")} onClick={()=>onTogGestione(c.id,k)}/>
+          </div>)}
+      </div>
+      <div style={{fontSize:12.5,color:"var(--mut)"}}>Le modifiche hanno effetto immediato sul menu del collaboratore al prossimo accesso (o aggiornando la pagina, in questa demo).</div>
+    </React.Fragment>}
+  </React.Fragment>;
+}
+function Lista({collab,onOpen}){
+  const [q,setQ]=useState(""),[f,setF]=useState("tutti");
+  const FILTRI=[["tutti","Tutti"],["730","730"],["del","Incarico sindacale"],["open","In apertura"],["warn","Da verificare"],["risk","📉 A rischio"],["cred","🔑 Con utenza"]];
+  const list=useMemo(()=>{
+    const t=q.trim().toLowerCase();
+    return collab.filter(c=>{
+      if(f==="730"&&!c.f730)return false;
+      if(f==="del"&&!c.codici.del)return false;
+      if(f==="open"&&c.stato!=="open")return false;
+      if(f==="warn"&&c.stato!=="warn")return false;
+      if(f==="risk"&&trend(c.prod).lvl!=="hi")return false;
+      if(f==="cred"&&!c.utente)return false;
+      if(!t)return true;
+      const hay=[c.nome,c.cf,c.assoc,c.citta,c.note,...Object.values(c.codici),...c.tel,...c.email].join(" ").toLowerCase();
+      return hay.includes(t);
+    });
+  },[q,f,collab]);
+  return <React.Fragment>
+    <div className="top">
+      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · ricerca su nome, CF, codici, contatti</div></div>
+      <button className="btn btn-p">+ Nuovo collaboratore</button>
+    </div>
+    <div className="searchwrap"><span className="lens">🔎</span>
+      <input className="search" placeholder="Cerca: es. RC0945, URC0264, Commisso, 329..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+    <div className="chips">{FILTRI.map(([k,l])=><button key={k} className={"chip"+(f===k?" on":"")} onClick={()=>setF(k)}>{l}</button>)}</div>
+    <div className="cnt">{list.length} risultat{list.length===1?"o":"i"}</div>
+    {list.map(c=><Card key={c.id} c={c} onOpen={onOpen}/>)}
+    {list.length===0&&<div className="empty"><div className="big">🔍</div>Nessun risultato.</div>}
+  </React.Fragment>;
+}
+
+function CompensiView({collab,pagamenti,sanzioni,onAcconto}){
+  const conDati=collab.filter(c=>CDET[c.id]);
+  const [cid,setCid]=useState(conDati[0].id);
+  const [anno,setAnno]=useState(2024);
+  const c=collab.find(x=>x.id===cid);
+  return <React.Fragment>
+    <div className="top"><div><h1>Compensi</h1><div className="sub">Calcolo annuale per collaboratore — quantità × tariffa (listino assegnato) × schema compenso</div></div>
+      <button className="btn btn-g">↻ Ricalcola tutti · <b>Consolida anno</b></button></div>
+    <div className="selrow">
+      <select value={cid} onChange={e=>setCid(+e.target.value)}>
+        {collab.map(x=><option key={x.id} value={x.id}>{x.nome}{CDET[x.id]?"":" (nessuna produzione)"}</option>)}</select>
+      <select value={anno} onChange={e=>setAnno(+e.target.value)}><option value={2024}>Anno 2024</option><option value={2025}>Anno 2025</option></select>
+    </div>
+    <CompensiTable c={c} anno={anno} pagamenti={pagamenti} sanzioni={sanzioni} onAcconto={()=>onAcconto(cid)}/>
+  </React.Fragment>;
+}
+
+/* ============ IMPORT PRODUZIONE ============ */
+const FONTI=["CAF","PATRONATO","MENSILITA","NASPI","DS_AGRICOLE","STIPENDI"];
+function ImportView({batches,onSimula,onFileImport,anteprima,onConferma,onAssocia,toast}){
+  const [fonte,setFonte]=useState("CAF");
+  const [anno,setAnno]=useState(2025);
+  return <React.Fragment>
+    <div className="top"><div><h1>Import produzione <span className="lockpill">🔒 Solo titolare</span></h1>
+      <div className="sub">Carica gli export delle sedi nazionali così come sono</div></div></div>
+    <div className="selrow">
+      <select value={fonte} onChange={e=>setFonte(e.target.value)}>{FONTI.map(f=><option key={f}>{f}</option>)}</select>
+      <select value={anno} onChange={e=>setAnno(+e.target.value)}><option value={2024}>Anno 2024</option><option value={2025}>Anno 2025</option></select>
+    </div>
+    {!anteprima&&<DropZone accept=".xlsx,.xls,.csv" onFile={f=>onFileImport(fonte,anno,f)}>
+      <div className="big">📥</div>
+      Trascina qui il file .xlsx dell'export {fonte} o <b style={{color:"var(--sky)"}}>clicca per selezionarlo</b> — il file viene letto davvero
+      <div style={{marginTop:12}}><button className="btn btn-p" onClick={e=>{e.stopPropagation();onSimula(fonte,anno);}}>Oppure simula con dati demo</button></div>
+      <div style={{fontSize:11.5,marginTop:10}}>Tracciato atteso: identico al foglio IMPORT_{fonte} dell'Excel attuale</div></DropZone>}
+    {anteprima&&<React.Fragment>
+      <div className="panel"><div className="ph"><h3>Anteprima — {anteprima.file}</h3><span className="bst prev" style={{marginLeft:"auto"}}>IN ANTEPRIMA</span></div>
+        <div style={{padding:"14px 18px",fontSize:13.5}}>
+          {anteprima.reale&&<div style={{fontSize:12,color:"#0A7E72",fontWeight:700,marginBottom:6}}>✓ Contenuto del file analizzato realmente (codici confrontati con l'anagrafica)</div>}
+          Righe lette: <b>{anteprima.righe}</b> · associate: <b style={{color:"#0A7E72"}}>{anteprima.assoc}</b> · codici non riconosciuti: <b style={{color:"var(--amber)"}}>{anteprima.unknown.filter(u=>!u.assegnato).length}</b></div></div>
+      {anteprima.unknown.some(u=>!u.assegnato)&&<div className="unk">
+        <div className="ut">⚠ Codici non riconosciuti — associali o ignorali</div>
+        {anteprima.unknown.map((u,i)=>!u.assegnato?
+          <div className="unkrow" key={i}><span className="mono">{u.codice}</span><span style={{fontSize:12,color:"#6B4A00"}}>{u.righe} righe</span>
+            <select defaultValue="" onChange={e=>e.target.value&&onAssocia(i,e.target.value)}>
+              <option value="">Associa a…</option>
+              {COLLAB0.map(c=><option key={c.id} value={c.nome}>{c.nome}</option>)}
+              <option value="__ignora">Ignora righe</option></select></div>
+          :<div className="unkrow" key={i}><span className="mono">{u.codice}</span><span style={{fontSize:12.5,color:"#0A7E72",fontWeight:700}}>→ {u.assegnato==="__ignora"?"ignorato":u.assegnato} ✓</span></div>)}
+      </div>}
+      <div style={{display:"flex",gap:10}}>
+        <button className="btn btn-t" disabled={anteprima.unknown.some(u=>!u.assegnato)} style={anteprima.unknown.some(u=>!u.assegnato)?{opacity:.5}:null} onClick={()=>onConferma()}>✓ Conferma import e ricalcola</button>
+        <button className="btn btn-g" onClick={()=>onConferma(true)}>Annulla</button>
+      </div>
+    </React.Fragment>}
+    <h3 className="disp" style={{fontSize:15,margin:"24px 0 11px"}}>Archivio import</h3>
+    {batches.map(b=><div className="batch" key={b.id}>
+      <div className="fi">📄</div>
+      <div><div className="bn">{b.file}</div><div className="bm">{b.fonte} · anno {b.anno} · {b.data} · {b.righe} righe ({b.assoc} associate)</div></div>
+      <span className={"bst "+(b.stato==="confermato"?"ok":b.stato==="anteprima"?"prev":"ann")}>{b.stato.toUpperCase()}</span></div>)}
+    {toast&&<div className="toast">{toast}</div>}
+  </React.Fragment>;
+}
+
+/* ============ TARIFFARIO MULTI-LISTINO ============ */
+function TariffarioView({listini,collab,onEdit,onNuovo}){
+  const nomi=Object.keys(listini);
+  const [lis,setLis]=useState(nomi[0]);
+  const [anno,setAnno]=useState(2025);
+  const assegnati=collab.filter(c=>c.listino===lis).length;
+  return <React.Fragment>
+    <div className="top"><div><h1>Tariffari</h1><div className="sub">Più listini per anno, assegnabili a ciascun collaboratore dalla sua scheda</div></div>
+      <div style={{display:"flex",gap:8}}>
+        <button className="btn btn-g" onClick={()=>onNuovo(lis)}>+ Nuovo listino (copia da "{lis}")</button>
+        <button className="btn btn-g">⧉ Duplica anno precedente</button></div></div>
+    <div className="selrow">
+      <select value={lis} onChange={e=>setLis(e.target.value)}>{nomi.map(n=><option key={n}>{n}</option>)}</select>
+      <select value={anno} onChange={e=>setAnno(+e.target.value)}><option value={2024}>Anno 2024</option><option value={2025}>Anno 2025</option></select>
+      <span style={{fontSize:12.5,color:"var(--mut)",fontWeight:600}}>{assegnati} collaborator{assegnati===1?"e":"i"} su questo listino</span>
+    </div>
+    <div className="panel"><div className="ph"><h3>{lis} — Tariffe {anno}</h3></div>
+      <table className="tbl"><thead><tr><th>Voce</th><th>Valore</th></tr></thead><tbody>
+        {VOCI_T.map((voce,i)=><tr key={i}><td>{voce}</td>
+          <td><input className="mono" style={{border:"1.5px solid var(--line)",borderRadius:7,padding:"5px 9px",width:100,textAlign:"right",background:"#FBFDFF"}}
+            value={listini[lis][anno][i]} onChange={e=>onEdit(lis,anno,i,e.target.value)}/></td></tr>)}
+      </tbody></table></div>
+  </React.Fragment>;
+}
+
+/* ============ PAGAMENTI / SANZIONI / BANCA ============ */
+function ContabilitaView({collab,pagamenti,sanzioni,onAddPag,onTogSanz,onAssociaSanz,onOpenAcconto,flash}){
+  const [tab,setTab]=useState("pag");
+  const [bank,setBank]=useState(null);
+  const byId=id=>collab.find(c=>c.id===id);
+  const daAssoc=sanzioni.filter(s=>s.cid===null);
+  const simulaBanca=fname=>setBank(BANK_DEMO.map((m,i)=>({...m,id:i,cid:matchBank(m.descr),registrato:false,src:fname||"estratto_demo.csv"})));
+  const fileBanca=async f=>{
+    try{
+      const movs=await parseBanca(f);
+      if(!movs.length){flash("Nessun movimento riconosciuto nel file — verifica il formato");return;}
+      setBank(movs.map((m,i)=>({...m,id:i,cid:matchBank(m.descr),registrato:false,src:f.name})));
+    }catch(e){flash("Estratto non leggibile: "+(e.message||"formato non riconosciuto"));}
+  };
+  const setBankCid=(i,cid)=>setBank(b=>b.map((m,j)=>j!==i?m:{...m,cid}));
+  const registraBanca=()=>{
+    const ok=bank.filter(m=>m.cid&&!m.registrato);
+    ok.forEach(m=>onAddPag(m.cid,m.importo,"Acconto compensi (da estratto conto)",m.data,true));
+    setBank(null);
+    flash(ok.length+" movimenti registrati come acconti");
+  };
+  return <React.Fragment>
+    <div className="top"><div><h1>Pagamenti e sanzioni</h1><div className="sub">Registro acconti ai collaboratori e sanzioni da trattenere</div></div></div>
+    <div className="tabs2">
+      <button className={tab==="pag"?"on":""} onClick={()=>setTab("pag")}>Acconti pagati</button>
+      <button className={tab==="banca"?"on":""} onClick={()=>setTab("banca")}>🏦 Importa estratto conto</button>
+      <button className={tab==="sanz"?"on":""} onClick={()=>setTab("sanz")}>Sanzioni {daAssoc.length>0&&"("+daAssoc.length+" da associare)"}</button>
+    </div>
+
+    {tab==="pag"&&<React.Fragment>
+      <div style={{marginBottom:14}}><button className="btn btn-p" onClick={()=>onOpenAcconto(null)}>+ Registra acconto (data modificabile)</button></div>
+      <div className="panel">
+        <table className="tbl"><thead><tr><th>Data</th><th>Collaboratore</th><th>Anno rif.</th><th>Causale</th><th>Importo</th></tr></thead><tbody>
+          {[...pagamenti].sort((a,b)=>b.data.localeCompare(a.data)).map(p=><tr key={p.id}><td>{itDate(p.data)}</td><td className="e" style={{textAlign:"right",fontWeight:600,color:"var(--ink)"}}>{byId(p.cid)?byId(p.cid).nome:"—"}</td><td className="e">{p.anno}</td><td className="e">{p.causale}</td><td style={{fontWeight:700}}>{eur(p.importo)}</td></tr>)}
+        </tbody></table></div>
+    </React.Fragment>}
+
+    {tab==="banca"&&<React.Fragment>
+      {!bank&&<DropZone accept=".csv,.xlsx,.xls,.pdf" onFile={fileBanca}>
+        <div className="big">🏦</div>
+        Trascina qui l'estratto conto (<b>.csv / .xlsx / .pdf</b>) scaricato dalla banca o <b style={{color:"var(--sky)"}}>clicca per selezionarlo</b> — il file viene letto davvero
+        <div style={{marginTop:12}}><button className="btn btn-p" onClick={e=>{e.stopPropagation();simulaBanca();}}>Oppure simula con dati demo</button></div>
+        <div style={{fontSize:11.5,marginTop:10}}>Dai PDF il sistema estrae il testo dei movimenti automaticamente · associa i bonifici per nome — dove non c'è corrispondenza certa, scegli tu</div></DropZone>}
+      {bank&&<React.Fragment>
+        <div style={{fontSize:13.5,marginBottom:12}}>📄 <b>{bank[0].src}</b> — movimenti in uscita trovati: <b>{bank.length}</b> · associati automaticamente: <b style={{color:"#0A7E72"}}>{bank.filter(m=>m.cid&&matchBank(m.descr)===m.cid).length}</b> · da associare manualmente: <b style={{color:"var(--amber)"}}>{bank.filter(m=>!m.cid).length}</b></div>
+        {bank.map((m,i)=><div key={m.id} className={"bkrow "+(m.cid?"matched":"um")}>
+          <span className="d">{itDate(m.data)}</span>
+          <span className="descr">{m.descr}</span>
+          <span className="imp">{eur(m.importo)}</span>
+          {m.cid?<span className="bkmatch">→ {byId(m.cid).nome} ✓</span>:
+            <select defaultValue="" onChange={e=>e.target.value&&setBankCid(i,+e.target.value)}>
+              <option value="">Nessuna corrispondenza — associa a…</option>
+              {collab.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+            </select>}
+          {m.cid&&<button className="btn btn-g btn-sm" onClick={()=>setBankCid(i,null)}>cambia</button>}
+        </div>)}
+        <div style={{display:"flex",gap:10,marginTop:14}}>
+          <button className="btn btn-t" onClick={registraBanca}>✓ Registra {bank.filter(m=>m.cid).length} movimenti come acconti</button>
+          <button className="btn btn-g" onClick={()=>setBank(null)}>Annulla</button>
+        </div>
+      </React.Fragment>}
+    </React.Fragment>}
+
+    {tab==="sanz"&&<React.Fragment>
+      {daAssoc.length>0&&<div className="unk"><div className="ut">⚠ Sanzioni con zona non riconosciuta — associale a un collaboratore</div>
+        {sanzioni.map(s=>s.cid===null?<div className="unkrow" key={s.id}>
+          <span className="mono">{s.zona}</span><span style={{fontSize:12,color:"#6B4A00"}}>{eur(s.importo)} · CF {s.cf}</span>
+          <select defaultValue="" onChange={e=>e.target.value&&onAssociaSanz(s.id,+e.target.value)}>
+            <option value="">Associa a…</option>{collab.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}</select>
+        </div>:null)}</div>}
+      <div className="panel">
+        <table className="tbl"><thead><tr><th>Data</th><th>Tipologia</th><th>Zona</th><th>Collaboratore</th><th>Importo</th><th>Stato</th></tr></thead><tbody>
+          {sanzioni.map(s=><tr key={s.id}><td>{s.data}</td><td className="e" style={{textAlign:"right"}}>{s.tip}</td><td className="mono e">{s.zona}</td>
+            <td className="e" style={{textAlign:"right",fontWeight:600,color:s.cid?"var(--ink)":"var(--amber)"}}>{s.cid?byId(s.cid).nome:"da associare"}</td>
+            <td className="neg">− {eur(s.importo)}</td>
+            <td><button onClick={()=>onTogSanz(s.id)} className={"spill "+(s.pagata?"si":"no")}>{s.pagata?"Saldata":"Da trattenere"}</button></td></tr>)}
+        </tbody></table></div>
+    </React.Fragment>}
+  </React.Fragment>;
+}
+
+/* ============ PRODUZIONE / SCADENZE / COMUNICAZIONI ============ */
+function Produzione({collab}){
+  const withT=collab.map(c=>({...c,t:trend(c.prod),tot:c.prod.reduce((a,b)=>a+b,0)}));
+  const ord={hi:0,md:1,ok:2};
+  withT.sort((a,b)=>ord[a.t.lvl]-ord[b.t.lvl]||a.t.pct-b.t.pct);
+  const nRisk=withT.filter(c=>c.t.lvl==="hi").length;
+  return <React.Fragment>
+    <div className="top"><div><h1>Monitoraggio produzione <span className="lockpill">🔒 Solo titolare</span></h1>
+      <div className="sub">Andamento pratiche per intercettare cali e rischio abbandono</div></div></div>
+    <div className="kpis">
+      <div className={"kpi"+(nRisk>0?" alert":"")}><div className="kv">{nRisk}</div><div className="kl">Collaboratori a rischio</div></div>
+      <div className="kpi navy"><div className="kv">{withT.reduce((a,c)=>a+c.prod[5],0)}</div><div className="kl">Pratiche ultimo mese</div></div>
+      <div className="kpi good"><div className="kv">{withT.filter(c=>c.t.lvl==="ok").length}</div><div className="kl">Stabili o in crescita</div></div>
+    </div>
+    {withT.map(c=><div key={c.id} className={"prod-card "+c.t.lvl}>
+      <div className="who"><div className="n">{c.nome}</div>
+        <div className="c">{c.codici.caf?"CAF "+c.codici.caf.replace("*",""):"—"} · {c.tot} pratiche nel periodo</div>
+        <div className={"payrow "+(c.pag.reg?"okp":"late")}>{c.pag.reg?"✓ Pagamenti regolari":"● In ritardo"+(c.pag.ins>0?" · insoluto "+eur(c.pag.ins):"")} · ultimo: {c.pag.ult}</div></div>
+      <Spark p={c.prod} bad={c.t.lvl==="hi"}/>
+      <div className="pstats">
+        <div className="pstat"><div className={"v "+(c.t.pct<0?"neg":"pos")}>{c.t.pct>0?"+":""}{c.t.pct}%</div><div className="l">Trend</div></div>
+        <div className="pstat"><span className={"riskmini r-"+(c.t.lvl==="hi"?"hi":c.t.lvl==="md"?"md":"ok")}>{c.t.lvl==="hi"?"📉 ":c.t.lvl==="md"?"↘ ":"✓ "}{c.t.lbl}</span></div>
+      </div></div>)}
+  </React.Fragment>;
+}
+
+function Scadenze({onGestisci}){
+  const T={bol:["Bollettino","tp-bol"],del:["Delega","tp-del"],adm:["Adempimento","tp-adm"],prod:["Produzione","tp-prod"]};
+  return <React.Fragment>
+    <div className="top"><div><h1>Scadenze e promemoria</h1><div className="sub">Bollettini, deleghe, adempimenti e avvisi produzione</div></div>
+      <button className="btn btn-p">+ Nuovo promemoria</button></div>
+    {SCAD.map(s=>{const [lb,cls]=T[s.tipo];const parts=s.d.split(" ");
+      return <div key={s.id} className={"due-card"+(s.urgent?" urgent":"")}>
+        <div className="dt"><div className="d" style={parts.length===1?{fontSize:13,paddingTop:4}:null}>{parts[0]}</div>{parts[1]&&<div className="m">{parts[1]}</div>}</div>
+        <div className="bd"><div className="tt">{s.tt} <span className={"tpill "+cls}>{lb}</span></div><div className="ss">{s.ss}</div></div>
+        <button className="btn btn-g btn-sm" onClick={()=>onGestisci(s)}>Gestisci</button>
+      </div>;})}
+  </React.Fragment>;
+}
+
+function Comunicazioni({collab,comms,onTogComm}){
+  const [dest,setDest]=useState("del");
+  const N={tutti:collab.length,del:collab.filter(c=>c.codici.del).length,f730:collab.filter(c=>c.f730).length};
+  const L={tutti:"Tutti i collaboratori",del:"Solo incarico sindacale (URC/UCS)",f730:"Solo abilitati 730"};
+  return <React.Fragment>
+    <div className="top"><div><h1>Comunicazioni</h1><div className="sub">Invii per ruolo — scegli cosa pubblicare nel portale</div></div></div>
+    <div className="comp">
+      <div className="fld"><label>Destinatari</label>
+        <select value={dest} onChange={e=>setDest(e.target.value)}>{Object.keys(L).map(k=><option key={k} value={k}>{L[k]}</option>)}</select></div>
+      <div className="dest-prev">✓ {N[dest]} destinatari — {L[dest].toLowerCase()}{dest==="del"?" · copia a deleghe comunicazione (es. C. Foti)":""}</div>
+      <div className="fld"><label>Oggetto</label><input type="text" placeholder="Es. Rinnovo deleghe 2026–2027"/></div>
+      <div className="fld"><label>Messaggio</label><textarea placeholder="Scrivi la comunicazione…"/></div>
+      <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
+        <button className="btn btn-t">✉ Invia e pubblica nel portale</button>
+        <button className="btn btn-g">Salva come bozza interna</button></div>
+    </div>
+    <h3 className="disp" style={{fontSize:15,marginBottom:11}}>Storico invii</h3>
+    {comms.map(c=><div className="hist" key={c.id}>
+      <div className="hh"><div style={{flex:1,minWidth:0}}><div className="ht">{c.tt}</div><div className="hm">{c.dt} · {c.dest}</div></div>
+        <VTog vis={c.vis} onClick={()=>onTogComm(c.id)}/></div>
+      <div className="hd">{c.tx}</div></div>)}
+  </React.Fragment>;
+}
+
+/* ============ PORTALE COLLABORATORE ============ */
+/* ============ PORTALE COLLABORATORE (sezioni personali) ============ */
+function PortaleCollab({me,comms,pagamenti,sanzioni,view}){
+  const docsVis=me.docs.filter(d=>d.vis);
+  const commsVis=comms.filter(c=>c.vis);
+  const d=me.portal.compensi?saldoData(me.id,2024,pagamenti,sanzioni):null;
+  if(view==="chome")return <React.Fragment>
+    <div className="cport-h"><h2>Ciao {me.nome.split(" ")[1]?me.nome.split(" ")[1].charAt(0)+me.nome.split(" ")[1].slice(1).toLowerCase():""} 👋</h2>
+      <div className="s">Pratiche Soluzioni SRL · Il tuo spazio personale</div></div>
+    {d&&<div className="saldo">
+      <div className="sbox"><div className="l">Maturato 2024</div><div className="v">{eur(d.maturato)}</div></div>
+      <div className="sbox"><div className="l">Acconti ricevuti</div><div className="v">{eur(d.acc)}</div></div>
+      <div className="sbox final"><div className="l">Saldo a tuo favore</div><div className="v">{eur(d.saldo)}</div></div></div>}
+    <h3 className="disp" style={{fontSize:15,margin:"6px 0 11px"}}>Ultime comunicazioni</h3>
+    {commsVis.slice(0,2).map(c=><div className="hist" key={c.id}><div className="ht">{c.tt}</div><div className="hm">{c.dt}</div><div className="hd">{c.tx}</div></div>)}
+  </React.Fragment>;
+  if(view==="ccomp"&&me.portal.compensi)return <React.Fragment>
+    <div className="top"><div><h1>I miei compensi</h1><div className="sub">Dettaglio completo del calcolo — anno 2024</div></div></div>
+    <CompensiTable c={me} anno={2024} pagamenti={pagamenti} sanzioni={sanzioni} readOnly/>
+  </React.Fragment>;
+  if(view==="cdocs")return <React.Fragment>
+    <div className="top"><div><h1>I miei documenti</h1></div></div>
+    {docsVis.length===0&&<div className="empty"><div className="big">📂</div>Nessun documento disponibile.</div>}
+    {docsVis.map((d2,i)=><div className="docrow" key={i}><div className="fi">📄</div>
+      <div><div className="dn">{d2.n}</div><div className="dm">{d2.c} · {d2.d}</div></div><span className="dlink">Scarica</span></div>)}
+    <button className="btn btn-t" style={{marginTop:8}}>⬆ Carica documento per la struttura</button>
+  </React.Fragment>;
+  if(view==="ccomm")return <React.Fragment>
+    <div className="top"><div><h1>Comunicazioni</h1></div></div>
+    {commsVis.map(c=><div className="hist" key={c.id}><div className="ht">{c.tt}</div><div className="hm">{c.dt}</div><div className="hd">{c.tx}</div></div>)}
+  </React.Fragment>;
+  if(view==="ccod"&&me.portal.codici)return <React.Fragment>
+    <div className="top"><div><h1>I miei codici</h1></div></div>
+    <div className="cgrid">{CK.map(([k,l])=>me.codici[k]?<div key={k} className="cbox"><div className="k">{l}</div><div className="v">{me.codici[k]}</div></div>:null)}</div>
+    <h3 className="disp" style={{fontSize:15,margin:"22px 0 11px"}}>Bollettino annuale</h3>
+    {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
+      <span className={"boll "+(me.boll[y]==="paid"?"paid":"due")}>{me.boll[y]==="paid"?"✓ Pagato — grazie!":"● Da pagare"}</span></div>)}
+  </React.Fragment>;
+  return <div className="empty"><div className="big">🔒</div>Sezione non disponibile.</div>;
+}
+
+/* ============ SEZIONI "GESTIONE" FILTRATE (per collaboratori-responsabili) ============
+   Stesse view del titolare, ma con la lista collaboratori limitata al solo profilo dell'utente loggato. */
+function GestioneFiltrata({view,me,collab,pagamenti,sanzioni,batches,listini,onAddPag,onTogSanz,onAssociaSanz,onOpenAcconto,flash,onSimula,onFileImport,anteprima,onConferma,onAssocia,toast,onEditTarif,onNuovo}){
+  const soloMe=[me];
+  if(view==="g_lista")return <React.Fragment>
+    <div className="top"><div><h1>👥 Collaboratori</h1><div className="sub">Accesso da responsabile — vedi solo il tuo profilo</div></div></div>
+    <Card c={me} onOpen={()=>{}}/>
+  </React.Fragment>;
+  if(view==="g_comp")return <CompensiView collab={soloMe} pagamenti={pagamenti} sanzioni={sanzioni} onAcconto={onOpenAcconto}/>;
+  if(view==="g_imp")return <ImportView batches={batches} onSimula={onSimula} onFileImport={onFileImport} anteprima={anteprima} onConferma={onConferma} onAssocia={onAssocia} toast={toast}/>;
+  if(view==="g_tar")return <TariffarioView listini={listini} collab={soloMe} onEdit={onEditTarif} onNuovo={onNuovo}/>;
+  if(view==="g_prod")return <Produzione collab={soloMe}/>;
+  if(view==="g_cont")return <ContabilitaView collab={soloMe} pagamenti={pagamenti} sanzioni={sanzioni} onAddPag={onAddPag} onTogSanz={onTogSanz} onAssociaSanz={onAssociaSanz} onOpenAcconto={onOpenAcconto} flash={flash}/>;
+  return <div className="empty"><div className="big">🔒</div>Sezione non disponibile.</div>;
+}
+/* ============================== MODULO PRATICHE — COMPONENTI CONDIVISI ============================== */
+function StatusBadge({st,sm}){
+  const s=STATUSES[st]||{label:st,color:"#888",bg:"#eee"};
+  return <span className="badge-st" style={{color:s.color,background:s.bg,fontSize:sm?11:12.5,padding:sm?"3px 8px":"4px 11px"}}>
+    <span className="dotst" style={{background:s.color}}/>{s.label}</span>;
+}
+function ModalP({title,onClose,children,wide}){
+  return <div className="modal-bg" onClick={onClose}>
+    <div className={"modal"+(wide?" wide":"")} onClick={e=>e.stopPropagation()}>
+      <div className="modal-h"><h3>{title}</h3><button className="x" onClick={onClose}>×</button></div>
+      <div style={{padding:"20px 22px"}}>{children}</div>
+    </div>
+  </div>;
+}
+function AccessPopup({info,onClose,go}){
+  return <ModalP title="Bentornato 👋" onClose={onClose}>
+    <p style={{marginTop:0}}>Ci sono aggiornamenti sulle tue pratiche dall'ultimo accesso:</p>
+    {info.changes.length>0 && info.changes.map((c,i)=>(
+      <div key={i} className="filecard" style={{justifyContent:"space-between"}}>
+        <b>{c.code}</b><StatusBadge st={c.to}/>
+      </div>
+    ))}
+    {info.novel>0 && <div className="infobox" style={{marginTop:10}}>Hai {info.novel} pratica/e con aggiornamenti.</div>}
+    {!info.changes.length && !info.novel && <p className="muted">Nessuna novità.</p>}
+    <div style={{textAlign:"right",marginTop:16}}><button className="btn btn-p" onClick={onClose}>Ho capito</button></div>
+  </ModalP>;
+}
+function DatiModulo({p,tpl}){
+  if(!tpl) return <p className="muted">Template non disponibile.</p>;
+  return <table className="tbl" style={{width:"100%"}}><tbody>
+    {tpl.fields.map(f=>(
+      <tr key={f.id}><td className="muted" style={{textAlign:"left",width:"45%"}}>{f.label}</td><td style={{textAlign:"left"}}><b>{p.fieldValues?.[f.id]||"—"}</b></td></tr>
+    ))}
+  </tbody></table>;
+}
+function AuditLog({p}){
+  const log=(p.audit||[]).slice().reverse();
+  if(!log.length) return <p className="muted">Nessuna azione registrata.</p>;
+  return <div>
+    {log.map((a,i)=>(
+      <div key={i} className="filecard">
+        <div className="doc-ic" style={{background:"#eef2fa"}}>•</div>
+        <div style={{flex:1}}><div style={{fontWeight:600}}>{a.action}</div><div className="muted small">{a.actor} · {fmtDT(a.ts)}</div></div>
+      </div>
+    ))}
+  </div>;
+}
+function Timeline({p}){
+  const hist=p.statusHistory||[];
+  return <div>
+    {FLOW.map((s,i)=>{
+      const h=hist.find(x=>x.status===s);
+      return <div className="timeline-row" key={s}>
+        <div className="tline"/>
+        <div className="tdot" style={{background:h?"var(--sky)":"#D5DEEC"}}/>
+        <div>
+          <div className="tt" style={{color:h?"var(--ink)":"var(--mut)"}}>{STATUSES[s].label}</div>
+          {h && <div className="ts">{fmtDT(h.ts)}{h.note?" · "+h.note:""}</div>}
+        </div>
+      </div>;
+    })}
+  </div>;
+}
+/* ============================== PRATICHE — UFFICIO/TITOLARE — LISTA ============================== */
+function OfficePratiche({pData,setPData,collab,go,me,onlyMe}){
+  const [f,setF]=useState("tutte");
+  const [fc,setFc]=useState("tutti");
+  const [ft,setFt]=useState("tutti");
+  const [q,setQ]=useState("");
+  const scope = onlyMe ? collab.filter(c=>c.id===onlyMe) : collab;
+  const list = pData.pratiche.filter(p=> (p.status!=="bozza" || p.collaboratorId) && (!onlyMe || p.collaboratorId===onlyMe) );
+  const ql=q.trim().toLowerCase();
+  const visible = list.filter(p=>
+    (f==="tutte"||p.status===f) &&
+    (fc==="tutti"||p.collaboratorId===fc) &&
+    (ft==="tutti"||p.templateId===ft) &&
+    (!ql || (p.code+" "+(p.assistito||"")).toLowerCase().includes(ql))
+  );
+  const counts = {
+    inviata:list.filter(p=>p.status==="inviata").length,
+    in_lavorazione:list.filter(p=>p.status==="in_lavorazione").length,
+    richiesta_documenti:list.filter(p=>p.status==="richiesta_documenti").length,
+    trasmessa:list.filter(p=>p.status==="trasmessa").length,
+  };
+  const resetF=()=>{setF("tutte");setFc("tutti");setFt("tutti");setQ("");};
+  const anyF = f!=="tutte"||fc!=="tutti"||ft!=="tutti"||ql;
+  return <>
+    <div className="top"><div><h1>📁 Pratiche</h1><div className="sub">{onlyMe?"Le pratiche che ti sono assegnate":"Tutte le pratiche dello studio"}</div></div></div>
+    <div className="kpis">
+      <div className="kpi"><div className="kv">{list.length}</div><div className="kl">Pratiche totali</div></div>
+      <div className="kpi navy"><div className="kv">{counts.inviata}</div><div className="kl">Da prendere in carico</div></div>
+      <div className="kpi alert"><div className="kv">{counts.richiesta_documenti}</div><div className="kl">In attesa documenti</div></div>
+      <div className="kpi good"><div className="kv">{counts.trasmessa}</div><div className="kl">Trasmesse</div></div>
+    </div>
+    <div className="panel">
+      <div className="ph">
+        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="🔍 Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <select className="chip" style={{maxWidth:190,padding:"9px 13px"}} value={f} onChange={e=>setF(e.target.value)}>
+          <option value="tutte">Tutti gli stati</option>
+          {FLOW.map(s=><option key={s} value={s}>{STATUSES[s].label}</option>)}
+        </select>
+        {!onlyMe && <select className="chip" style={{maxWidth:200,padding:"9px 13px"}} value={fc} onChange={e=>setFc(e.target.value)}>
+          <option value="tutti">Tutti i collaboratori</option>
+          {scope.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+        </select>}
+        <select className="chip" style={{maxWidth:220,padding:"9px 13px"}} value={ft} onChange={e=>setFt(e.target.value)}>
+          <option value="tutti">Tutti i tipi</option>
+          {pData.templates.map(t=><option key={t.id} value={t.id}>{t.name}</option>)}
+        </select>
+        {anyF && <button className="btn btn-g btn-sm" onClick={resetF}>✕ Azzera filtri</button>}
+        <span className="cnt" style={{marginLeft:"auto",marginBottom:0}}>{visible.length} pratiche</span>
+      </div>
+      <div className="pad" style={{paddingTop:0}}>
+      {visible.length===0 ? <div className="empty"><div className="big">📭</div>Nessuna pratica con questi filtri.</div> :
+      <table className="tbl">
+        <thead><tr><th style={{textAlign:"left"}}>Codice</th><th style={{textAlign:"left"}}>Tipo</th><th style={{textAlign:"left"}}>Assistito</th>{!onlyMe&&<th style={{textAlign:"left"}}>Collaboratore</th>}<th style={{textAlign:"left"}}>Stato</th><th style={{textAlign:"left"}}>Aggiornata</th></tr></thead>
+        <tbody>
+          {visible.map(p=>{
+            const tpl=pData.templates.find(t=>t.id===p.templateId);
+            const c=collab.find(u=>u.id===p.collaboratorId);
+            return <tr className="clk" key={p.id} onClick={()=>go("office_detail",{id:p.id})}>
+              <td style={{textAlign:"left"}}><b>{p.code}</b>{unreadChat(p,me.role==="titolare"?"u_office":me.id)>0 && <span className="pill" style={{marginLeft:8,background:"var(--redbg)",color:"var(--red)"}}>💬</span>}</td>
+              <td style={{textAlign:"left"}}>{tpl?tpl.name:"—"}</td>
+              <td style={{textAlign:"left"}}>{p.assistito||"—"}</td>
+              {!onlyMe&&<td style={{textAlign:"left"}}>{c?c.nome:"—"}</td>}
+              <td style={{textAlign:"left"}}><StatusBadge st={p.status} sm/></td>
+              <td className="muted small" style={{textAlign:"left"}}>{fmtDT(p.updatedAt)}</td>
+            </tr>;
+          })}
+        </tbody>
+      </table>}
+      </div>
+    </div>
+  </>;
+}
+
+/* ============================== PRATICHE — UFFICIO/TITOLARE — DETTAGLIO ============================== */
+function OfficeDetail({pData,setPData,collab,go,toast,id,meId}){
+  const p = pData.pratiche.find(x=>x.id===id);
+  if(!p) return <div className="empty">Pratica non trovata.</div>;
+  const tpl=pData.templates.find(t=>t.id===p.templateId);
+  const c=collab.find(u=>u.id===p.collaboratorId);
+  const [tab,setTab]=useState("documenti");
+  const [reqOpen,setReqOpen]=useState(false);
+  const [reqNote,setReqNote]=useState("");
+  const ricevutaInput=useRef();
+
+  function update(mut){
+    setPData(d=>({...d,pratiche:d.pratiche.map(x=>{ if(x.id!==id)return x; const cc={...x}; mut(cc); cc.updatedAt=Date.now(); return cc; })}));
+  }
+  function addAudit(cc,action){ cc.audit=[...(cc.audit||[]),{ts:Date.now(),actor:"Ufficio",action}]; }
+  function postMessage(text){
+    update(cc=>{ cc.messages=[...(cc.messages||[]),{id:nid("m_"),authorId:meId,authorName:"Ufficio",role:"titolare",text,ts:Date.now()}]; cc.chatReadBy={...(cc.chatReadBy||{}),[meId]:Date.now()}; });
+  }
+  useEffect(()=>{ setPData(d=>({...d,pratiche:d.pratiche.map(x=>{
+    if(x.id!==id) return x;
+    const now=Date.now();
+    const messages=(x.messages||[]).map(m=> (m.authorId!==meId && !(m.readBy&&m.readBy[meId])) ? {...m,readBy:{...(m.readBy||{}),[meId]:now}} : m);
+    return {...x,messages};
+  })})); },[id]);
+
+  function setStatus(st,note){
+    update(cc=>{ cc.status=st; cc.statusHistory=[...(cc.statusHistory||[]),{status:st,ts:Date.now(),note:note||""}]; addAudit(cc,"Stato → "+STATUSES[st].label);});
+    toast("Stato aggiornato: "+STATUSES[st].label+" · email inviata a "+(c?c.nome:"collaboratore"));
+  }
+
+  async function uploadRicevute(files){
+    const arr=[];
+    for(const f of files){ arr.push({id:nid("r_"),name:f.name,size:f.size,blob:f,uploadedAt:Date.now(),hash:(await sha256(f)).slice(0,16)}); }
+    update(cc=>{ cc.ricevute=[...(cc.ricevute||[]),...arr]; addAudit(cc,arr.length+" ricevuta/e caricata/e");
+      if(cc.status!=="ricevute_disponibili"){ cc.status="ricevute_disponibili"; cc.statusHistory=[...(cc.statusHistory||[]),{status:"ricevute_disponibili",ts:Date.now(),note:"Ricevute caricate"}]; }});
+    toast("Ricevute caricate · stato impostato su \"Ricevute disponibili\"");
+  }
+
+  async function zipAll(){
+    const zip=new JSZip();
+    (p.files||[]).forEach(f=> zip.file(f.name, f.blob));
+    const blob=await zip.generateAsync({type:"blob"});
+    downloadBlob(blob, p.code+"_documenti.zip");
+    toast("Archivio ZIP generato");
+  }
+
+  const docFiles=p.files||[];
+
+  return <>
+    <button className="btn btn-g btn-sm" onClick={()=>go("office_pratiche")} style={{marginBottom:14}}>← Pratiche</button>
+    <div className="panel pad" style={{marginBottom:18}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div className="muted small">{tpl?tpl.ente:""} · {tpl?tpl.name:""}</div>
+          <h2 style={{margin:"4px 0 6px"}}>{p.code} — {p.assistito||"Assistito"}</h2>
+          <div className="muted small">Collaboratore: <b style={{color:"var(--ink)"}}>{c?c.nome:"—"}</b> · Creata {fmtDT(p.createdAt)} · Inviata {fmtDT(p.submittedAt)}</div>
+        </div>
+        <StatusBadge st={p.status}/>
+      </div>
+    </div>
+
+    <div className="grid2">
+      <div>
+        <div className="panel">
+          <div className="tabs" style={{padding:"0 18px"}}>
+            <button className={tab==="documenti"?"on":""} onClick={()=>setTab("documenti")}>Documenti ({docFiles.length})</button>
+            <button className={tab==="dati"?"on":""} onClick={()=>setTab("dati")}>Dati modulo</button>
+            <button className={tab==="ricevute"?"on":""} onClick={()=>setTab("ricevute")}>Ricevute ({(p.ricevute||[]).length})</button>
+            <button className={tab==="log"?"on":""} onClick={()=>setTab("log")}>Registro</button>
+          </div>
+          <div className="pad">
+            {tab==="documenti" && <>
+              {docFiles.length===0? <div className="empty"><div className="big">📄</div>Nessun documento caricato.</div> : <>
+                <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
+                  <button className="btn btn-g btn-sm" onClick={zipAll}>🗜️ Scarica tutto (ZIP)</button>
+                </div>
+                {docFiles.map(f=>(
+                  <div className="filecard" key={f.id}>
+                    <div className="doc-ic uploaded">📎</div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis"}}>{f.name}
+                        {f.addedAfterSubmit && <span className="pill use" style={{marginLeft:8}}>integrazione</span>}</div>
+                      <div className="muted small">{f.slotLabel||"Documento"} · {human(f.size)} · {fmtDT(f.uploadedAt)}</div>
+                      <div style={{marginTop:3}}><span className="hashtag" title="Impronta SHA-256 al momento dell'invio">🔒 {f.hash}</span></div>
+                    </div>
+                    <button className="btn btn-g btn-sm" onClick={()=>downloadBlob(f.blob,f.name)}>Scarica</button>
+                  </div>
+                ))}
+              </>}
+            </>}
+            {tab==="dati" && <DatiModulo p={p} tpl={tpl}/>}
+            {tab==="ricevute" && <>
+              <input ref={ricevutaInput} type="file" multiple style={{display:"none"}} onChange={e=>{uploadRicevute([...e.target.files]); e.target.value="";}}/>
+              <button className="btn btn-t btn-sm" onClick={()=>ricevutaInput.current.click()} style={{marginBottom:12}}>📥 Carica ricevuta</button>
+              {(p.ricevute||[]).length===0? <p className="muted">Nessuna ricevuta caricata. Quando ne carichi una, lo stato passa automaticamente a "Ricevute disponibili" e il collaboratore riceve l'email.</p> :
+                (p.ricevute||[]).map(r=>(
+                  <div className="filecard" key={r.id}>
+                    <div className="doc-ic" style={{background:"#e7f6ec",color:"#0a6b2e"}}>🧾</div>
+                    <div style={{flex:1}}><div style={{fontWeight:600}}>{r.name}</div><div className="muted small">{human(r.size)} · {fmtDT(r.uploadedAt)}</div></div>
+                    <button className="btn btn-g btn-sm" onClick={()=>downloadBlob(r.blob,r.name)}>Scarica</button>
+                  </div>
+                ))}
+            </>}
+            {tab==="log" && <AuditLog p={p}/>}
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div className="panel pad" style={{marginBottom:14}}>
+          <h4 style={{margin:"0 0 12px"}}>Gestione stato</h4>
+          <div style={{display:"flex",flexDirection:"column",gap:8}}>
+            <button className="btn btn-sky btn-sm" disabled={p.status==="in_lavorazione"} onClick={()=>setStatus("in_lavorazione")}>▶︎ Prendi in carico</button>
+            <button className="btn btn-r btn-sm" onClick={()=>{setReqNote("");setReqOpen(true);}}>📋 Richiedi documenti</button>
+            <button className="btn btn-t btn-sm" disabled={p.status==="trasmessa"||p.status==="ricevute_disponibili"} onClick={()=>setStatus("trasmessa")}>✓ Segna trasmessa</button>
+          </div>
+          <div className="lock-box" style={{marginTop:14}}>
+            <span>🔒</span><div>I documenti inviati sono <b>bloccati</b>. In "Richiesta documenti" il collaboratore può <b>solo aggiungere</b> nuovi file, mai sostituire quelli esistenti.</div>
+          </div>
+        </div>
+        <div className="panel pad">
+          <h4 style={{margin:"0 0 12px"}}>Avanzamento</h4>
+          <Timeline p={p}/>
+        </div>
+        {c && (c.tel?.[0]||c.email?.[0]||c.cf) && <div className="panel pad" style={{marginTop:14}}>
+          <h4 style={{margin:"0 0 10px"}}>Contatti collaboratore</h4>
+          <div className="muted small" style={{lineHeight:1.9}}>
+            <div><b style={{color:"var(--ink)"}}>{c.nome}</b></div>
+            {c.tel?.[0] && <div>📞 {c.tel[0]}</div>}
+            {c.email?.[0] && <div>✉️ {c.email[0]}</div>}
+            {c.citta && <div>📍 {c.citta}</div>}
+            {c.cf && <div>🆔 {c.cf}</div>}
+          </div>
+        </div>}
+        <div className="panel pad" style={{marginTop:14}}>
+          <h4 style={{margin:"0 0 8px"}}>💬 Chat pratica</h4>
+          <PraticaChat p={p} meId={meId} meName="Ufficio" meRole="titolare" onSend={postMessage}/>
+        </div>
+      </div>
+    </div>
+
+    {reqOpen && <ModalP title="Richiedi documenti al collaboratore" onClose={()=>setReqOpen(false)}>
+      <p style={{marginTop:0}} className="muted">Scrivi quali documenti mancano o cosa va corretto. Il collaboratore vedrà questa nota e potrà <b>aggiungere</b> i file richiesti, senza toccare quelli già inviati.</p>
+      <textarea className="formrow" style={{width:"100%",border:"1.5px solid var(--line)",borderRadius:9,padding:"9px 11px"}} rows={4} value={reqNote} onChange={e=>setReqNote(e.target.value)} placeholder="Es. Manca la seconda busta paga; il documento d'identità è illeggibile."/>
+      <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:16}}>
+        <button className="btn btn-g" onClick={()=>setReqOpen(false)}>Annulla</button>
+        <button className="btn btn-r" onClick={()=>{setStatus("richiesta_documenti",reqNote);setReqOpen(false);}}>📋 Invia richiesta</button>
+      </div>
+    </ModalP>}
+  </>;
+}
+/* ============================== PRATICHE — TIPI DI PRATICA (UFFICIO) ============================== */
+function OfficeTemplates({pData,setPData,go,toast}){
+  function createNew(){
+    const t={id:nid("tpl_"),name:"Nuovo tipo di pratica",ente:"INPS",fields:BASE_FIELDS.map(f=>({...f})),docs:BASE_DOCS.map(d=>({id:nid("d_"),label:d.label,cat:d.cat})),docTitle:"Delega",docBody:DEFAULT_DOC_BODY};
+    setPData(d=>({...d,templates:[...d.templates,t]}));
+    go("office_template_edit",{id:t.id});
+  }
+  return <>
+    <div className="top"><div><h1>🧩 Tipi di pratica</h1><div className="sub">Documenti richiesti e campi del modulo per ciascun tipo</div></div>
+      <button className="btn btn-p" onClick={createNew}>➕ Nuovo tipo</button></div>
+    <div className="panel">
+      <table className="tbl">
+        <thead><tr><th style={{textAlign:"left"}}>Tipo di pratica</th><th style={{textAlign:"left"}}>Ente</th><th style={{textAlign:"left"}}>Documenti</th><th style={{textAlign:"left"}}>Campi modulo</th><th></th></tr></thead>
+        <tbody>
+          {pData.templates.map(t=>(
+            <tr className="clk" key={t.id} onClick={()=>go("office_template_edit",{id:t.id})}>
+              <td style={{textAlign:"left"}}><b>{t.name}</b></td>
+              <td style={{textAlign:"left"}}><span className="pill" style={{background:"#eef2fa",color:"var(--navy)"}}>{t.ente}</span></td>
+              <td style={{textAlign:"left"}}>{t.docs.length} <span className="muted small">({t.docs.filter(d=>d.cat==="obbligatorio").length} obbl.)</span></td>
+              <td style={{textAlign:"left"}}>{t.fields.length}</td>
+              <td style={{textAlign:"right"}}><span style={{color:"var(--sky)",fontWeight:700}}>Modifica →</span></td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  </>;
+}
+
+/* ============================== EDITOR TIPO DI PRATICA ============================== */
+function TemplateEditor({pData,setPData,go,toast,id}){
+  const original=pData.templates.find(t=>t.id===id);
+  const [t,setT]=useState(()=>JSON.parse(JSON.stringify(original)));
+  const [aiOpen,setAiOpen]=useState(false);
+  const [tab,setTab]=useState("docs");
+  const [modelIdx,setModelIdx]=useState(null);
+
+  function save(){
+    setPData(d=>({...d,templates:d.templates.map(x=>x.id===id?t:x)}));
+    toast("Tipo di pratica salvato"); go("office_templates");
+  }
+  function applyAI(key){
+    const lib=LIBRARY[key];
+    const extra=(lib.extra||[]).map(e=>({id:nid("f_"),label:e.label,type:e.type,required:e.required}));
+    setT(s=>({...s,name:key,ente:lib.ente,
+      fields:[...BASE_FIELDS.map(f=>({...f})),...extra],
+      docs:[
+        {id:nid("d_"),label:"Modulo di delega (da far firmare)",cat:"obbligatorio",model:{kind:"text",body:DEFAULT_DOC_BODY}},
+        ...[...BASE_DOCS,...lib.docs].map(d=>({id:nid("d_"),label:d.label,cat:d.cat,model:null}))
+      ],
+      docTitle:"Delega — "+key }));
+    setAiOpen(false); toast("Bozza generata — ora puoi modificarla");
+  }
+  const setDoc=(i,patch)=> setT(s=>({...s,docs:s.docs.map((d,j)=>j===i?{...d,...patch}:d)}));
+  const addDoc=()=> setT(s=>({...s,docs:[...s.docs,{id:nid("d_"),label:"Nuovo documento",cat:"obbligatorio"}]}));
+  const delDoc=(i)=> setT(s=>({...s,docs:s.docs.filter((_,j)=>j!==i)}));
+  const setF=(i,patch)=> setT(s=>({...s,fields:s.fields.map((f,j)=>j===i?{...f,...patch}:f)}));
+  const addF=()=> setT(s=>({...s,fields:[...s.fields,{id:nid("f_"),label:"Nuovo campo",type:"text",required:false}]}));
+  const delF=(i)=> setT(s=>({...s,fields:s.fields.filter((_,j)=>j!==i)}));
+
+  return <>
+    <button className="btn btn-g btn-sm" onClick={()=>go("office_templates")} style={{marginBottom:14}}>← Tipi di pratica</button>
+    <div className="panel pad" style={{marginBottom:16}}>
+      <div className="row">
+        <div style={{flex:2}}>
+          <label className="fld" style={{display:"block",fontSize:12,fontWeight:700,color:"var(--mut)",marginBottom:6}}>Nome del tipo di pratica</label>
+          <input className="search" style={{padding:"10px 13px"}} value={t.name} onChange={e=>setT(s=>({...s,name:e.target.value}))}/>
+        </div>
+        <div style={{maxWidth:160}}>
+          <label className="fld" style={{display:"block",fontSize:12,fontWeight:700,color:"var(--mut)",marginBottom:6}}>Ente</label>
+          <select className="search" style={{padding:"10px 13px"}} value={t.ente} onChange={e=>setT(s=>({...s,ente:e.target.value}))}>
+            <option>INPS</option><option>INAIL</option><option>Altro</option>
+          </select>
+        </div>
+      </div>
+      <div style={{marginTop:14}}>
+        <button className="btn btn-sky btn-sm" onClick={()=>setAiOpen(true)}>✨ Genera bozza documenti con l'assistente</button>
+      </div>
+      <div className="infobox" style={{marginTop:12,marginBottom:0}}>
+        L'assistente propone una checklist di partenza per il tipo di pratica. <b>Tu la correggi e la salvi.</b> In produzione la bozza è generata dal backend (anche con ricerca web come supporto); qui è precaricata sui tipi più comuni.
+      </div>
+    </div>
+
+    <div className="tabs" style={{marginBottom:0,background:"#fff",borderRadius:"14px 14px 0 0",border:"1px solid var(--line)",borderBottom:"none",padding:"0 14px"}}>
+      <button className={tab==="docs"?"on":""} onClick={()=>setTab("docs")}>Documenti richiesti</button>
+      <button className={tab==="fields"?"on":""} onClick={()=>setTab("fields")}>Campi modulo (versione A)</button>
+      <button className={tab==="doc"?"on":""} onClick={()=>setTab("doc")}>Modulo precompilato (versione B)</button>
+    </div>
+
+    {tab==="docs" && <div className="panel pad" style={{borderRadius:"0 0 14px 14px",marginTop:0}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <span className="muted small">Categoria: <span className="pill req">obbligatorio</span> <span className="pill use">utile</span> <span className="pill opt">opzionale</span></span>
+        <button className="btn btn-g btn-sm" onClick={addDoc}>+ Documento</button>
+      </div>
+      {t.docs.map((d,i)=>(
+        <div key={d.id} style={{border:"1px solid var(--line)",borderRadius:11,padding:12,marginBottom:8}}>
+          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+            <input className="search" style={{padding:"9px 12px",flex:1}} value={d.label} onChange={e=>setDoc(i,{label:e.target.value})}/>
+            <button className="btn btn-g btn-sm" onClick={()=>delDoc(i)} title="Elimina">×</button>
+          </div>
+          <div style={{display:"flex",gap:10,alignItems:"center",marginTop:10,flexWrap:"wrap"}}>
+            <div className="chips" style={{margin:0}}>
+              {[["obbligatorio","req"],["utile","use"],["opzionale","opt"]].map(([cc,k])=>(
+                <button key={cc} className={"chip"+(d.cat===cc?" on":"")} onClick={()=>setDoc(i,{cat:cc})}>{cc}</button>
+              ))}
+            </div>
+            <div style={{flex:1,minWidth:8}}/>
+            {d.model ? <span className="muted small" style={{display:"flex",alignItems:"center",gap:8}}>
+                {d.model.kind==="file"?"📎 "+d.model.fileName:"📝 Modello precompilabile"}
+                <button className="btn btn-g btn-sm" onClick={()=>setModelIdx(i)}>Modifica</button>
+                <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={()=>setDoc(i,{model:null})} title="Rimuovi modello">×</button>
+              </span>
+              : <button className="btn btn-g btn-sm" onClick={()=>setModelIdx(i)}>+ Modello standard</button>}
+          </div>
+        </div>
+      ))}
+    </div>}
+
+    {tab==="fields" && <div className="panel pad" style={{borderRadius:"0 0 14px 14px",marginTop:0}}>
+      <p className="muted small" style={{marginTop:0}}>Questi campi compaiono al collaboratore come <b>modulo dinamico</b> quando sceglie questo tipo di pratica.</p>
+      <div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button className="btn btn-g btn-sm" onClick={addF}>+ Campo</button></div>
+      {t.fields.map((f,i)=>(
+        <div className="filecard" key={f.id}>
+          <input className="search" style={{padding:"9px 12px",flex:2}} value={f.label} onChange={e=>setF(i,{label:e.target.value})}/>
+          <select className="search" style={{padding:"9px 12px",maxWidth:130}} value={f.type} onChange={e=>setF(i,{type:e.target.value})}>
+            <option value="text">Testo</option><option value="number">Numero</option><option value="date">Data</option>
+          </select>
+          <label style={{display:"flex",alignItems:"center",gap:6,fontSize:13}}><input type="checkbox" checked={f.required} onChange={e=>setF(i,{required:e.target.checked})}/> Obbligatorio</label>
+          <button className="btn btn-g btn-sm" onClick={()=>delF(i)}>×</button>
+        </div>
+      ))}
+    </div>}
+
+    {tab==="doc" && <div className="panel pad" style={{borderRadius:"0 0 14px 14px",marginTop:0}}>
+      <div className="infobox" style={{marginBottom:14}}>
+        Usa i segnaposto tra doppie graffe: <span className="hashtag">{"{{cognome}}"}</span> <span className="hashtag">{"{{nome}}"}</span> <span className="hashtag">{"{{codice_fiscale}}"}</span> <span className="hashtag">{"{{luogo_nascita}}"}</span> <span className="hashtag">{"{{data_nascita}}"}</span> <span className="hashtag">{"{{indirizzo}}"}</span> <span className="hashtag">{"{{data_firma}}"}</span>. Verranno compilati con i dati del modulo.
+      </div>
+      <label className="fld" style={{display:"block",fontSize:12,fontWeight:700,color:"var(--mut)",marginBottom:6}}>Titolo del documento</label>
+      <input className="search" style={{padding:"10px 13px",marginBottom:12}} value={t.docTitle} onChange={e=>setT(s=>({...s,docTitle:e.target.value}))}/>
+      <label className="fld" style={{display:"block",fontSize:12,fontWeight:700,color:"var(--mut)",marginBottom:6}}>Testo del documento</label>
+      <textarea className="search" rows={12} value={t.docBody} onChange={e=>setT(s=>({...s,docBody:e.target.value}))} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,padding:"10px 13px"}}/>
+    </div>}
+
+    <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:18}}>
+      <button className="btn btn-g" onClick={()=>go("office_templates")}>Annulla</button>
+      <button className="btn btn-p" onClick={save}>💾 Salva tipo di pratica</button>
+    </div>
+
+    {aiOpen && <ModalP title="✨ Genera bozza con l'assistente" onClose={()=>setAiOpen(false)}>
+      <p style={{marginTop:0}} className="muted">Scegli un tipo di pratica: l'assistente precompila documenti e campi. Poi modifichi tutto liberamente.</p>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+        {LIBRARY_KEYS.map(k=>(
+          <button key={k} className="tplist-row" style={{margin:0}} onClick={()=>applyAI(k)}>
+            <div className="ti" style={{fontSize:11,background:LIBRARY[k].ente==="INAIL"?"var(--teal)":"var(--sky)"}}>{LIBRARY[k].ente}</div>
+            <div style={{flex:1,fontSize:13,fontWeight:600,textAlign:"left"}}>{k}</div>
+          </button>
+        ))}
+      </div>
+    </ModalP>}
+
+    {modelIdx!==null && <ModelEditor doc={t.docs[modelIdx]} onClose={()=>setModelIdx(null)}
+      onSave={(model)=>{setDoc(modelIdx,{model});setModelIdx(null);toast("Modello associato al documento");}}/>}
+  </>;
+}
+
+/* editor del modello standard di un singolo documento (lato ufficio) */
+function ModelEditor({doc,onClose,onSave}){
+  const [kind,setKind]=useState(doc.model?doc.model.kind:"file");
+  const [body,setBody]=useState(doc.model&&doc.model.kind==="text"?doc.model.body:DEFAULT_DOC_BODY);
+  const [file,setFile]=useState(doc.model&&doc.model.kind==="file"?{fileName:doc.model.fileName,blob:doc.model.blob}:null);
+  function save(){
+    if(kind==="file"){ if(!file){onClose();return;} onSave({kind:"file",fileName:file.fileName,blob:file.blob}); }
+    else onSave({kind:"text",body});
+  }
+  return <ModalP title={"Modello standard — "+doc.label} onClose={onClose}>
+    <div className="chips" style={{marginBottom:14}}>
+      <button className={"chip"+(kind==="file"?" on":"")} onClick={()=>setKind("file")}>Carica file</button>
+      <button className={"chip"+(kind==="text"?" on":"")} onClick={()=>setKind("text")}>Modello testo (precompilabile)</button>
+    </div>
+    {kind==="file" ? <>
+      <p className="muted small" style={{marginTop:0}}>Carica il modulo standard (Word, PDF...). Il collaboratore lo scarica così com'è, lo compila e lo fa firmare al cliente.</p>
+      <label className="btn btn-g" style={{cursor:"pointer",display:"inline-flex"}}>📎 Scegli file<input type="file" style={{display:"none"}} onChange={e=>{const f=e.target.files[0]; if(f)setFile({fileName:f.name,blob:f}); e.target.value="";}}/></label>
+      {file && <div className="filecard" style={{marginTop:10}}><div className="doc-ic">📎</div><div style={{flex:1}}>{file.fileName}</div></div>}
+    </> : <>
+      <div className="infobox" style={{marginBottom:12}}>Segnaposto compilati con i dati anagrafici del collaboratore: <span className="hashtag">{"{{cognome}}"}</span> <span className="hashtag">{"{{nome}}"}</span> <span className="hashtag">{"{{codice_fiscale}}"}</span> <span className="hashtag">{"{{luogo_nascita}}"}</span> <span className="hashtag">{"{{data_nascita}}"}</span> <span className="hashtag">{"{{indirizzo}}"}</span> <span className="hashtag">{"{{data_firma}}"}</span></div>
+      <textarea className="search" rows={10} value={body} onChange={e=>setBody(e.target.value)} style={{fontFamily:"'JetBrains Mono',monospace",fontSize:13,padding:"10px 13px",width:"100%"}}/>
+    </>}
+    <div style={{display:"flex",justifyContent:"flex-end",gap:10,marginTop:16}}>
+      <button className="btn btn-g" onClick={onClose}>Annulla</button>
+      <button className="btn btn-p" onClick={save}>Salva modello</button>
+    </div>
+  </ModalP>;
+}
+
+/* checklist documenti riutilizzabile (nuova pratica + bozza) */
+function DocChecklist({tpl,getFiles,onAdd,onRemove,canEdit,fieldValues,toast}){
+  function dlModel(d){
+    if(!d.model) return;
+    if(d.model.kind==="file"){ downloadBlob(d.model.blob,d.model.fileName); }
+    else { downloadDoc(d.label, fillBody(d.model.body,fieldValues)); }
+    if(toast) toast("Modello scaricato"+(d.model.kind==="text"?" e precompilato":""));
+  }
+  return <>{["obbligatorio","utile","opzionale"].map(cat=>{
+    const list=tpl.docs.filter(d=>d.cat===cat); if(!list.length) return null;
+    const pillc=cat==="obbligatorio"?"req":cat==="utile"?"use":"opt";
+    return <div key={cat} style={{marginBottom:8}}>
+      <div style={{margin:"10px 0 4px"}}><span className={"pill "+pillc}>{cat}</span></div>
+      {list.map(d=>{
+        const fs=getFiles(d.id)||[];
+        return <div className="filecard" key={d.id}>
+          <div className={"doc-ic "+(fs.length?"uploaded":"")} style={!fs.length&&cat==="obbligatorio"?{background:"var(--redbg)"}:{}}>{fs.length?"✓":"+"}</div>
+          <div style={{flex:1,minWidth:0}}>
+            <div style={{fontWeight:600}}>{d.label}</div>
+            {d.model && <div className="muted small" style={{marginTop:2}}>{d.model.kind==="file"?"📎 Modello: "+d.model.fileName:"📝 Modello precompilabile disponibile"}</div>}
+            {fs.map((fl,i)=>(
+              <div className="muted small" key={i} style={{display:"flex",gap:8,alignItems:"center"}}>📎 {fl.name} ({human(fl.size)}) {canEdit && <button className="btn btn-g btn-sm" style={{padding:"2px 7px"}} onClick={()=>onRemove(d.id,i,fl)}>×</button>}</div>
+            ))}
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:6,alignItems:"flex-end"}}>
+            {d.model && <button className="btn btn-g btn-sm" onClick={()=>dlModel(d)}>📥 Modello</button>}
+            {canEdit && <label className="btn btn-g btn-sm" style={{cursor:"pointer"}}>Allega<input type="file" multiple style={{display:"none"}} onChange={e=>{onAdd(d.id,[...e.target.files]);e.target.value="";}}/></label>}
+          </div>
+        </div>;
+      })}
+    </div>;
+  })}</>;
+}
+
+/* ============================== CHAT DI PRATICA ============================== */
+function PraticaChat({p,meId,meName,meRole,onSend}){
+  const [text,setText]=useState("");
+  const msgs=p.messages||[];
+  const endRef=useRef();
+  useEffect(()=>{ if(endRef.current) endRef.current.scrollIntoView({block:"nearest"}); },[msgs.length]);
+  function send(){ const t=text.trim(); if(!t)return; onSend(t); setText(""); }
+  return <div>
+    <div className="chatbox">
+      {msgs.length===0 && <p className="muted small" style={{margin:"6px 0"}}>Nessun messaggio. Usa la chat per comunicazioni intermedie su questa pratica (senza dover telefonare).</p>}
+      {msgs.map(m=>{
+        const mine=m.authorId===meId;
+        let readTs=null;
+        if(m.readBy){ for(const uid in m.readBy){ if(uid!==m.authorId){ readTs=m.readBy[uid]; break; } } }
+        return <div key={m.id} className={"chatmsg "+(mine?"me":"them")}>
+          <div style={{whiteSpace:"pre-wrap"}}>{m.text}</div>
+          <div className="cm-meta">
+            {m.authorName}{m.role==="titolare"?" (ufficio)":""} · {fmtDT(m.ts)}
+            {mine && (readTs? " · visualizzato":" · consegnato")}
+          </div>
+        </div>;
+      })}
+      <div ref={endRef}/>
+    </div>
+    <div className="chatform">
+      <input value={text} onChange={e=>setText(e.target.value)} onKeyDown={e=>{if(e.key==="Enter")send();}} placeholder="Scrivi un messaggio..."/>
+      <button className="btn btn-p btn-sm" onClick={send}>Invia</button>
+    </div>
+  </div>;
+}
+/* ============================== COLLAB — LE MIE PRATICHE ============================== */
+function CollabPratiche({pData,me,go}){
+  const [f,setF]=useState("tutte");
+  const [q,setQ]=useState("");
+  const all=pData.pratiche.filter(p=>p.collaboratorId===me.id);
+  const ql=q.trim().toLowerCase();
+  const mine=all.filter(p=>(f==="tutte"||p.status===f) && (!ql||(p.code+" "+(p.assistito||"")).toLowerCase().includes(ql)));
+  return <>
+    <div className="top">
+      <div><h1>📁 Le mie pratiche</h1><div className="sub">Le pratiche che hai caricato — clicca per vedere stato e ricevute</div></div>
+      <button className="btn btn-t" onClick={()=>go("collab_new")}>➕ Nuova pratica</button>
+    </div>
+    {all.length===0? <div className="panel"><div className="empty"><div className="big">📁</div>Non hai ancora caricato pratiche.<br/><button className="btn btn-t btn-sm" style={{marginTop:14}} onClick={()=>go("collab_new")}>Crea la prima</button></div></div> :
+    <div className="panel">
+      <div className="ph">
+        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="🔍 Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <select className="chip" style={{maxWidth:200,padding:"9px 13px"}} value={f} onChange={e=>setF(e.target.value)}>
+          <option value="tutte">Tutti gli stati</option>
+          <option value="bozza">Bozza</option>
+          {FLOW.map(s=><option key={s} value={s}>{STATUSES[s].label}</option>)}
+        </select>
+        <span className="cnt" style={{marginLeft:"auto",marginBottom:0}}>{mine.length} pratiche</span>
+      </div>
+      <div className="pad" style={{paddingTop:0}}>
+      {mine.length===0? <div className="empty"><div className="big">📭</div>Nessuna pratica con questi filtri.</div> :
+      <table className="tbl">
+        <thead><tr><th style={{textAlign:"left"}}>Codice</th><th style={{textAlign:"left"}}>Tipo</th><th style={{textAlign:"left"}}>Assistito</th><th style={{textAlign:"left"}}>Stato</th><th style={{textAlign:"left"}}>Aggiornata</th></tr></thead>
+        <tbody>{mine.map(p=>{
+          const tpl=pData.templates.find(t=>t.id===p.templateId);
+          return <tr className="clk" key={p.id} onClick={()=>go("collab_detail",{id:p.id})}>
+            <td style={{textAlign:"left"}}><b>{p.code}</b>{unreadChat(p,me.id)>0 && <span className="pill" style={{marginLeft:8,background:"var(--redbg)",color:"var(--red)"}}>💬</span>}</td>
+            <td style={{textAlign:"left"}}>{tpl?tpl.name:"—"}</td><td style={{textAlign:"left"}}>{p.assistito||"—"}</td>
+            <td style={{textAlign:"left"}}><StatusBadge st={p.status} sm/></td><td className="muted small" style={{textAlign:"left"}}>{fmtDT(p.updatedAt)}</td>
+          </tr>;
+        })}</tbody>
+      </table>}
+      </div>
+    </div>}
+  </>;
+}
+
+/* ============================== COLLAB — NUOVA PRATICA ============================== */
+function CollabNew({pData,setPData,me,go,toast}){
+  const [step,setStep]=useState(1);
+  const [tplId,setTplId]=useState(null);
+  const [assistito,setAssistito]=useState("");
+  const [values,setValues]=useState({});
+  const [files,setFiles]=useState({});
+  const tpl=pData.templates.find(t=>t.id===tplId);
+
+  function pick(tid){ setTplId(tid); setStep(2); }
+  function onFile(docId,fl){ setFiles(f=>({...f,[docId]:[...(f[docId]||[]),...fl]})); }
+  function rmFile(docId,i){ setFiles(f=>({...f,[docId]:f[docId].filter((_,j)=>j!==i)})); }
+
+  const reqMissing = tpl? tpl.docs.filter(d=>d.cat==="obbligatorio" && !(files[d.id]&&files[d.id].length)) : [];
+  const fieldMissing = tpl? tpl.fields.filter(f=>f.required && !values[f.id]) : [];
+
+  function previewDoc(){
+    if(!tpl) return;
+    downloadDoc(tpl.docTitle, fillBody(tpl.docBody, values));
+    toast("Modulo precompilato generato (apri e stampa in PDF)");
+  }
+
+  async function submit(asDraft){
+    const fileObjs=[];
+    for(const d of tpl.docs){ for(const fl of (files[d.id]||[])){ fileObjs.push({id:nid("f_"),name:fl.name,size:fl.size,blob:fl,slotId:d.id,slotLabel:d.label,uploadedAt:Date.now(),hash:(await sha256(fl)).slice(0,16)}); } }
+    const code = (tpl.ente==="INAIL"?"INAIL":"INPS")+"-"+String(Date.now()).slice(-5);
+    const now=Date.now();
+    const p={
+      id:nid("p_"), code, templateId:tpl.id, collaboratorId:me.id, assistito:assistito||"(senza nome)",
+      fieldValues:values, files:fileObjs, ricevute:[], messages:[], chatReadBy:{[me.id]:Date.now()},
+      status: asDraft?"bozza":"inviata", createdAt:now, updatedAt:now, submittedAt: asDraft?null:now,
+      statusHistory: asDraft?[{status:"bozza",ts:now}]:[{status:"inviata",ts:now,note:"Inviata dal collaboratore"}],
+      audit:[{ts:now,actor:me.nome,action:asDraft?"Bozza salvata":"Pratica inviata e bloccata"}],
+    };
+    setPData(d=>({...d,pratiche:[...d.pratiche,p]}));
+    toast(asDraft?"Bozza salvata":"Pratica inviata · ora è bloccata e non più modificabile");
+    go("collab_detail",{id:p.id});
+  }
+
+  return <>
+    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>← Le mie pratiche</button>
+
+    {step===1 && <>
+      <h3 style={{marginTop:0}}>Che tipo di pratica vuoi caricare?</h3>
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+        {pData.templates.map(t=>(
+          <div className="panel pad" key={t.id} style={{cursor:"pointer",marginBottom:0}} onClick={()=>pick(t.id)}>
+            <span className="pill" style={{background:t.ente==="INAIL"?"var(--tealbg)":"#e6f1fb",color:t.ente==="INAIL"?"#0a7d70":"var(--navy)"}}>{t.ente}</span>
+            <h4 style={{margin:"10px 0 4px"}}>{t.name}</h4>
+            <div className="muted small">{t.docs.filter(d=>d.cat==="obbligatorio").length} documenti obbligatori · {t.fields.length} campi</div>
+          </div>
+        ))}
+      </div>
+    </>}
+
+    {step===2 && tpl && <>
+      <div className="panel pad" style={{marginBottom:16}}>
+        <span className="pill" style={{background:"#eef2fa",color:"var(--navy)"}}>{tpl.ente} · {tpl.name}</span>
+        <h3 style={{margin:"10px 0 0"}}>Dati del modulo</h3>
+        <div className="field-row" style={{marginTop:14}}>
+          <label>Nome assistito (riferimento pratica)</label>
+          <input className="search" style={{padding:"10px 13px"}} value={assistito} onChange={e=>setAssistito(e.target.value)} placeholder="Es. Giuseppe Conte"/>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
+          {tpl.fields.map(f=>(
+            <div className="field-row" key={f.id}>
+              <label>{f.label}{f.required && <span style={{color:"var(--red)"}}> *</span>}</label>
+              <input className="search" style={{padding:"10px 13px"}} type={f.type==="number"?"number":f.type==="date"?"date":"text"} value={values[f.id]||""} onChange={e=>setValues(v=>({...v,[f.id]:e.target.value}))}/>
+            </div>
+          ))}
+        </div>
+        <div style={{marginTop:6}}>
+          <button className="btn btn-g btn-sm" onClick={previewDoc}>📄 Genera modulo precompilato (PDF)</button>
+        </div>
+      </div>
+
+      <div className="panel pad" style={{marginBottom:16}}>
+        <h3 style={{marginTop:0}}>Documenti da allegare</h3>
+        <p className="muted small" style={{marginTop:0}}>Dove l'ufficio ha caricato un modello standard, puoi scaricarlo (anche precompilato con i dati sopra), farlo firmare e ricaricarlo.</p>
+        <DocChecklist tpl={tpl} canEdit={true} fieldValues={values} toast={toast}
+          getFiles={(idd)=>files[idd]||[]}
+          onAdd={(idd,fl)=>onFile(idd,fl)}
+          onRemove={(idd,i)=>rmFile(idd,i)} />
+      </div>
+
+      <div className="lock-box" style={{marginBottom:16}}>
+        <span>🔒</span><div><b>Attenzione:</b> dopo l'invio la pratica viene <b>bloccata</b>. Non potrai più sostituire o eliminare i documenti caricati (potrai solo aggiungerne se l'ufficio te li richiede). Verifica bene prima di inviare.</div>
+      </div>
+
+      {(reqMissing.length>0||fieldMissing.length>0) && <div className="infobox" style={{marginBottom:16}}>
+        Prima di inviare mancano: {fieldMissing.map(f=>f.label).concat(reqMissing.map(d=>d.label)).join(", ")}. Puoi comunque salvare come bozza.
+      </div>}
+
+      <div style={{display:"flex",justifyContent:"space-between"}}>
+        <button className="btn btn-g" onClick={()=>setStep(1)}>← Cambia tipo</button>
+        <div style={{display:"flex",gap:10}}>
+          <button className="btn btn-g" onClick={()=>submit(true)}>💾 Salva bozza</button>
+          <button className="btn btn-t" disabled={reqMissing.length>0||fieldMissing.length>0} onClick={()=>submit(false)}>🔒 Invia pratica</button>
+        </div>
+      </div>
+    </>}
+  </>;
+}
+
+/* ============================== COLLAB — DETTAGLIO PRATICA ============================== */
+function CollabDetail({pData,setPData,me,go,toast,id}){
+  const p=pData.pratiche.find(x=>x.id===id);
+  if(!p) return <div className="empty">Pratica non trovata.</div>;
+  const tpl=pData.templates.find(t=>t.id===p.templateId);
+  const editable=canEditFreely(p.status);
+  const append=canAppend(p.status);
+  const reqMissing = tpl? tpl.docs.filter(d=>d.cat==="obbligatorio" && !((p.files||[]).some(f=>f.slotId===d.id))) : [];
+
+  function update(mut){ setPData(d=>({...d,pratiche:d.pratiche.map(x=>{if(x.id!==id)return x;const c={...x};mut(c);c.updatedAt=Date.now();return c;})})); }
+
+  async function addBozzaFiles(slotId,fl){
+    const slot=tpl.docs.find(d=>d.id===slotId);
+    const arr=[];
+    for(const f of fl){ arr.push({id:nid("f_"),name:f.name,size:f.size,blob:f,slotId,slotLabel:slot?slot.label:"Documento",uploadedAt:Date.now(),hash:(await sha256(f)).slice(0,16)}); }
+    update(c=>{ c.files=[...(c.files||[]),...arr]; });
+  }
+  function removeFile(fid){ update(c=>c.files=c.files.filter(x=>x.id!==fid)); }
+  function postMessage(text){
+    update(c=>{ c.messages=[...(c.messages||[]),{id:nid("m_"),authorId:me.id,authorName:me.nome,role:"collab",text,ts:Date.now()}]; c.chatReadBy={...(c.chatReadBy||{}),[me.id]:Date.now()}; });
+    toast("Messaggio inviato all'ufficio");
+  }
+  useEffect(()=>{ setPData(d=>({...d,pratiche:d.pratiche.map(x=>{
+    if(x.id!==id) return x;
+    const now=Date.now();
+    const messages=(x.messages||[]).map(m=> (m.authorId!==me.id && !(m.readBy&&m.readBy[me.id])) ? {...m,readBy:{...(m.readBy||{}),[me.id]:now}} : m);
+    return {...x,messages};
+  })})); },[id]);
+
+  async function addFiles(fl){
+    const arr=[];
+    for(const f of fl){ arr.push({id:nid("f_"),name:f.name,size:f.size,blob:f,slotLabel:"Integrazione",uploadedAt:Date.now(),hash:(await sha256(f)).slice(0,16),addedAfterSubmit:true}); }
+    update(c=>{ c.files=[...(c.files||[]),...arr]; c.audit=[...(c.audit||[]),{ts:Date.now(),actor:me.nome,action:arr.length+" documento/i integrato/i"}];});
+    toast("Documenti aggiunti alla pratica");
+  }
+  function submitDraft(){
+    if(reqMissing.length){ toast("Mancano documenti obbligatori"); return; }
+    update(c=>{ c.status="inviata"; c.submittedAt=Date.now(); c.statusHistory=[...(c.statusHistory||[]),{status:"inviata",ts:Date.now(),note:"Inviata dal collaboratore"}]; c.audit=[...(c.audit||[]),{ts:Date.now(),actor:me.nome,action:"Pratica inviata e bloccata"}];});
+    toast("Pratica inviata · ora è bloccata");
+  }
+
+  return <>
+    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>← Le mie pratiche</button>
+    <div className="panel pad" style={{marginBottom:16}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
+        <div>
+          <div className="muted small">{tpl?tpl.ente:""} · {tpl?tpl.name:""}</div>
+          <h2 style={{margin:"4px 0 4px"}}>{p.code}</h2>
+          <div className="muted small">Assistito: {p.assistito} · Creata {fmtDT(p.createdAt)}</div>
+        </div>
+        <StatusBadge st={p.status}/>
+      </div>
+    </div>
+
+    {p.status==="richiesta_documenti" && <div className="infobox" style={{marginBottom:16}}>
+      📋 <b>L'ufficio ti ha chiesto dei documenti.</b> {(p.statusHistory||[]).filter(h=>h.status==="richiesta_documenti").slice(-1)[0]?.note || ""}
+      <div style={{marginTop:10}}>
+        <label className="btn btn-t btn-sm" style={{cursor:"pointer",display:"inline-flex"}}>+ Aggiungi documenti<input type="file" multiple style={{display:"none"}} onChange={e=>{addFiles([...e.target.files]);e.target.value="";}}/></label>
+      </div>
+    </div>}
+
+    <div className="grid2">
+      <div className="panel pad">
+        <h4 style={{marginTop:0}}>Documenti{editable?"":" caricati"}</h4>
+        {editable ? <>
+          <DocChecklist tpl={tpl} canEdit={true} fieldValues={p.fieldValues} toast={toast}
+            getFiles={(sid)=>(p.files||[]).filter(f=>f.slotId===sid)}
+            onAdd={(sid,fl)=>addBozzaFiles(sid,fl)}
+            onRemove={(sid,i,fl)=>removeFile(fl.id)} />
+          {reqMissing.length>0 && <div className="infobox" style={{marginTop:12}}>
+            Per inviare mancano i documenti obbligatori: {reqMissing.map(d=>d.label).join(", ")}.
+          </div>}
+          <div style={{marginTop:14,display:"flex",justifyContent:"flex-end"}}>
+            <button className="btn btn-t btn-sm" disabled={reqMissing.length>0} onClick={submitDraft}>🔒 Invia pratica</button>
+          </div>
+        </> : <>
+          {(p.files||[]).length===0? <p className="muted">Nessun documento.</p> :
+            (p.files||[]).map(f=>(
+              <div className="filecard" key={f.id}>
+                <div className="doc-ic uploaded">📎</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontWeight:600,overflow:"hidden",textOverflow:"ellipsis"}}>{f.name}{f.addedAfterSubmit&&<span className="pill use" style={{marginLeft:8}}>integrazione</span>}</div>
+                  <div className="muted small">{f.slotLabel} · {human(f.size)}</div>
+                </div>
+              </div>
+            ))}
+          <div className="lock-box" style={{marginTop:12}}><span>🔒</span><div>Pratica inviata: i documenti sono bloccati e non modificabili. {append?"Puoi solo aggiungerne di nuovi su richiesta dell'ufficio.":""}</div></div>
+        </>}
+      </div>
+
+      <div>
+        <div className="panel pad" style={{marginBottom:14}}>
+          <h4 style={{marginTop:0}}>Stato pratica</h4>
+          <Timeline p={p}/>
+        </div>
+        <div className="panel pad">
+          <h4 style={{marginTop:0}}>Ricevute</h4>
+          {(p.ricevute||[]).length===0? <p className="muted small" style={{marginBottom:0}}>Non ancora disponibili. Le troverai qui quando l'ufficio le caricherà.</p> :
+            (p.ricevute||[]).map(r=>(
+              <div className="filecard" key={r.id}>
+                <div className="doc-ic" style={{background:"#e7f6ec",color:"#0a6b2e"}}>🧾</div>
+                <div style={{flex:1}}><div style={{fontWeight:600}}>{r.name}</div><div className="muted small">{fmtDT(r.uploadedAt)}</div></div>
+                <button className="btn btn-g btn-sm" onClick={()=>downloadBlob(r.blob,r.name)}>Scarica</button>
+              </div>
+            ))}
+        </div>
+        <div className="panel pad" style={{marginTop:14}}>
+          <h4 style={{marginTop:0,marginBottom:8}}>💬 Chat con l'ufficio</h4>
+          <PraticaChat p={p} meId={me.id} meName={me.nome} meRole="collab" onSend={postMessage}/>
+        </div>
+      </div>
+    </div>
+  </>;
+}
+
+/* ============================== DOCUMENTI IMPORTANTI — UFFICIO ============================== */
+function ImpDocsOffice({pData,setPData,collab,toast}){
+  const [title,setTitle]=useState("");
+  const [assignee,setAssignee]=useState("all");
+  const [file,setFile]=useState(null);
+  const fileRef=useRef();
+  const docs=pData.impDocs||[];
+
+  function add(){
+    if(!file){ toast("Scegli prima un file"); return; }
+    const t = title.trim() || file.name.replace(/\.[^.]+$/,"");
+    const d={id:nid("imp_"),title:t,fileName:file.name,blob:file,size:file.size,
+      collaboratorId: assignee==="all"?null:assignee, uploadedAt:Date.now()};
+    setPData(s=>({...s,impDocs:[...(s.impDocs||[]),d]}));
+    setTitle("");setFile(null); if(fileRef.current) fileRef.current.value="";
+    toast("Documento importante caricato");
+  }
+  function del(idd){ setPData(s=>({...s,impDocs:s.impDocs.filter(x=>x.id!==idd)})); }
+
+  return <>
+    <div className="top"><div><h1>📌 Documenti importanti</h1><div className="sub">Archivio da esibire in caso di controllo</div></div></div>
+    <p className="muted" style={{marginTop:0,maxWidth:640}}>Archivio dei documenti da tenere a portata di mano ed esibire in caso di controllo (es. <b>incarico di collaborazione volontaria vidimato dall'Ispettorato del Lavoro</b>). Assegnali a un collaboratore o rendili visibili a tutti.</p>
+    <div className="grid2">
+      <div className="panel pad">
+        <h4 style={{marginTop:0}}>Documenti caricati</h4>
+        {docs.length===0? <p className="muted">Nessun documento importante caricato.</p> :
+          docs.map(d=>{
+            const c=collab.find(u=>u.id===d.collaboratorId);
+            return <div className="filecard" key={d.id}>
+              <div className="doc-ic" style={{background:"var(--amberbg)",color:"#9a6b13"}}>📌</div>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontWeight:600}}>{d.title}</div>
+                <div className="muted small">{d.fileName} · {human(d.size)} · {c?("→ "+c.nome):"→ Tutti i collaboratori"}</div>
+              </div>
+              <button className="btn btn-g btn-sm" onClick={()=>downloadBlob(d.blob,d.fileName)}>Scarica</button>
+              <button className="btn btn-g btn-sm" onClick={()=>del(d.id)} title="Elimina">×</button>
+            </div>;
+          })}
+      </div>
+      <div className="panel pad">
+        <h4 style={{marginTop:0}}>Carica documento</h4>
+        <input ref={fileRef} type="file" style={{display:"none"}} onChange={e=>setFile(e.target.files[0]||null)}/>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12}}>
+          <button className="btn btn-g btn-sm" onClick={()=>fileRef.current&&fileRef.current.click()}>📎 Scegli file</button>
+          <span className="muted small" style={{flex:1,overflow:"hidden",textOverflow:"ellipsis"}}>{file?file.name+" ("+human(file.size)+")":"Nessun file selezionato"}</span>
+        </div>
+        <div className="field-row">
+          <label>Titolo / descrizione <span className="muted" style={{fontWeight:400}}>(facoltativo)</span></label>
+          <input className="search" style={{padding:"10px 13px"}} value={title} onChange={e=>setTitle(e.target.value)} placeholder="Es. Incarico collaborazione vidimato ITL"/>
+        </div>
+        <div className="field-row">
+          <label>Visibile a</label>
+          <select className="search" style={{padding:"10px 13px"}} value={assignee} onChange={e=>setAssignee(e.target.value)}>
+            <option value="all">Tutti i collaboratori</option>
+            {collab.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+        <button className="btn btn-p" onClick={add}>Carica documento</button>
+      </div>
+    </div>
+  </>;
+}
+
+/* ============================== DOCUMENTI IMPORTANTI — COLLABORATORE ============================== */
+function ImpDocsCollab({pData,me}){
+  const docs=(pData.impDocs||[]).filter(d=>d.collaboratorId===null || d.collaboratorId===me.id);
+  return <>
+    <div className="top"><div><h1>📌 Documenti importanti</h1></div></div>
+    <p className="muted" style={{marginTop:0,maxWidth:640}}>Documenti condivisi dall'ufficio da tenere a disposizione (es. il tuo incarico di collaborazione vidimato, da esibire in caso di controllo).</p>
+    <div className="panel pad">
+      {docs.length===0? <div className="empty"><div className="big">📌</div>Nessun documento disponibile al momento.</div> :
+        docs.map(d=>(
+          <div className="filecard" key={d.id}>
+            <div className="doc-ic" style={{background:"var(--amberbg)",color:"#9a6b13"}}>📌</div>
+            <div style={{flex:1,minWidth:0}}>
+              <div style={{fontWeight:600}}>{d.title}</div>
+              <div className="muted small">{d.fileName} · {human(d.size)} · caricato {fmtDate(d.uploadedAt)}</div>
+            </div>
+            <button className="btn btn-g btn-sm" onClick={()=>downloadBlob(d.blob,d.fileName)}>Scarica</button>
+          </div>
+        ))}
+    </div>
+  </>;
+}
+/* ============================== APP UNIFICATA ============================== */
+function App(){
+  const [auth,setAuth]=useState(null);
+  const [mustChange,setMustChange]=useState(false);
+  const [v,setV]=useState("lista");
+  const [viewParams,setViewParams]=useState(null);
+  const [openId,setOpenId]=useState(null);
+  const [openTab,setOpenTab]=useState("scheda");
+  const [collab,setCollab]=useState(COLLAB0);
+  const [comms,setComms]=useState(COMMS0);
+  const [pagamenti,setPagamenti]=useState(PAG0);
+  const [sanzioni,setSanzioni]=useState(SANZ0);
+  const [listini,setListini]=useState(LISTINI0);
+  const [batches,setBatches]=useState(BATCH0);
+  const [anteprima,setAnteprima]=useState(null);
+  const [accontoFor,setAccontoFor]=useState(undefined);
+  const [pData,setPData]=useState(seedPraticheState);
+  const [toast,setToast]=useState(null);
+  const flash=m=>{setToast(m);setTimeout(()=>setToast(null),2800);};
+
+  /* navigazione generica usata dai componenti del modulo Pratiche */
+  const go=(name,params)=>{ setV(name); setViewParams(params||null); setOpenId(null); };
+
+  const onTogDoc=(cid,di)=>setCollab(cs=>cs.map(c=>c.id!==cid?c:{...c,docs:c.docs.map((d,i)=>i!==di?d:{...d,vis:!d.vis})}));
+  const onTogComm=id=>setComms(cs=>cs.map(c=>c.id!==id?c:{...c,vis:!c.vis}));
+  const onTogPortal=(cid,key)=>setCollab(cs=>cs.map(c=>c.id!==cid?c:{...c,portal:{...c.portal,[key]:!c.portal[key]}}));
+  const onTogGestione=(cid,key)=>setCollab(cs=>cs.map(c=>c.id!==cid?c:{...c,gestione:{...c.gestione,[key]:!c.gestione[key]}}));
+  const onSetListino=(cid,lis)=>setCollab(cs=>cs.map(c=>c.id!==cid?c:{...c,listino:lis}));
+  const onAddPag=(cid,imp,causale,data,silent)=>{
+    setPagamenti(ps=>[...ps,{id:Date.now()+Math.random(),data:data||oggi(),anno:2024,cid,importo:imp,causale}]);
+    if(!silent) flash("Acconto registrato — saldo aggiornato");
+  };
+  const onTogSanz=id=>setSanzioni(ss=>ss.map(s=>s.id!==id?s:{...s,pagata:!s.pagata}));
+  const onAssociaSanz=(id,cid)=>{setSanzioni(ss=>ss.map(s=>s.id!==id?s:{...s,cid}));flash("Sanzione associata");};
+  const onEditTarif=(lis,anno,i,val)=>setListini(t=>({...t,[lis]:{...t[lis],[anno]:t[lis][anno].map((x,j)=>j!==i?x:val)}}));
+  const onNuovoListino=base=>{
+    const nome=prompt("Nome del nuovo listino (copiato da \""+base+"\"):","Listino personalizzato");
+    if(nome&&!listini[nome]) setListini(t=>({...t,[nome]:JSON.parse(JSON.stringify(t[base]))}));
+  };
+  const onSimula=(fonte,anno,fname)=>setAnteprima({file:fname||`Export_${fonte}_${anno}.xlsx`,fonte,anno,righe:62,assoc:57,
+    unknown:[{codice:"CS76SE",righe:3,assegnato:null},{codice:"RC0969",righe:2,assegnato:null}]});
+  const onFileImport=async(fonte,anno,f)=>{
+    if(/\.pdf$/i.test(f.name)){flash("Per la produzione serve l'export .xlsx o .csv, non PDF");return;}
+    try{
+      const res=await parseProduzione(f,fonte,collab);
+      if(res.righe===0){flash("Nessuna riga dati riconosciuta nel file — verifica il tracciato");return;}
+      setAnteprima({file:f.name,fonte,anno,righe:res.righe,assoc:res.assoc,unknown:res.unknown,reale:true});
+      if(!res.headerTrovato) flash("Intestazione non standard: ho usato la prima colonna come codice — verifica l'anteprima");
+    }catch(e){flash("Errore nella lettura del file: "+(e.message||"formato non valido"));}
+  };
+  const onAssocia=(i,val)=>setAnteprima(a=>({...a,unknown:a.unknown.map((u,j)=>j!==i?u:{...u,assegnato:val})}));
+  const onConferma=annulla=>{
+    if(annulla===true){setAnteprima(null);return;}
+    setBatches(bs=>[{id:Date.now(),anno:anteprima.anno,fonte:anteprima.fonte,file:anteprima.file,data:new Date().toLocaleDateString("it-IT"),righe:anteprima.righe,assoc:anteprima.righe,stato:"confermato"},
+      ...bs.map(b=>b.fonte===anteprima.fonte&&b.anno===anteprima.anno?{...b,stato:"annullato"}:b)]);
+    setAnteprima(null);
+    flash("Import confermato — compensi ricalcolati");
+  };
+  const onGestisci=s=>{
+    if(s.cid){setOpenId(s.cid);setOpenTab(s.tipo==="prod"?"compensi":"scheda");setV("lista");}
+    else flash("Promemoria di gruppo: gestione dalla lista collaboratori filtrata");
+  };
+
+  if(!auth) return <Login onLogin={a=>{setAuth(a);setMustChange(!!a.mustChange);setV(a.role==="titolare"?"lista":"chome");setOpenId(null);}}/>;
+  if(mustChange) return <ChangePassword onDone={()=>setMustChange(false)}/>;
+
+  const me=auth.role==="collab"?collab.find(c=>c.id===auth.cid):null;
+  const meId=auth.role==="titolare"?"u_office":me.id;
+  const meName=auth.role==="titolare"?"Cosimo Spanò":me.nome;
+
+  /* ---- costruzione voci di navigazione ---- */
+  const NAV_T_GESTIONE=[["lista","👥","Collaboratori"],["comp","💶","Compensi"],["imp","📥","Import"],["tar","🏷","Tariffari"],["prod","📊","Produzione"],["cont","🧾","Pagam./Sanzioni"]];
+  const NAV_T_PRATICHE=[["office_pratiche","📁","Pratiche"],["office_templates","🧩","Tipi di pratica"],["office_impdocs","📌","Documenti importanti"]];
+  const NAV_T_ALTRO=[["scad","⏰","Scadenze"],["comm","✉","Comunicazioni"]];
+
+  let NAV_C_PORTALE=[["chome","🏠","Home"]];
+  let NAV_C_GESTIONE=[];
+  if(me){
+    if(me.portal.compensi) NAV_C_PORTALE.push(["ccomp","💶","Compensi"]);
+    if(me.portal.mie_pratiche) NAV_C_PORTALE.push(["collab_pratiche","📁","Le mie pratiche"]);
+    NAV_C_PORTALE.push(["cdocs","📂","Documenti"],["ccomm","✉","Comunicazioni"]);
+    if(me.portal.codici) NAV_C_PORTALE.push(["ccod","🔢","Codici"]);
+    if(me.portal.impdocs) NAV_C_PORTALE.push(["collab_impdocs","📌","Doc. importanti"]);
+
+    GESTIONE_KEYS.forEach(([k,ic,label])=>{ if(me.gestione[k]) NAV_C_GESTIONE.push([k,ic,label]); });
+  }
+
+  const urgent=SCAD.filter(s=>s.urgent).length;
+  const openC=openId?collab.find(c=>c.id===openId):null;
+
+  /* ---- contenuto principale ---- */
+  function renderTitolare(){
+    if(openC) return <DettaglioCollab c={openC} onBack={()=>setOpenId(null)} onTogDoc={onTogDoc} onTogPortal={onTogPortal}
+        onTogGestione={onTogGestione} onSetListino={onSetListino} listini={listini} pagamenti={pagamenti} sanzioni={sanzioni}
+        onAcconto={cid=>setAccontoFor(cid)} tabInit={openTab} key={openId+openTab}/>;
+    switch(v){
+      case "lista": return <Lista collab={collab} onOpen={id=>{setOpenTab("scheda");setOpenId(id);}}/>;
+      case "comp": return <CompensiView collab={collab} pagamenti={pagamenti} sanzioni={sanzioni} onAcconto={cid=>setAccontoFor(cid)}/>;
+      case "imp": return <ImportView batches={batches} onSimula={onSimula} onFileImport={onFileImport} anteprima={anteprima} onConferma={onConferma} onAssocia={onAssocia} toast={toast}/>;
+      case "tar": return <TariffarioView listini={listini} collab={collab} onEdit={onEditTarif} onNuovo={onNuovoListino}/>;
+      case "prod": return <Produzione collab={collab}/>;
+      case "cont": return <ContabilitaView collab={collab} pagamenti={pagamenti} sanzioni={sanzioni} onAddPag={onAddPag} onTogSanz={onTogSanz} onAssociaSanz={onAssociaSanz} onOpenAcconto={cid=>setAccontoFor(cid)} flash={flash}/>;
+      case "scad": return <Scadenze onGestisci={onGestisci}/>;
+      case "comm": return <Comunicazioni collab={collab} comms={comms} onTogComm={onTogComm}/>;
+      case "office_pratiche": return <OfficePratiche pData={pData} setPData={setPData} collab={collab} go={go} me={{role:"titolare"}}/>;
+      case "office_detail": return <OfficeDetail pData={pData} setPData={setPData} collab={collab} go={go} toast={flash} id={viewParams?.id} meId={meId}/>;
+      case "office_templates": return <OfficeTemplates pData={pData} setPData={setPData} go={go} toast={flash}/>;
+      case "office_template_edit": return <TemplateEditor pData={pData} setPData={setPData} go={go} toast={flash} id={viewParams?.id}/>;
+      case "office_impdocs": return <ImpDocsOffice pData={pData} setPData={setPData} collab={collab} toast={flash}/>;
+      default: return <Lista collab={collab} onOpen={id=>{setOpenTab("scheda");setOpenId(id);}}/>;
+    }
+  }
+  function renderCollab(){
+    if(["chome","ccomp","cdocs","ccomm","ccod"].includes(v))
+      return <PortaleCollab me={me} comms={comms} pagamenti={pagamenti} sanzioni={sanzioni} view={v}/>;
+    if(v==="collab_pratiche") return <CollabPratiche pData={pData} me={me} go={go}/>;
+    if(v==="collab_new") return <CollabNew pData={pData} setPData={setPData} me={me} go={go} toast={flash}/>;
+    if(v==="collab_detail") return <CollabDetail pData={pData} setPData={setPData} me={me} go={go} toast={flash} id={viewParams?.id}/>;
+    if(v==="collab_impdocs") return <ImpDocsCollab pData={pData} me={me}/>;
+    if(GESTIONE_KEYS.some(([k])=>k===v))
+      return <GestioneFiltrata view={v} me={me} collab={collab} pagamenti={pagamenti} sanzioni={sanzioni} batches={batches} listini={listini}
+        onAddPag={onAddPag} onTogSanz={onTogSanz} onAssociaSanz={onAssociaSanz} onOpenAcconto={cid=>setAccontoFor(cid)} flash={flash}
+        onSimula={onSimula} onFileImport={onFileImport} anteprima={anteprima} onConferma={onConferma} onAssocia={onAssocia} toast={toast}
+        onEditTarif={onEditTarif} onNuovo={onNuovoListino}/>;
+    return <PortaleCollab me={me} comms={comms} pagamenti={pagamenti} sanzioni={sanzioni} view="chome"/>;
+  }
+
+  const flatNav = auth.role==="titolare"
+    ? [...NAV_T_GESTIONE,...NAV_T_PRATICHE,...NAV_T_ALTRO]
+    : [...NAV_C_GESTIONE,...NAV_C_PORTALE];
+
+  return <div className="app">
+    <aside className="side">
+      <div className="logo"><span className="dot"/>Pratic<b>Hub</b></div>
+
+      {auth.role==="titolare" && <>
+        <div className="navlabel">Collaboratori &amp; compensi</div>
+        {NAV_T_GESTIONE.map(([k,i,l])=>
+          <button key={k} className={"nav-it"+(v===k&&!openC?" on":"")} onClick={()=>go(k)}>
+            <span className="ic">{i}</span>{l}{(k==="prod"||k==="imp")&&<span className="lock">🔒</span>}
+          </button>)}
+        <div className="navlabel">Pratiche</div>
+        {NAV_T_PRATICHE.map(([k,i,l])=>
+          <button key={k} className={"nav-it"+(v===k&&!openC?" on":"")} onClick={()=>go(k)}>
+            <span className="ic">{i}</span>{l}
+          </button>)}
+        <div className="navlabel">Altro</div>
+        {NAV_T_ALTRO.map(([k,i,l])=>
+          <button key={k} className={"nav-it"+(v===k&&!openC?" on":"")} onClick={()=>go(k)}>
+            <span className="ic">{i}</span>{l}{k==="scad"&&urgent>0&&<span className="bdg">{urgent}</span>}
+          </button>)}
+      </>}
+
+      {auth.role==="collab" && <>
+        {NAV_C_GESTIONE.length>0 && <>
+          <div className="navlabel">Gestione</div>
+          {NAV_C_GESTIONE.map(([k,i,l])=>
+            <button key={k} className={"nav-it"+(v===k?" on":"")} onClick={()=>go(k)}>
+              <span className="ic">{i}</span>{l}
+            </button>)}
+        </>}
+        <div className="navlabel">Il mio portale</div>
+        {NAV_C_PORTALE.map(([k,i,l])=>
+          <button key={k} className={"nav-it"+(v===k?" on":"")} onClick={()=>go(k)}>
+            <span className="ic">{i}</span>{l}
+          </button>)}
+      </>}
+
+      <div className="who">
+        <b>{meName}</b>
+        {auth.role==="titolare"?"Titolare":"Collaboratore"}
+        <button className="out" onClick={()=>{setAuth(null);setV("lista");setOpenId(null);}}>→ Esci</button>
+      </div>
+    </aside>
+    <main className="main">
+      {auth.role==="titolare" ? renderTitolare() : renderCollab()}
+      {toast && v!=="imp" && <div className="toast">{toast}</div>}
+      {accontoFor!==undefined && <AccontoModal collab={collab} cid={accontoFor} onClose={()=>setAccontoFor(undefined)} onSave={(c,i,ca,da)=>onAddPag(c,i,ca,da)}/>}
+    </main>
+    <nav className="bnav">
+      {flatNav.map(([k,i,l])=><button key={k} className={v===k?"on":""} onClick={()=>go(k)}><span className="i">{i}</span>{l}</button>)}
+    </nav>
+  </div>;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
