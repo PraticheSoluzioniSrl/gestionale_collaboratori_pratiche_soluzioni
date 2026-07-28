@@ -810,14 +810,14 @@ const GESTIONE_KEYS = [
 ];
 /* chiavi sezioni "portale personale" del collaboratore */
 const PORTALE_KEYS = [
-  ["dashboard","ðŸ ","Dashboard"],
+  ["dashboard","🏠","Dashboard"],
   ["compensi","💶","Compensi"],
   ["documenti","📌","Documenti importanti"],
   ["comunicazioni","✉","Comunicazioni"],
   ["stampa","🖨","Stampa documenti"],
 ];
 const PORTALE_PRATICHE_KEYS = [
-  ["mie_pratiche","ðŸ“","Le mie pratiche"],
+  ["mie_pratiche","📁","Le mie pratiche"],
   ["nuova_pratica","➕","Nuova pratica"],
   ["impdocs","📌","Doc. importanti"],
 ];
@@ -1003,7 +1003,7 @@ const codeCls = (v,stato)=> v.includes("*")?"open":(stato==="warn"?"warn":"");
 const CK = [["caf","CAF"],["del","DELEGA"],["misia","MISIA"],["naspi","NASPI/DS"],["gest","GEST."]];
 const RUBRICA_KEYS = ["cognome","nome_proprio","cap","localita","provincia","fax","tipo_sede","stato_occupazionale","comando_enasc","ore","scadenze_contratti","stato_caf","incarico","soci_associazione","altre_contatti"];
 const rubFrom = c => Object.fromEntries(RUBRICA_KEYS.map(k=>[k,c[k]||""]));
-const bollLbl = s => s==="paid"?"✓ Pagato":s==="paid_collab"?"✓ Pagato dal collaboratore":"â— Da pagare";
+const bollLbl = s => s==="paid"?"✓ Pagato":s==="paid_collab"?"✓ Pagato dal collaboratore":"● Da pagare";
 const bollCls = s => (s==="paid"||s==="paid_collab")?s:"due";
 const bollOk = s => s==="paid"||s==="paid_collab";
 /* ============================== MODULO PRATICHE — CONFIG STATI ============================== */
@@ -1197,7 +1197,7 @@ function Spark({p,bad}){
 }
 function VTog({vis,onClick}){
   return <button className={"vtog "+(vis?"vis":"hid")} onClick={e=>{e.stopPropagation();onClick();}}>
-    {vis?"ðŸ‘ Visibile al collaboratore":"🚫 Solo interno"}
+    {vis?"👁 Visibile al collaboratore":"🚫 Solo interno"}
   </button>;
 }
 function matchBank(descr){
@@ -2007,7 +2007,7 @@ function Card({c,onOpen}){
     </div>
     <div className="meta">
       {c.tel[0]&&<div className="mono" style={{fontWeight:600,color:"var(--ink)"}}>{c.tel[0]}</div>}
-      <div className={"boll "+bollCls(c.boll[2026])}>{bollLbl(c.boll[2026]).replace("✓ ","✓ Bollettino 2026 ").replace("â— ","â— Bollettino 2026 ")}</div>
+      <div className={"boll "+bollCls(c.boll[2026])}>{bollLbl(c.boll[2026]).replace("✓ ","✓ Bollettino 2026 ").replace("● ","● Bollettino 2026 ")}</div>
       {t.lvl==="hi"&&<div><span className="riskmini r-hi">📉 {t.lbl}</span></div>}
     </div>
   </div>;
@@ -2085,7 +2085,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
   const Info=({l,r,mono})=> r?<div className="info-row"><span className="l">{l}</span><span className={"r"+(mono?" mono":"")}>{r}</span></div>:null;
   return <React.Fragment>
     <div className="dpage-h">
-      <button className="back" onClick={onBack}>â† Torna all'elenco</button>
+      <button className="back" onClick={onBack}>← Torna all'elenco</button>
       <h2>{c.nome}</h2>
       <div className="as">{c.assoc||"Nessuna associazione territoriale"} · <span className={"st "+cls}>{lb}</span> · CF <span className="mono">{c.cf||"—"}</span></div>
         <div className="dtabs">
@@ -2098,7 +2098,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
         <button className="btn btn-g btn-sm" onClick={cancelEdit}>Annulla</button>
         <button className="btn btn-p btn-sm" onClick={saveEdit}>💾 Salva modifiche</button>
       </React.Fragment>:<React.Fragment>
-        <button className="btn btn-g btn-sm" onClick={startEdit}>âœ Modifica</button>
+        <button className="btn btn-g btn-sm" onClick={startEdit}>✏ Modifica</button>
         <button className="btn btn-g btn-sm" onClick={()=>{
           if(tab==="compensi"&&typeof payStampa==="function") payStampa('pay-comp-print');
           else if(tab==="prod"&&typeof payStampa==="function") payStampa('pay-prod-print');
@@ -2121,10 +2121,10 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
             </div>
             <div className="prof-meta">
               <span>CF <b className="mono">{c.cf||"—"}</b></span>
-              {(c.localita||c.cap||c.provincia)&&<span>ðŸ“ {[c.localita,c.cap,c.provincia].filter(Boolean).join(" ")}</span>}
+              {(c.localita||c.cap||c.provincia)&&<span>📍 {[c.localita,c.cap,c.provincia].filter(Boolean).join(" ")}</span>}
               {c.tel[0]&&<span>☎ <b className="mono">{c.tel[0]}</b></span>}
               {c.email[0]&&<span>✉ <b>{c.email[0]}</b></span>}
-              {c.citta&&<span>ðŸ  {c.citta}</span>}
+              {c.citta&&<span>🏠 {c.citta}</span>}
               {c.iban&&<span>IBAN <b className="mono">{c.iban}</b></span>}
             </div>
           </div>
@@ -2179,7 +2179,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
             <Info l="Soci associazione" r={c.soci_associazione}/>
           </div>
         </div>}
-        {stab==="note"&&!c.note&&<div className="empty"><div className="big">ðŸ“</div>Nessuna nota interna.</div>}
+        {stab==="note"&&!c.note&&<div className="empty"><div className="big">📝</div>Nessuna nota interna.</div>}
         {stab==="boll"&&<div className="sec"><h3>Bollettino annuale</h3>
           {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
             <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
@@ -2297,7 +2297,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
           {[2026,2025,2024].map(y=><div className="bolrow" key={y}>
             <span className="y">{y}</span>
             <select value={draft.boll[y]||"due"} onChange={e=>setBoll(y,e.target.value)} style={{border:"1.5px solid var(--line)",borderRadius:9,padding:"7px 11px",fontWeight:600,fontSize:13}}>
-              <option value="due">â— Da pagare</option>
+              <option value="due">● Da pagare</option>
               <option value="paid">✓ Pagato</option>
               <option value="paid_collab">✓ Pagato dal collaboratore</option>
             </select>
@@ -2381,7 +2381,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
     </React.Fragment>}
 
     {tab==="perm"&&<React.Fragment>
-      <div className="infobox">â„¹ï¸ Le sezioni <b>Contabilità (portale)</b> mostrano al collaboratore solo i propri dati. Le sezioni <b>Gestione contabile</b> danno accesso a funzioni avanzate, sempre <b>filtrate</b> ai soli dati di {c.nome.split(" ")[0]} — non vedrà mai i dati degli altri collaboratori.</div>
+      <div className="infobox">ℹ️ Le sezioni <b>Contabilità (portale)</b> mostrano al collaboratore solo i propri dati. Le sezioni <b>Gestione contabile</b> danno accesso a funzioni avanzate, sempre <b>filtrate</b> ai soli dati di {c.nome.split(" ")[0]} — non vedrà mai i dati degli altri collaboratori.</div>
 
       <div className="permgroup">
         <div className="pgt">Contabilità (portale)</div>
@@ -2454,7 +2454,7 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
     <div className="chips">{FILTRI.map(([k,l])=><button key={k} className={"chip"+(f===k?" on":"")} onClick={()=>setF(k)}>{l}</button>)}</div>
     <div className="cnt">{list.length} risultat{list.length===1?"o":"i"}</div>
     {list.map(c=><Card key={c.id} c={c} onOpen={onOpen}/>)}
-    {list.length===0&&<div className="empty"><div className="big">ðŸ”</div>Nessun risultato.</div>}
+    {list.length===0&&<div className="empty"><div className="big">🔍</div>Nessun risultato.</div>}
   </React.Fragment>;
 }
 
@@ -2664,7 +2664,7 @@ function ContabilitaView({collab,pagamenti,sanzioni,onAddPag,onTogSanz,onAssocia
     <div className="top"><div><h1>Pagamenti e sanzioni</h1><div className="sub">Registro acconti ai collaboratori e sanzioni da trattenere</div></div></div>
     <div className="tabs2">
       <button className={tab==="pag"?"on":""} onClick={()=>setTab("pag")}>Acconti pagati</button>
-      <button className={tab==="banca"?"on":""} onClick={()=>setTab("banca")}>ðŸ¦ Importa estratto conto</button>
+      <button className={tab==="banca"?"on":""} onClick={()=>setTab("banca")}>🏦 Importa estratto conto</button>
       <button className={tab==="sanz"?"on":""} onClick={()=>setTab("sanz")}>Sanzioni {daAssoc.length>0&&"("+daAssoc.length+" da associare)"}</button>
     </div>
 
@@ -2678,7 +2678,7 @@ function ContabilitaView({collab,pagamenti,sanzioni,onAddPag,onTogSanz,onAssocia
 
     {tab==="banca"&&<React.Fragment>
       {!bank&&<DropZone accept=".csv,.xlsx,.xls,.pdf" onFile={fileBanca}>
-        <div className="big">ðŸ¦</div>
+        <div className="big">🏦</div>
         Trascina qui l'estratto conto (<b>.csv / .xlsx / .pdf</b>) scaricato dalla banca o <b style={{color:"var(--sky)"}}>clicca per selezionarlo</b> — il file viene letto davvero
         <div style={{marginTop:12}}><button className="btn btn-p" onClick={e=>{e.stopPropagation();simulaBanca();}}>Oppure simula con dati demo</button></div>
         <div style={{fontSize:11.5,marginTop:10}}>Dai PDF il sistema estrae il testo dei movimenti automaticamente · associa i bonifici per nome — dove non c'è corrispondenza certa, scegli tu</div></DropZone>}
@@ -2737,7 +2737,7 @@ function Produzione({collab}){
     {withT.map(c=><div key={c.id} className={"prod-card "+c.t.lvl}>
       <div className="who"><div className="n">{c.nome}</div>
         <div className="c">{c.codici.caf?"CAF "+c.codici.caf.replace("*",""):"—"} · {c.tot} pratiche nel periodo</div>
-        <div className={"payrow "+(c.pag.reg?"okp":"late")}>{c.pag.reg?"✓ Pagamenti regolari":"â— In ritardo"+(c.pag.ins>0?" · insoluto "+eur(c.pag.ins):"")} · ultimo: {c.pag.ult}</div></div>
+        <div className={"payrow "+(c.pag.reg?"okp":"late")}>{c.pag.reg?"✓ Pagamenti regolari":"● In ritardo"+(c.pag.ins>0?" · insoluto "+eur(c.pag.ins):"")} · ultimo: {c.pag.ult}</div></div>
       <Spark p={c.prod} bad={c.t.lvl==="hi"}/>
       <div className="pstats">
         <div className="pstat"><div className={"v "+(c.t.pct<0?"neg":"pos")}>{c.t.pct>0?"+":""}{c.t.pct}%</div><div className="l">Trend</div></div>
@@ -2858,7 +2858,7 @@ function PortaleCollab({me,comms,pagamenti,sanzioni,view,detMap,onSegnalaVar}){
     <div className="cgrid">{CK.map(([k,l])=>me.codici[k]?<div key={k} className="cbox"><div className="k">{l}</div><div className="v">{me.codici[k]}</div></div>:null)}</div>
     <h3 className="disp" style={{fontSize:15,margin:"22px 0 11px"}}>Bollettino annuale</h3>
     {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
-      <span className={"boll "+bollCls(me.boll[y])}>{bollOk(me.boll[y])?(me.boll[y]==="paid_collab"?"✓ Pagato dal collaboratore":"✓ Pagato — grazie!"):"â— Da pagare"}</span></div>)}
+      <span className={"boll "+bollCls(me.boll[y])}>{bollOk(me.boll[y])?(me.boll[y]==="paid_collab"?"✓ Pagato dal collaboratore":"✓ Pagato — grazie!"):"● Da pagare"}</span></div>)}
   </React.Fragment>;
   return <div className="empty"><div className="big">🔒</div>Sezione non disponibile.</div>;
 }
@@ -2965,7 +2965,7 @@ function OfficePratiche({pData,setPData,collab,go,me,onlyMe}){
   const resetF=()=>{setF("tutte");setFc("tutti");setFt("tutti");setQ("");};
   const anyF = f!=="tutte"||fc!=="tutti"||ft!=="tutti"||ql;
   return <>
-    <div className="top"><div><h1>ðŸ“ Pratiche</h1><div className="sub">{onlyMe?"Le pratiche che ti sono assegnate":"Tutte le pratiche dello studio"}</div></div></div>
+    <div className="top"><div><h1>📁 Pratiche</h1><div className="sub">{onlyMe?"Le pratiche che ti sono assegnate":"Tutte le pratiche dello studio"}</div></div></div>
     <div className="kpis">
       <div className="kpi"><div className="kv">{list.length}</div><div className="kl">Pratiche totali</div></div>
       <div className="kpi navy"><div className="kv">{counts.inviata}</div><div className="kl">Da prendere in carico</div></div>
@@ -2974,7 +2974,7 @@ function OfficePratiche({pData,setPData,collab,go,me,onlyMe}){
     </div>
     <div className="panel">
       <div className="ph">
-        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="ðŸ” Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="🔍 Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
         <select className="chip" style={{maxWidth:190,padding:"9px 13px"}} value={f} onChange={e=>setF(e.target.value)}>
           <option value="tutte">Tutti gli stati</option>
           {FLOW.map(s=><option key={s} value={s}>{STATUSES[s].label}</option>)}
@@ -3063,7 +3063,7 @@ function OfficeDetail({pData,setPData,collab,go,toast,id,meId}){
   const docFiles=p.files||[];
 
   return <>
-    <button className="btn btn-g btn-sm" onClick={()=>go("office_pratiche")} style={{marginBottom:14}}>â† Pratiche</button>
+    <button className="btn btn-g btn-sm" onClick={()=>go("office_pratiche")} style={{marginBottom:14}}>← Pratiche</button>
     <div className="panel pad" style={{marginBottom:18}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
         <div>
@@ -3088,7 +3088,7 @@ function OfficeDetail({pData,setPData,collab,go,toast,id,meId}){
             {tab==="documenti" && <>
               {docFiles.length===0? <div className="empty"><div className="big">📄</div>Nessun documento caricato.</div> : <>
                 <div style={{display:"flex",justifyContent:"flex-end",marginBottom:10}}>
-                  <button className="btn btn-g btn-sm" onClick={zipAll}>ðŸ—œï¸ Scarica tutto (ZIP)</button>
+                  <button className="btn btn-g btn-sm" onClick={zipAll}>🗜️ Scarica tutto (ZIP)</button>
                 </div>
                 {docFiles.map(f=>(
                   <div className="filecard" key={f.id}>
@@ -3143,8 +3143,8 @@ function OfficeDetail({pData,setPData,collab,go,toast,id,meId}){
           <div className="muted small" style={{lineHeight:1.9}}>
             <div><b style={{color:"var(--ink)"}}>{c.nome}</b></div>
             {c.tel?.[0] && <div>📞 {c.tel[0]}</div>}
-            {c.email?.[0] && <div>âœ‰ï¸ {c.email[0]}</div>}
-            {c.citta && <div>ðŸ“ {c.citta}</div>}
+            {c.email?.[0] && <div>✉️ {c.email[0]}</div>}
+            {c.citta && <div>📍 {c.citta}</div>}
             {c.cf && <div>🆔 {c.cf}</div>}
           </div>
         </div>}
@@ -3226,7 +3226,7 @@ function TemplateEditor({pData,setPData,go,toast,id}){
   const delF=(i)=> setT(s=>({...s,fields:s.fields.filter((_,j)=>j!==i)}));
 
   return <>
-    <button className="btn btn-g btn-sm" onClick={()=>go("office_templates")} style={{marginBottom:14}}>â† Tipi di pratica</button>
+    <button className="btn btn-g btn-sm" onClick={()=>go("office_templates")} style={{marginBottom:14}}>← Tipi di pratica</button>
     <div className="panel pad" style={{marginBottom:16}}>
       <div className="row">
         <div style={{flex:2}}>
@@ -3273,7 +3273,7 @@ function TemplateEditor({pData,setPData,go,toast,id}){
             </div>
             <div style={{flex:1,minWidth:8}}/>
             {d.model ? <span className="muted small" style={{display:"flex",alignItems:"center",gap:8}}>
-                {d.model.kind==="file"?"📎 "+d.model.fileName:"ðŸ“ Modello precompilabile"}
+                {d.model.kind==="file"?"📎 "+d.model.fileName:"📝 Modello precompilabile"}
                 <button className="btn btn-g btn-sm" onClick={()=>setModelIdx(i)}>Modifica</button>
                 <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={()=>setDoc(i,{model:null})} title="Rimuovi modello">×</button>
               </span>
@@ -3378,7 +3378,7 @@ function DocChecklist({tpl,getFiles,onAdd,onRemove,canEdit,fieldValues,toast}){
           <div className={"doc-ic "+(fs.length?"uploaded":"")} style={!fs.length&&cat==="obbligatorio"?{background:"var(--redbg)"}:{}}>{fs.length?"✓":"+"}</div>
           <div style={{flex:1,minWidth:0}}>
             <div style={{fontWeight:600}}>{d.label}</div>
-            {d.model && <div className="muted small" style={{marginTop:2}}>{d.model.kind==="file"?"📎 Modello: "+d.model.fileName:"ðŸ“ Modello precompilabile disponibile"}</div>}
+            {d.model && <div className="muted small" style={{marginTop:2}}>{d.model.kind==="file"?"📎 Modello: "+d.model.fileName:"📝 Modello precompilabile disponibile"}</div>}
             {fs.map((fl,i)=>(
               <div className="muted small" key={i} style={{display:"flex",gap:8,alignItems:"center"}}>📎 {fl.name} ({human(fl.size)}) {canEdit && <button className="btn btn-g btn-sm" style={{padding:"2px 7px"}} onClick={()=>onRemove(d.id,i,fl)}>×</button>}</div>
             ))}
@@ -3432,13 +3432,13 @@ function CollabPratiche({pData,me,go}){
   const mine=all.filter(p=>(f==="tutte"||p.status===f) && (!ql||(p.code+" "+(p.assistito||"")).toLowerCase().includes(ql)));
   return <>
     <div className="top">
-      <div><h1>ðŸ“ Le mie pratiche</h1><div className="sub">Le pratiche che hai caricato — clicca per vedere stato e ricevute</div></div>
+      <div><h1>📁 Le mie pratiche</h1><div className="sub">Le pratiche che hai caricato — clicca per vedere stato e ricevute</div></div>
       <button className="btn btn-t" onClick={()=>go("collab_new")}>➕ Nuova pratica</button>
     </div>
-    {all.length===0? <div className="panel"><div className="empty"><div className="big">ðŸ“</div>Non hai ancora caricato pratiche.<br/><button className="btn btn-t btn-sm" style={{marginTop:14}} onClick={()=>go("collab_new")}>Crea la prima</button></div></div> :
+    {all.length===0? <div className="panel"><div className="empty"><div className="big">📁</div>Non hai ancora caricato pratiche.<br/><button className="btn btn-t btn-sm" style={{marginTop:14}} onClick={()=>go("collab_new")}>Crea la prima</button></div></div> :
     <div className="panel">
       <div className="ph">
-        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="ðŸ” Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
+        <input className="search" style={{maxWidth:240,padding:"10px 14px"}} placeholder="🔍 Cerca codice o assistito..." value={q} onChange={e=>setQ(e.target.value)}/>
         <select className="chip" style={{maxWidth:200,padding:"9px 13px"}} value={f} onChange={e=>setF(e.target.value)}>
           <option value="tutte">Tutti gli stati</option>
           <option value="bozza">Bozza</option>
@@ -3504,7 +3504,7 @@ function CollabNew({pData,setPData,me,go,toast}){
   }
 
   return <>
-    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>â† Le mie pratiche</button>
+    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>← Le mie pratiche</button>
 
     {step===1 && <>
       <h3 style={{marginTop:0}}>Che tipo di pratica vuoi caricare?</h3>
@@ -3558,7 +3558,7 @@ function CollabNew({pData,setPData,me,go,toast}){
       </div>}
 
       <div style={{display:"flex",justifyContent:"space-between"}}>
-        <button className="btn btn-g" onClick={()=>setStep(1)}>â† Cambia tipo</button>
+        <button className="btn btn-g" onClick={()=>setStep(1)}>← Cambia tipo</button>
         <div style={{display:"flex",gap:10}}>
           <button className="btn btn-g" onClick={()=>submit(true)}>💾 Salva bozza</button>
           <button className="btn btn-t" disabled={reqMissing.length>0||fieldMissing.length>0} onClick={()=>submit(false)}>🔒 Invia pratica</button>
@@ -3610,7 +3610,7 @@ function CollabDetail({pData,setPData,me,go,toast,id}){
   }
 
   return <>
-    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>â† Le mie pratiche</button>
+    <button className="btn btn-g btn-sm" onClick={()=>go("collab_pratiche")} style={{marginBottom:14}}>← Le mie pratiche</button>
     <div className="panel pad" style={{marginBottom:16}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
         <div>
@@ -8708,13 +8708,13 @@ function App(){
   let NAV_C_CONTABILITA=[];
   let NAV_C_INVIO=[];
   if(me){
-    if(me.portal.dashboard) NAV_C_CONTABILITA.push(["chome","ðŸ ","Dashboard"]);
+    if(me.portal.dashboard) NAV_C_CONTABILITA.push(["chome","🏠","Dashboard"]);
     if(me.portal.compensi) NAV_C_CONTABILITA.push(["ccomp","💶","Compensi"]);
     GESTIONE_KEYS.forEach(([k,ic,label])=>{ if(me.gestione[k]){ if(PAY_USE_API&&k==="g_cont"){NAV_C_CONTABILITA.push(["cpag","💳","Pagamenti"]);NAV_C_CONTABILITA.push(["csanz","⚠","Sanzioni"]);}else NAV_C_CONTABILITA.push([k,ic,label]); }});
     if(me.portal.documenti) NAV_C_CONTABILITA.push(["collab_impdocs","📌","Doc. importanti"]);
     if(me.portal.comunicazioni) NAV_C_CONTABILITA.push(["ccomm","✉","Comunicazioni"]);
 
-    if(me.portal.mie_pratiche) NAV_C_INVIO.push(["collab_pratiche","ðŸ“","Le mie pratiche"]);
+    if(me.portal.mie_pratiche) NAV_C_INVIO.push(["collab_pratiche","📁","Le mie pratiche"]);
     if(me.portal.nuova_pratica) NAV_C_INVIO.push(["collab_new","➕","Nuova pratica"]);
     if(me.portal.impdocs && !me.portal.documenti) NAV_C_INVIO.push(["collab_impdocs","📌","Doc. importanti"]);
   }
