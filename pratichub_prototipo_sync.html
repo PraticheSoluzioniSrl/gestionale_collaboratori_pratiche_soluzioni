@@ -15,9 +15,14 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root{
-  --navy:#1B2A4E; --navy2:#142038; --sky:#75CEF3; --teal:#75CEF3;
-  --bg:#F2F6FB; --ink:#152238; --mut:#5A6B85; --line:#E2EAF4;
-  --amber:#B97A00; --amberbg:#FFF4D6; --red:#C2403A; --redbg:#FDE8E7; --tealbg:#E8F6FD;
+  --navy:#1B2A4E; --navy2:#142038; --navy-dark:#0C2A69; --sky:#75CEF3; --teal:#75CEF3;
+  --cyan:#25B9E9;
+  --bg:#F2F6FB; --ink:#152238; --mut:#5A6B85; --muted:#5A6B85; --line:#E2EAF4; --card:#fff;
+  --amber:#B97A00; --amberbg:#FFF4D6; --amber-bg:#FFF6E0;
+  --red:#C2403A; --redbg:#FDE8E7; --red-bg:#FDECEA;
+  --green:#0B6B3A; --green-bg:#E9F7EF;
+  --tealbg:#E8F6FD; --r:12px;
+  --sh:0 1px 2px rgba(18,34,74,.05), 0 8px 24px rgba(18,34,74,.05);
 }
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
@@ -54,7 +59,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 
 /* APP */
 .app{display:flex;min-height:100vh}
-.side{width:250px;background:var(--navy);color:#E8EEF8;padding:18px 12px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:none;flex-shrink:0}
+.side{width:250px;background:var(--navy);color:#E8EEF8;padding:18px 14px;display:flex;flex-direction:column;gap:4px;position:sticky;top:0;height:100vh;overflow-y:auto;border-right:none;flex-shrink:0}
 .area-main{padding:0!important;flex:1;min-width:0;display:flex;flex-direction:column}
 .logo{font-family:'Bricolage Grotesque';font-weight:800;font-size:21px;letter-spacing:-.5px;padding:0 10px 16px;display:flex;align-items:center;gap:8px;color:#fff}
 .logo img{display:block;height:32px;width:auto;max-width:100%}
@@ -67,7 +72,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .navgroup.on{background:rgba(45,212,191,.18);color:#fff}
 .navgroup .navchev{font-size:11px;opacity:.85}
 .navsub{padding-left:6px}
-.nav-it{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:#C5D0E4;font-weight:600;font-size:14px;width:100%;text-align:left}
+.nav-it{display:flex;align-items:center;gap:12px;padding:11px 14px;border-radius:10px;color:#C5D0E4;font-weight:600;font-size:14px;width:100%;text-align:left}
 .nav-it:hover{background:rgba(255,255,255,.08);color:#fff}
 .nav-it.on{background:#2DD4BF;color:#fff}
 .nav-it .ic{width:20px;text-align:center;font-size:15px}
@@ -91,7 +96,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .topitem.on{background:rgba(66,168,240,.14);color:var(--navy);border-color:#CFE0F4}
 .topitem .ic{font-size:14px}
 
-.main{flex:1;min-width:0;padding:22px 24px 100px}
+.main{flex:1;min-width:0;padding:26px 28px 100px;overflow-x:hidden}
 .top{display:flex;align-items:flex-end;justify-content:space-between;gap:14px;margin-bottom:20px;flex-wrap:wrap}
 .top h1{font-size:24px;font-weight:700;letter-spacing:-.4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .top .sub{color:var(--mut);font-size:13.5px;margin-top:3px}
@@ -101,7 +106,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .btn-g{background:#fff;border:1.5px solid var(--line);color:var(--ink)}.btn-g:hover{border-color:var(--sky)}
 .btn-r{background:var(--red);color:#fff}.btn-r:hover{filter:brightness(1.06)}
 .btn-sky{background:var(--sky);color:#fff}.btn-sky:hover{filter:brightness(1.06)}
-.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:8px}
+.btn-sm{padding:9px 14px;font-size:13px;border-radius:9px}
 .btn:disabled{opacity:.45;cursor:not-allowed}
 .lockpill{font-size:11px;font-weight:700;background:var(--navy2);color:#fff;border-radius:99px;padding:4px 11px}
 
@@ -154,7 +159,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .panel .ph{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .panel .ph h3{font-size:15px;font-weight:700}
 .panel .ph .sp{margin-left:auto;display:flex;gap:8px}
-.panel .pad{padding:18px}
+.panel .pad{padding:20px 22px}
 .tbl{width:100%;border-collapse:collapse;font-size:13.5px}
 .tbl th{font-size:10.5px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--mut);text-align:right;padding:9px 14px;border-bottom:1px solid var(--line);background:#F8FAFD}
 .tbl th:first-child{text-align:left}
@@ -165,8 +170,27 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .tbl .e{color:var(--mut)}
 .tbl .neg{color:var(--red);font-weight:700}
 .tbl tr.clk:hover{background:#F7FAFE;cursor:pointer}
-.selrow{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
-.selrow select{border:1.5px solid var(--line);border-radius:10px;padding:10px 13px;background:#fff;font-weight:600;min-width:150px}
+.selrow{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 14px;align-items:flex-end;padding:12px 14px;background:#F4F8FD;border:1px solid var(--line);border-radius:12px}
+.selrow select,.selrow input[type="text"],.selrow input:not([type]){height:34px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#fff;min-width:140px;font-weight:600}
+.selrow .f{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.selrow .f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+
+/* Allineamento sezioni al layout Collaboratori */
+.page-split{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,360px);gap:16px;align-items:start}
+.page-split.solo{grid-template-columns:1fr}
+@media(max-width:980px){.page-split{grid-template-columns:1fr}}
+.detail-drawer{background:#fff;border:1px solid var(--line);border-radius:15px;padding:18px;box-shadow:0 1px 2px rgba(15,27,53,.04);position:sticky;top:12px}
+.detail-drawer h3{margin:0 0 4px;font-size:17px;font-weight:700}
+.detail-drawer .muted{margin-bottom:14px}
+.card.on{border-color:var(--sky);box-shadow:0 4px 14px rgba(10,42,108,.08);background:#F7FBFF}
+.card .meta .act{margin-top:8px;display:flex;flex-direction:column;gap:4px;align-items:flex-end}
+.pay-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.pay-tabs .chip{cursor:pointer}
+.tbl-wrap{background:#fff;border:1px solid var(--line);border-radius:15px;overflow:auto;max-height:62vh;box-shadow:0 1px 2px rgba(15,27,53,.04);margin-bottom:16px}
+.tbl-wrap .tbl{margin:0}
+.tbl thead th.sticky{position:sticky;top:0;z-index:1;background:#F8FAFD;color:var(--mut)}
+.toolbar-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
 
 .saldo{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:16px}
 .sbox{background:#fff;border:1px solid var(--line);border-radius:13px;padding:13px 15px;box-shadow:0 1px 2px rgba(15,27,53,.04)}
@@ -217,10 +241,15 @@ input,select,textarea{font-family:inherit;font-size:14px}
 
 /* dettaglio collaboratore — pagina intera */
 .dpage-h{background:var(--navy);color:#fff;border-radius:18px;padding:22px 26px;margin-bottom:18px;position:relative}
-.dpage-h h2{font-size:22px;font-weight:700;padding-right:40px}
+.dpage-h h2{font-size:22px;font-weight:700;padding-right:200px}
 .dpage-h .as{font-size:13px;color:#A8BCE5;margin-top:5px}
-.dpage-h .back{position:absolute;top:18px;right:18px;color:#B9C9E8;font-weight:700;font-size:13px;background:rgba(255,255,255,.1);border-radius:9px;padding:8px 14px}
-.dpage-h .back:hover{background:rgba(255,255,255,.2);color:#fff}
+.dpage-h .back{position:absolute;top:18px;right:18px;color:#fff;font-weight:700;font-size:13px;background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.45);border-radius:9px;padding:9px 16px;cursor:pointer}
+.dpage-h .back:hover{background:rgba(255,255,255,.28);color:#fff}
+.lista-filtri{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;margin:12px 0 8px;padding:12px 14px;background:#F4F8FD;border:1px solid var(--line);border-radius:12px}
+.lista-filtri .f{display:flex;flex-direction:column;gap:4px;min-width:130px}
+.lista-filtri .f label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.lista-filtri .f select,.lista-filtri .f input{height:34px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#fff;min-width:140px}
+.lista-filtri .reset{height:34px}
 .dtabs{display:flex;gap:4px;margin-top:16px;flex-wrap:wrap}
 .dtabs button{padding:8px 15px;border-radius:9px;font-size:13px;font-weight:700;color:#A8BCE5}
 .dtabs button.on{background:rgba(255,255,255,.18);color:#fff}
@@ -372,7 +401,7 @@ input,select,textarea{font-family:inherit;font-size:14px}
 @media(max-width:1100px){.grid2{grid-template-columns:1fr}}
 .badge-st{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:700}
 .dotst{width:7px;height:7px;border-radius:50%}
-.pill{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:20px}
+.pill{display:inline-block;font-size:12px;font-weight:700;padding:5px 12px;border-radius:20px;line-height:1.3}
 .pill.req{background:var(--redbg);color:var(--red)}
 .pill.use{background:var(--amberbg);color:var(--amber)}
 .pill.opt{background:#eef2fa;color:var(--mut)}
@@ -424,6 +453,44 @@ input,select,textarea{font-family:inherit;font-size:14px}
   .bnav button .i{font-size:18px}
   .bnav button.on{color:#fff;background:rgba(66,168,240,.25)}
 }
+
+/* Schede e Collaboratori — costi dipendenti (RIFERIMENTO_costi_dipendenti.html) */
+#costi .head{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:20px;flex-wrap:wrap}
+#costi .head h1{margin:0;font-size:23px;font-weight:800;letter-spacing:-.02em;color:var(--navy)}
+#costi .head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+#costi .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:16px;overflow:hidden;padding:0;display:block;cursor:default}
+#costi .card.focus{border-color:var(--cyan);box-shadow:0 0 0 3px rgba(37,185,233,.13),var(--sh)}
+#costi .chead{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:15px 20px;border-bottom:1px solid var(--line)}
+#costi .chead h2{margin:0;font-size:15px;font-weight:700;letter-spacing:-.01em}
+#costi .chead .note{font-size:12px;color:var(--muted);font-weight:500}
+#costi .chead .val{font-size:15px;font-weight:700}
+#costi .cbody{padding:18px 20px}
+#costi .cbody.flush{padding:0}
+#costi table{width:100%;border-collapse:collapse}
+#costi thead th{font-size:10.5px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);
+  background:#FAFBFE;padding:9px 14px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+#costi thead th:first-child{text-align:left}
+#costi tbody td{padding:10px 14px;border-bottom:1px solid #F1F4FA;text-align:right;font-size:13px}
+#costi tbody td:first-child{text-align:left;font-weight:600}
+#costi tbody tr:last-child td{border-bottom:none}
+#costi tbody tr:hover{background:#FBFCFF}
+#costi tfoot td{padding:11px 14px;background:#FAFBFE;font-weight:700;text-align:right;border-top:1px solid var(--line)}
+#costi tfoot td:first-child{text-align:left}
+#costi .sub{display:block;font-size:11px;color:var(--muted);font-weight:500;margin-top:1px}
+#costi .pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10.5px;font-weight:700;white-space:nowrap}
+#costi .pill.ok{background:var(--green-bg);color:var(--green)}
+#costi .pill.warn{background:var(--amber-bg);color:var(--amber)}
+#costi .pill.bad{background:var(--red-bg);color:var(--red)}
+#costi .acts{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+#costi .tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+#costi .tabs button{font:inherit;font-size:12.5px;font-weight:700;padding:7px 14px;border-radius:99px;border:1px solid var(--line);background:#fff;cursor:pointer;color:#5A6480}
+#costi .tabs button[aria-selected="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+#costi .legend{font-size:11.5px;color:var(--muted);padding:11px 20px;border-top:1px solid var(--line);background:#FAFBFE}
+#costi .dn{color:var(--red);font-weight:700}
+#costi .up{color:var(--green);font-weight:700}
+#costi .mono.bad{color:var(--red);font-weight:700}
+#costi select,#costi input[type=text],#costi input[type=number]{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
+#costi .pay-collab-pick input{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;height:auto}
 </style>
 </head>
 <body>
@@ -642,16 +709,31 @@ const BANK_DEMO = [
 
 /* ============ HELPERS ============ */
 const STL = {ok:["Attivo","st-ok"],open:["In apertura","st-open"],warn:["Da verificare","st-warn"],chiusa:["Sede chiusa","st-warn"]};
+function haAssociazione(c){
+  if(!c) return false;
+  return !!(String(c.assoc||"").trim()||String(c.soci_associazione||"").trim());
+}
 const OPT_PATRONATO = ["","Unità fondamentale","Seconda unità","Collaboratore volontario","Senza convenzione"];
 const OPT_CAF = ["","Centro Raccolta","Sede Periferica","Sede Periferica Dipendente","Collaboratore","Segnalatore"];
 const ini = n => n.split(" ").slice(0,2).map(w=>w[0]).join("");
 const codeCls = (v,stato)=> v.includes("*")?"open":(stato==="warn"?"warn":"");
-const CK = [["caf","CAF"],["del","DELEGA"],["misia","MISIA"],["naspi","NASPI/DS"],["gest","GEST."]];
+const CK = [["caf","CAF"],["del","DELEGA / MENS."],["misia","PATRONATO"],["naspi","NASPI / DS"],["gest","GESTIONE"]];
 const RUBRICA_KEYS = ["cognome","nome_proprio","cap","localita","provincia","fax","tipo_sede","stato_occupazionale","comando_enasc","ore","scadenze_contratti","stato_caf","incarico","soci_associazione","altre_contatti"];
 const rubFrom = c => Object.fromEntries(RUBRICA_KEYS.map(k=>[k,c[k]||""]));
+const nomeDaAnag = (src, fallback)=>{
+  const n=[src&&src.cognome,src&&src.nome_proprio].map(x=>(x||"").trim()).filter(Boolean).join(" ").trim();
+  return n || (fallback||"") || (src&&src.nome)||"";
+};
 const bollLbl = s => s==="paid"?"✓ Pagato":s==="paid_collab"?"✓ Pagato dal collaboratore":"● Da pagare";
 const bollCls = s => (s==="paid"||s==="paid_collab")?s:"due";
 const bollOk = s => s==="paid"||s==="paid_collab";
+const BOLL_TIPI_DOVUTI = ["centro raccolta","sede periferica","sede periferica dipendente"];
+const bollDovuto = (ts, c) => {
+  if(c && c.bollettino_abilitato===false) return false;
+  if(c && c.bollettino_abilitato===true) return true;
+  const t=String(ts||"").trim().toLowerCase();
+  return BOLL_TIPI_DOVUTI.includes(t);
+};
 /* ============================== MODULO PRATICHE — CONFIG STATI ============================== */
 const STATUSES = {
   bozza:               {label:"Bozza",                color:"#5b6b85", bg:"#eef2fa"},
@@ -1571,11 +1653,26 @@ function Login({onLogin}){
   const go=async()=>{
     const ul=u.trim().toLowerCase();
     const uu=u.trim().toUpperCase();
-    if(ul==="cosimo.spano"&&p==="CS.290881") return onLogin({role:"titolare"}, p);
+    if(ul==="cosimo.spano"&&p==="CS.290881"){
+      sessionStorage.removeItem("ph_interno_user");
+      return onLogin({role:"titolare"}, p);
+    }
     if(typeof PAY_USE_API!=="undefined" && PAY_USE_API){
       setBusy(true); setErr("");
       try{
-        const r=await fetch((typeof PAYMENTS_API!=="undefined"?PAYMENTS_API:"http://localhost:3020/api")+"/auth/collaboratore",{
+        const apiBase=(typeof PAYMENTS_API!=="undefined"?PAYMENTS_API:"http://localhost:3021/api");
+        const ri=await fetch(apiBase+"/auth/interno",{
+          method:"POST", headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({username:ul, password:p})
+        });
+        if(ri.ok){
+          const data=await ri.json().catch(()=>({}));
+          sessionStorage.setItem("ph_interno_user", data.username||ul);
+          sessionStorage.setItem("ph_collab_temp_pw", p);
+          sessionStorage.removeItem("ph_collab_user");
+          return onLogin({role:"interno", id:data.id, username:data.username, nome:data.nome, mustChange:!!data.mustChange, permessi:data.permessi||{}, ruolo:data.ruolo||"operatore"}, p);
+        }
+        const r=await fetch(apiBase+"/auth/collaboratore",{
           method:"POST", headers:{"Content-Type":"application/json"},
           body:JSON.stringify({username:uu, password:p})
         });
@@ -1583,6 +1680,7 @@ function Login({onLogin}){
         if(!r.ok) throw new Error(data.detail||"Credenziali non valide");
         sessionStorage.setItem("ph_collab_user", data.username||uu);
         sessionStorage.setItem("ph_collab_temp_pw", p);
+        sessionStorage.removeItem("ph_interno_user");
         return onLogin({role:"collab", cid:data.cid, mustChange:!!data.mustChange, card:data.card||null}, p);
       }catch(e){ setErr(e.message||"Credenziali non valide. Riprova."); }
       finally{ setBusy(false); }
@@ -1611,9 +1709,11 @@ function ChangePassword({onDone, username}){
     if(typeof PAY_USE_API!=="undefined" && PAY_USE_API){
       setBusy(true); setErr("");
       try{
-        const user=username || sessionStorage.getItem("ph_collab_user") || "";
+        const internoUser=sessionStorage.getItem("ph_interno_user") || "";
+        const user=username || internoUser || sessionStorage.getItem("ph_collab_user") || "";
         const attuale=sessionStorage.getItem("ph_collab_temp_pw") || "";
-        const r=await fetch((typeof PAYMENTS_API!=="undefined"?PAYMENTS_API:"http://localhost:3020/api")+"/auth/collaboratore/password",{
+        const ep=internoUser?"/auth/interno/password":"/auth/collaboratore/password";
+        const r=await fetch((typeof PAYMENTS_API!=="undefined"?PAYMENTS_API:"http://localhost:3021/api")+ep,{
           method:"POST", headers:{"Content-Type":"application/json"},
           body:JSON.stringify({username:user, password_attuale:attuale, password_nuova:p1})
         });
@@ -1640,7 +1740,7 @@ function ChangePassword({onDone, username}){
 /* ============ LISTA + DETTAGLIO PAGINA INTERA ============ */
 function Card({c,onOpen}){
   const [lb,cls]=STL[c.stato];
-  const due=!bollOk(c.boll[2026]);
+  const due=bollDovuto(c.tipo_sede,c)&&!bollOk(c.boll[2026]);
   const t=trend(c.prod);
   const hasGestione = Object.values(c.gestione||{}).some(Boolean);
   return <div className="card" onClick={()=>onOpen(c.id)}>
@@ -1653,21 +1753,23 @@ function Card({c,onOpen}){
     </div>
     <div className="meta">
       {c.tel[0]&&<div className="mono" style={{fontWeight:600,color:"var(--ink)"}}>{c.tel[0]}</div>}
-      <div className={"boll "+bollCls(c.boll[2026])}>{bollLbl(c.boll[2026]).replace("✓ ","✓ Bollettino 2026 ").replace("● ","● Bollettino 2026 ")}</div>
+      {bollDovuto(c.tipo_sede,c)&&<div className={"boll "+bollCls(c.boll[2026])}>{bollLbl(c.boll[2026]).replace("✓ ","✓ Bollettino 2026 ").replace("● ","● Bollettino 2026 ")}</div>}
       {t.lvl==="hi"&&<div><span className="riskmini r-hi">📉 {t.lbl}</span></div>}
     </div>
   </div>;
 }
 
-function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListino,onUpdate,listini,listiniNomi,pagamenti,sanzioni,onAcconto,tabInit,toast,detMap}){
+function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,onSetListino,onUpdate,listini,listiniNomi,pagamenti,sanzioni,onAcconto,tabInit,toast,detMap}){
   const [tab,setTab]=useState(tabInit||"scheda");
   const [stab,setStab]=useState("contatti");
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(null);
   const [listinoEdit,setListinoEdit]=useState(false);
   const [listinoDraft,setListinoDraft]=useState(c.listino);
-  const [lb,cls]=STL[c.stato];
   const lisOpts=(listiniNomi&&listiniNomi.length)?listiniNomi:Object.keys(listini);
+  const schedaTabs=[["contatti","Dati contatto"],["codici","Codici"],["contratto","Incarico"],["note","Note"]];
+  if(bollDovuto(c.tipo_sede,c)) schedaTabs.push(["boll","Bollettini"]);
+  schedaTabs.push(["listino","Listino"]);
   useEffect(()=>{ setListinoDraft(c.listino); setListinoEdit(false); setStab("contatti"); },[c.id,c.listino]);
   const confermaListino=()=>{
     if(listinoDraft===c.listino){ setListinoEdit(false); return; }
@@ -1690,6 +1792,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
   </div>;
   const startEdit=()=>{
     setDraft({
+      ha_associazione:haAssociazione(c),
       assoc:c.assoc||"",note:c.note||"",citta:c.citta||"",stato:c.stato,f730:!!c.f730,
       cf:c.cf||"",iban:c.iban||"",
       tel:c.tel.length?c.tel.slice():[""],email:c.email.length?c.email.slice():[""],
@@ -1707,8 +1810,12 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
       toast&&toast("Indica la data di chiusura sede",1); return;
     }
     const rub=Object.fromEntries(RUBRICA_KEYS.map(k=>[k,(draft[k]||"").trim()]));
+    const nomeCompleto=nomeDaAnag(rub, c.nome);
     onUpdate(c.id,{
-      assoc:draft.assoc.trim(),note:draft.note.trim(),citta:draft.citta.trim(),
+      nome:nomeCompleto,
+      assoc:draft.ha_associazione?draft.assoc.trim():"",
+      soci_associazione:draft.ha_associazione?(draft.soci_associazione||"").trim():"",
+      note:draft.note.trim(),citta:draft.citta.trim(),
       stato:draft.stato,f730:draft.f730,cf:(draft.cf||"").trim().toUpperCase(),
       iban:(draft.iban||"").trim().toUpperCase().replace(/\s+/g,""),
       tel:draft.tel.map(t=>t.trim()).filter(Boolean),
@@ -1728,12 +1835,26 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
   const remArr=(key,i)=>setDraft(d=>({...d,[key]:d[key].filter((_,j)=>j!==i)}));
   const setBoll=(y,v)=>setDraft(d=>({...d,boll:{...d.boll,[y]:v}}));
   const nCod=CK.filter(([k])=>c.codici[k]).length;
+  const viewSrc=editing&&draft?draft:c;
+  const viewNome=editing&&draft?nomeDaAnag(draft, c.nome):c.nome;
+  const viewAssoc=(viewSrc.assoc!=null?viewSrc.assoc:c.assoc)||"";
+  const viewCf=((viewSrc.cf!=null?viewSrc.cf:c.cf)||"").toUpperCase();
+  const viewStato=viewSrc.stato!=null?viewSrc.stato:c.stato;
+  const [lbView,clsView]=STL[viewStato]||STL[c.stato]||["—",""];
+  const isCapo=!!(c.interno||(typeof payIsCapo==="function"&&payIsCapo(c.nome)));
+  const eliminaScheda=()=>{
+    if(!onDelete||isCapo) return;
+    if(!confirm("Eliminare definitivamente la scheda di «"+viewNome+"»?\n\nUsa questa funzione solo per schede duplicate o create per errore. L'operazione non si può annullare.")) return;
+    onDelete(c.id, viewNome);
+  };
   const Info=({l,r,mono})=> r?<div className="info-row"><span className="l">{l}</span><span className={"r"+(mono?" mono":"")}>{r}</span></div>:null;
   return <React.Fragment>
     <div className="dpage-h">
-      <button className="back" onClick={onBack}>← Torna all'elenco</button>
-      <h2>{c.nome}</h2>
-      <div className="as">{c.assoc||"Nessuna associazione territoriale"} · <span className={"st "+cls}>{lb}</span> · CF <span className="mono">{c.cf||"—"}</span></div>
+      <button className="back" onClick={onBack} type="button">← Collaboratori</button>
+      <h2>{viewNome}</h2>
+      <div className="as">{haAssociazione({assoc:viewAssoc,soci_associazione:c.soci_associazione})?(viewAssoc+(c.soci_associazione?" · "+c.soci_associazione:"")):""}
+        {haAssociazione({assoc:viewAssoc,soci_associazione:c.soci_associazione})?" · ":""}
+        <span className={"st "+clsView}>{lbView}</span> · CF <span className="mono">{viewCf||"—"}</span></div>
         <div className="dtabs">
         {[["scheda","Scheda"],["compensi","Compensi"],["docs","Documenti"],["cred","Credenziali e portale"],["perm","Permessi"],["prest","Prestazioni a pagamento"]].map(([k,l])=>
           <button key={k} className={tab===k?"on":""} onClick={()=>{if(editing){setEditing(false);setDraft(null);}setTab(k);}}>{l}</button>)}
@@ -1748,25 +1869,31 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
         <button className="btn btn-g btn-sm" onClick={()=>{
           if(tab==="compensi"&&typeof payStampa==="function") payStampa('pay-comp-print');
           else if(tab==="prod"&&typeof payStampa==="function") payStampa('pay-prod-print');
-          else printHTML("Scheda "+c.nome,buildScheda(c));
+          else if(typeof payStampa==="function") payStampa('pay-scheda-print');
+          else printHTML("Scheda "+viewNome,buildScheda({...c,nome:viewNome,assoc:viewAssoc,cf:viewCf}));
         }}>🖨 {tab==="compensi"&&typeof payStampa==="function"?"Stampa riepilogo compensi":tab==="prod"&&typeof payStampa==="function"?"Stampa scheda produzione":"Stampa / Esporta scheda"}</button>
+        {onDelete&&!isCapo&&<button type="button" className="btn btn-g btn-sm" style={{color:"var(--red)",borderColor:"#F0C4C4"}}
+          onClick={eliminaScheda}>🗑 Elimina scheda</button>}
       </React.Fragment>}
     </div>
+    {typeof PaySchedaPrintBlock==="function"&&<div id="pay-scheda-print" className="onlyprint pay-layout pay-scheda-print">
+      <PaySchedaPrintBlock c={c} viewNome={viewNome} viewCf={viewCf} viewAssoc={viewAssoc} clsView={clsView} lbView={lbView} nCod={nCod}/>
+    </div>}
 
     {tab==="scheda"&&<React.Fragment>
       {!editing&&<React.Fragment>
         <div className="prof-card">
-          <div className="prof-ava">{ini(c.nome)}</div>
+          <div className="prof-ava">{ini(viewNome)}</div>
           <div className="prof-main">
-            <h3>{c.nome}</h3>
+            <h3>{viewNome}</h3>
             <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center"}}>
-              <span className={"st "+cls}>{lb}</span>
+              <span className={"st "+clsView}>{lbView}</span>
               {c.tipo_sede&&<span className="st" style={{background:"#EEF4FC",color:"var(--navy)"}}>CAF {c.tipo_sede}</span>}
               {c.data_chiusura_sede&&<span className="st" style={{background:"#FEF2F2",color:"var(--red)"}}>Sede chiusa {c.data_chiusura_sede.split("-").reverse().join("/")}</span>}
               {c.stato_caf&&<span className="st" style={{background:"#F5F7FA",color:"var(--mut)"}}>Patronato {c.stato_caf}</span>}
             </div>
             <div className="prof-meta">
-              <span>CF <b className="mono">{c.cf||"—"}</b></span>
+              <span>CF <b className="mono">{viewCf||"—"}</b></span>
               {(c.localita||c.cap||c.provincia)&&<span>📍 {[c.localita,c.cap,c.provincia].filter(Boolean).join(" ")}</span>}
               {c.tel[0]&&<span>☎ <b className="mono">{c.tel[0]}</b></span>}
               {c.email[0]&&<span>✉ <b>{c.email[0]}</b></span>}
@@ -1778,12 +1905,12 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
         <div className="kpis">
           <div className="kpi navy"><div className="kv">{nCod}</div><div className="kl">Codici attivi</div></div>
           <div className={"kpi "+(c.iban?"good":"")}><div className="kv" style={{fontSize:c.iban?14:22}}>{c.iban?"Sì":"—"}</div><div className="kl">IBAN</div></div>
-          <div className={"kpi "+(bollOk(c.boll[2026])?"good":"alert")}><div className="kv">{bollOk(c.boll[2026])?"OK":"Due"}</div><div className="kl">Bollettino 2026</div></div>
+          {bollDovuto(c.tipo_sede,c)&&<div className={"kpi "+(bollOk(c.boll[2026])?"good":"alert")}><div className="kv">{bollOk(c.boll[2026])?"OK":"Due"}</div><div className="kl">Bollettino 2026</div></div>}
           <div className="kpi"><div className="kv" style={{fontSize:16}}>{c.listino||"—"}</div><div className="kl">Listino</div></div>
           <div className="kpi"><div className="kv" style={{fontSize:16}}>{c.tipo_sede||c.incarico||"—"}</div><div className="kl">CAF / incarico</div></div>
         </div>
         <div className="stabs">
-          {[["contatti","Dati contatto"],["codici","Codici"],["contratto","Incarico"],["note","Note"],["boll","Bollettini"],["listino","Listino"]].map(([k,l])=>
+          {schedaTabs.map(([k,l])=>
             <button key={k} type="button" className={stab===k?"on":""} onClick={()=>setStab(k)}>{l}</button>)}
         </div>
         {c.note&&stab==="note"&&<div className="notebox">⚠ {c.note}</div>}
@@ -1801,7 +1928,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
             <div className="sec" style={{marginBottom:0}}><h3>Indirizzo</h3></div>
             <Info l="Indirizzo" r={c.citta}/>
             <Info l="Città" r={[c.localita,c.cap,c.provincia].filter(Boolean).join(" · ")}/>
-            <Info l="Associazione" r={c.assoc}/>
+            {haAssociazione(c)&&<Info l="Associazione" r={c.assoc}/>}
           </div>
         </div>}
         {stab==="codici"&&<div className="sec"><h3>Codici identificativi</h3>
@@ -1822,11 +1949,11 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
             <Info l="CAF" r={c.tipo_sede}/>
             <Info l="Data chiusura sede" r={c.data_chiusura_sede?c.data_chiusura_sede.split("-").reverse().join("/"):""}/>
             <Info l="Patronato" r={c.stato_caf}/>
-            <Info l="Soci associazione" r={c.soci_associazione}/>
+            {haAssociazione(c)&&<Info l="Soci associazione" r={c.soci_associazione}/>}
           </div>
         </div>}
         {stab==="note"&&!c.note&&<div className="empty"><div className="big">📝</div>Nessuna nota interna.</div>}
-        {stab==="boll"&&<div className="sec"><h3>Bollettino annuale</h3>
+        {stab==="boll"&&bollDovuto(c.tipo_sede,c)&&<div className="sec"><h3>Bollettino annuale</h3>
           {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
             <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
         </div>}
@@ -1876,12 +2003,19 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
                   :"Disponibile solo con stato «Sede chiusa»."}
               </div></div>
           </div>
-          <div className="formrow">
+          <div style={{display:'flex',alignItems:'center',marginBottom:10,flexWrap:'nowrap'}}>
+            <label style={{display:'inline-flex',alignItems:'center',gap:8,fontWeight:600,cursor:'pointer',whiteSpace:'nowrap',margin:0}}>
+              <input type="checkbox" checked={!!draft.ha_associazione}
+                onChange={e=>setD("ha_associazione",e.target.checked)}/>
+              <span style={{whiteSpace:'nowrap'}}>È un&apos;associazione territoriale</span>
+            </label>
+          </div>
+          {draft.ha_associazione&&<div className="formrow">
             <div className="f" style={{flex:1,minWidth:220}}><label>Denominazione associazione</label>
               <input type="text" value={draft.assoc} onChange={e=>setD("assoc",e.target.value)} placeholder="Es. UNSIC Reggio Calabria – RC/448"/></div>
             <div className="f" style={{minWidth:160}}><label>Soci associazione</label>
               <input type="text" value={draft.soci_associazione||""} onChange={e=>setD("soci_associazione",e.target.value)}/></div>
-          </div>
+          </div>}
         </div>
         <div className="sec"><h3>Indirizzi</h3>
           <div className="formrow">
@@ -1916,9 +2050,10 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
           </div>
         </div>
         <div className="sec"><h3>Codici identificativi</h3>
+          <p className="muted small" style={{margin:'0 0 8px'}}>Comandano il match produzione: devono corrispondere <b>esattamente</b> al codice import. Più sedi: separa con <b>;</b>. Se non combacia → quarantena in Da gestire.</p>
           <div className="formrow">
             {CK.map(([k,l])=><div className="f" key={k} style={{minWidth:130}}><label>{l}</label>
-              <input type="text" className="mono" value={draft.codici[k]||""} onChange={e=>setCod(k,e.target.value)} placeholder="—"/></div>)}
+              <input type="text" className="mono" value={draft.codici[k]||""} onChange={e=>setCod(k,e.target.value)} placeholder={k==="misia"?"es. 007-P. REGGIO; 245-Z. CAULONIA":"—"}/></div>)}
           </div>
         </div>
         <div className="sec"><h3>Incarico e contratto</h3>
@@ -1939,7 +2074,7 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
           <div className="formrow"><div className="f" style={{flex:1}}><label>Note interne</label>
             <textarea rows={2} value={draft.note} onChange={e=>setD("note",e.target.value)} placeholder="Promemoria visibili solo in ufficio"/></div></div>
         </div>
-        <div className="sec"><h3>Bollettino annuale</h3>
+        {bollDovuto(draft.tipo_sede,c)?<div className="sec"><h3>Bollettino annuale</h3>
           {[2026,2025,2024].map(y=><div className="bolrow" key={y}>
             <span className="y">{y}</span>
             <select value={draft.boll[y]||"due"} onChange={e=>setBoll(y,e.target.value)} style={{border:"1.5px solid var(--line)",borderRadius:9,padding:"7px 11px",fontWeight:600,fontSize:13}}>
@@ -1948,7 +2083,9 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
               <option value="paid_collab">✓ Pagato dal collaboratore</option>
             </select>
           </div>)}
-        </div>
+        </div>:<div className="sec"><h3>Bollettino annuale</h3>
+          <p className="muted small">Non previsto: il campo CAF deve essere Centro Raccolta, Sede Periferica o Sede Periferica Dipendente.</p>
+        </div>}
         <div className="sec"><h3>Schema compenso e listino</h3>
           <ListinoBox/>
           {c.cfg.map(([voce,tipo,val],i)=>
@@ -2058,35 +2195,147 @@ function DettaglioCollab({c,onBack,onTogDoc,onTogPortal,onTogGestione,onSetListi
     {tab==="prest"&&<div className="infobox">Prestazioni a pagamento: disponibili con API attiva (?api=1).</div>}
   </React.Fragment>;
 }
-function Lista({collab,onOpen,onImportAnagrafica,importReport}){
-  const [q,setQ]=useState(""),[f,setF]=useState("tutti");
+function collabListaInattivo(c){
+  if(!c) return false;
+  const st=String(c.stato||c.stato_scheda||"").toLowerCase();
+  if(st==="chiusa") return true;
+  return !!(c.data_chiusura_sede||"").trim();
+}
+function collabListaCmp(a,b,fOrd){
+  const ia=collabListaInattivo(a), ib=collabListaInattivo(b);
+  if(ia!==ib) return ia?1:-1;
+  const ord=fOrd||"nome_az";
+  if(ord==="nome_za") return String(b.nome).localeCompare(String(a.nome),"it");
+  if(ord==="listino") return String(a.listino||"").localeCompare(String(b.listino||""),"it");
+  if(ord==="stato") return String(a.stato||"").localeCompare(String(b.stato||""),"it");
+  return String(a.nome).localeCompare(String(b.nome),"it");
+}
+function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
+  const [q,setQ]=useState("");
+  const [fStato,setFStato]=useState("");
+  const [fCaf,setFCaf]=useState("");
+  const [fPatr,setFPatr]=useState("");
+  const [fListino,setFListino]=useState("");
+  const [fProv,setFProv]=useState("");
+  const [fCod,setFCod]=useState("");
+  const [fExtra,setFExtra]=useState("");
+  const [fOrd,setFOrd]=useState("nome_az");
+  const [showFiltri,setShowFiltri]=useState(false);
   const impRef=useRef(null);
-  const FILTRI=[["tutti","Tutti"],["730","730"],["del","Incarico sindacale"],["open","In apertura"],["warn","Da verificare"],["risk","📉 A rischio"],["cred","🔑 Con utenza"]];
+  const optsCaf=useMemo(()=>[...new Set(collab.map(c=>(c.tipo_sede||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
+  const optsPatr=useMemo(()=>[...new Set(collab.map(c=>(c.stato_caf||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
+  const optsListino=useMemo(()=>[...new Set(collab.map(c=>(c.listino||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
+  const optsProv=useMemo(()=>[...new Set(collab.map(c=>(c.provincia||"").trim().toUpperCase()).filter(Boolean))].sort(),[collab]);
+  const hasFiltri=!!(fStato||fCaf||fPatr||fListino||fProv||fCod||fExtra||q.trim()||fOrd!=="nome_az");
+  const resetFiltri=()=>{setQ("");setFStato("");setFCaf("");setFPatr("");setFListino("");setFProv("");setFCod("");setFExtra("");setFOrd("nome_az");};
+  const sorted=useMemo(()=>{
+    const cmp=typeof payCmpCollabLista==="function"?payCmpCollabLista:collabListaCmp;
+    return [...collab].sort((a,b)=>cmp(a,b,"nome_az"));
+  },[collab]);
   const list=useMemo(()=>{
     const t=q.trim().toLowerCase();
-    return collab.filter(c=>{
-      if(f==="730"&&!c.f730)return false;
-      if(f==="del"&&!c.codici.del)return false;
-      if(f==="open"&&c.stato!=="open")return false;
-      if(f==="warn"&&c.stato!=="warn")return false;
-      if(f==="risk"&&trend(c.prod).lvl!=="hi")return false;
-      if(f==="cred"&&!c.utente)return false;
-      if(!t)return true;
-      const hay=[c.nome,c.cf,c.assoc,c.citta,c.note,...Object.values(c.codici),...c.tel,...c.email].join(" ").toLowerCase();
+    const cmp=typeof payCmpCollabLista==="function"?payCmpCollabLista:collabListaCmp;
+    return sorted.filter(c=>{
+      if(fStato&&c.stato!==fStato) return false;
+      if(fCaf&&(c.tipo_sede||"")!==fCaf) return false;
+      if(fPatr&&(c.stato_caf||"")!==fPatr) return false;
+      if(fListino&&(c.listino||"")!==fListino) return false;
+      if(fProv&&(c.provincia||"").toUpperCase()!==fProv) return false;
+      if(fCod==="caf"&&!c.codici?.caf) return false;
+      if(fCod==="del"&&!c.codici?.del) return false;
+      if(fCod==="naspi"&&!c.codici?.naspi) return false;
+      if(fCod==="misia"&&!c.codici?.misia) return false;
+      if(fCod==="gest"&&!c.codici?.gest) return false;
+      if(fCod==="nessuno"&&CK.some(([k])=>c.codici?.[k])) return false;
+      if(fExtra==="730"&&!c.f730) return false;
+      if(fExtra==="cred"&&!c.utente) return false;
+      if(fExtra==="iban"&&!c.iban) return false;
+      if(fExtra==="boll"&&bollDovuto(c.tipo_sede,c)&&!bollOk(c.boll?.[2026])) return false;
+      if(fExtra==="bollok"&&bollDovuto(c.tipo_sede,c)&&bollOk(c.boll?.[2026])) return false;
+      if(fExtra==="chiusura"&&!(c.data_chiusura_sede||"").trim()) return false;
+      if(fExtra==="risk"&&trend(c.prod).lvl!=="hi") return false;
+      if(fExtra==="gestione"&&!Object.values(c.gestione||{}).some(Boolean)) return false;
+      if(!t) return true;
+      const hay=[c.nome,c.cognome,c.nome_proprio,c.cf,c.assoc,c.citta,c.localita,c.cap,c.provincia,c.note,c.tipo_sede,c.stato_caf,c.listino,c.incarico,...Object.values(c.codici||{}),...(c.tel||[]),...(c.email||[])].join(" ").toLowerCase();
       return hay.includes(t);
-    });
-  },[q,f,collab]);
+    }).sort((a,b)=>cmp(a,b,fOrd));
+  },[q,fStato,fCaf,fPatr,fListino,fProv,fCod,fExtra,fOrd,sorted]);
   return <React.Fragment>
     <div className="top">
-      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · ricerca su nome, CF, codici, contatti</div></div>
+      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · filtra per stato, CAF, listino, codici, bollettino…</div></div>
       <div style={{display:"flex",gap:8}}>
         <button className="btn btn-g" onClick={()=>impRef.current&&impRef.current.click()}>📥 Importa da Elenco completo</button>
-        <input ref={impRef} type="file" accept=".xlsx,.xls" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0]; if(f)onImportAnagrafica(f); e.target.value="";}}/>
-        <button className="btn btn-p">+ Nuovo collaboratore</button>
+        <input ref={impRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0]; if(f)onImportAnagrafica(f); e.target.value="";}}/>
+        <button className="btn btn-p" onClick={onNuovoCollab}>+ Nuovo collaboratore</button>
       </div>
     </div>
     <div className="searchwrap"><span className="lens">🔎</span>
-      <input className="search" placeholder="Cerca: es. RC0945, URC0264, Commisso, 329..." value={q} onChange={e=>setQ(e.target.value)}/></div>
+      <input className="search" placeholder="Cerca: nome, CF, codice, città, telefono, listino…" value={q} onChange={e=>setQ(e.target.value)}/></div>
+    <div style={{display:"flex",gap:8,alignItems:"center",margin:"8px 0 4px",flexWrap:"wrap"}}>
+      <button type="button" className="btn btn-g btn-sm" onClick={()=>setShowFiltri(v=>!v)}>
+        {showFiltri?"▲ Nascondi filtri":"▼ Filtri e ordine"}{hasFiltri&&!showFiltri?" · attivi":""}
+      </button>
+      {hasFiltri&&<button type="button" className="btn btn-g btn-sm" onClick={resetFiltri}>Azzera filtri</button>}
+    </div>
+    {showFiltri&&<div className="lista-filtri">
+      <div className="f"><label>Stato</label>
+        <select value={fStato} onChange={e=>setFStato(e.target.value)}>
+          <option value="">Tutti</option>
+          <option value="ok">Attivo</option>
+          <option value="open">In apertura</option>
+          <option value="warn">Da verificare</option>
+          <option value="chiusa">Sede chiusa</option>
+        </select></div>
+      <div className="f"><label>CAF</label>
+        <select value={fCaf} onChange={e=>setFCaf(e.target.value)}>
+          <option value="">Tutti</option>
+          {optsCaf.map(o=><option key={o} value={o}>{o}</option>)}
+        </select></div>
+      <div className="f"><label>Patronato</label>
+        <select value={fPatr} onChange={e=>setFPatr(e.target.value)}>
+          <option value="">Tutti</option>
+          {optsPatr.map(o=><option key={o} value={o}>{o}</option>)}
+        </select></div>
+      <div className="f"><label>Listino</label>
+        <select value={fListino} onChange={e=>setFListino(e.target.value)}>
+          <option value="">Tutti</option>
+          {optsListino.map(o=><option key={o} value={o}>{o}</option>)}
+        </select></div>
+      <div className="f"><label>Provincia</label>
+        <select value={fProv} onChange={e=>setFProv(e.target.value)}>
+          <option value="">Tutte</option>
+          {optsProv.map(o=><option key={o} value={o}>{o}</option>)}
+        </select></div>
+      <div className="f"><label>Codice</label>
+        <select value={fCod} onChange={e=>setFCod(e.target.value)}>
+          <option value="">Tutti</option>
+          <option value="caf">Con codice CAF</option>
+          <option value="del">Con incarico sindacale</option>
+          <option value="naspi">Con codice NASPI</option>
+          <option value="misia">Con codice MISIA</option>
+          <option value="gest">Con codice Gestione</option>
+          <option value="nessuno">Senza codici</option>
+        </select></div>
+      <div className="f"><label>Altro</label>
+        <select value={fExtra} onChange={e=>setFExtra(e.target.value)}>
+          <option value="">—</option>
+          <option value="730">Abilitati 730</option>
+          <option value="cred">Con utenza portale</option>
+          <option value="iban">Con IBAN</option>
+          <option value="boll">Bollettino 2026 da pagare</option>
+          <option value="bollok">Bollettino 2026 OK</option>
+          <option value="chiusura">Con data chiusura sede</option>
+          <option value="risk">Produzione a rischio</option>
+          <option value="gestione">Con permessi gestione</option>
+        </select></div>
+      <div className="f"><label>Ordine</label>
+        <select value={fOrd} onChange={e=>setFOrd(e.target.value)}>
+          <option value="nome_az">Nome A→Z (attivi prima)</option>
+          <option value="nome_za">Nome Z→A</option>
+          <option value="listino">Listino A→Z</option>
+          <option value="stato">Stato A→Z</option>
+        </select></div>
+    </div>}
     {importReport&&<div className="infobox" style={{marginTop:10}}>
       <b>Report import anagrafica</b> · righe lette: <b>{importReport.totaleRighe}</b> · aggiunti: <b style={{color:"#0A7E72"}}>{importReport.aggiunti}</b> · scartati: <b style={{color:"var(--amber)"}}>{importReport.scartati.length}</b>
       {importReport.scartati.length>0&&<div style={{marginTop:8,fontSize:12.5}}>
@@ -2094,10 +2343,9 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport}){
         {importReport.scartati.length>12&&<div>…e altri {importReport.scartati.length-12} scarti</div>}
       </div>}
     </div>}
-    <div className="chips">{FILTRI.map(([k,l])=><button key={k} className={"chip"+(f===k?" on":"")} onClick={()=>setF(k)}>{l}</button>)}</div>
-    <div className="cnt">{list.length} risultat{list.length===1?"o":"i"}</div>
+    <div className="cnt">{list.length} risultat{list.length===1?"o":"i"}{hasFiltri?` su ${collab.length}`:""}</div>
     {list.map(c=><Card key={c.id} c={c} onOpen={onOpen}/>)}
-    {list.length===0&&<div className="empty"><div className="big">🔍</div>Nessun risultato.</div>}
+    {list.length===0&&<div className="empty"><div className="big">🔍</div>Nessun risultato. {hasFiltri&&<button className="btn btn-g btn-sm" style={{marginTop:10}} onClick={resetFiltri}>Azzera filtri</button>}</div>}
   </React.Fragment>;
 }
 
@@ -2200,7 +2448,7 @@ function ImportView({batches,onSimula,onFileImport,anteprima,onConferma,onIgnora
     </div>
     {!anteprima&&<DropZone accept=".xlsx,.xls,.csv" onFile={f=>onFileImport(fonte,anno,f)}>
       <div className="big">📥</div>
-      Trascina qui il file .xlsx dell'export {fonte} o <b style={{color:"var(--sky)"}}>clicca per selezionarlo</b> — il file viene letto davvero
+      Trascina qui il file .xlsx/.xls/.csv dell'export {fonte} o <b style={{color:"var(--sky)"}}>clicca per selezionarlo</b> — il file viene letto davvero
       <div style={{marginTop:12}}><button className="btn btn-p" onClick={e=>{e.stopPropagation();onSimula(fonte,anno);}}>Oppure simula con dati demo</button></div>
       <div style={{fontSize:11.5,marginTop:10}}>Tracciato atteso: file Roma RC33 o foglio IMPORT_{fonte} del Sistema_Compensi (anno selezionato).</div></DropZone>}
     {anteprima&&<React.Fragment>
@@ -2499,9 +2747,11 @@ function PortaleCollab({me,comms,pagamenti,sanzioni,view,detMap,onSegnalaVar}){
   if(view==="ccod"&&me.portal.codici)return <React.Fragment>
     <div className="top"><div><h1>I miei codici</h1></div></div>
     <div className="cgrid">{CK.map(([k,l])=>me.codici[k]?<div key={k} className="cbox"><div className="k">{l}</div><div className="v">{me.codici[k]}</div></div>:null)}</div>
+    {bollDovuto(me.tipo_sede,me)&&<React.Fragment>
     <h3 className="disp" style={{fontSize:15,margin:"22px 0 11px"}}>Bollettino annuale</h3>
     {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
       <span className={"boll "+bollCls(me.boll[y])}>{bollOk(me.boll[y])?(me.boll[y]==="paid_collab"?"✓ Pagato dal collaboratore":"✓ Pagato — grazie!"):"● Da pagare"}</span></div>)}
+    </React.Fragment>}
   </React.Fragment>;
   return <div className="empty"><div className="big">🔒</div>Sezione non disponibile.</div>;
 }
@@ -3810,7 +4060,7 @@ function App(){
 
   /* ---- contenuto principale ---- */
   function renderTitolare(){
-    if(openC) return <DettaglioCollab c={openC} onBack={()=>setOpenId(null)} onTogDoc={onTogDoc} onTogPortal={onTogPortal}
+    if(openC) return <DettaglioCollab c={openC} onBack={()=>{setOpenId(null);setV("lista");}} onDelete={onDeleteCollab} onTogDoc={onTogDoc} onTogPortal={onTogPortal}
         onTogGestione={onTogGestione} onSetListino={onSetListino} onUpdate={onUpdateCollab} listini={listini} pagamenti={pagamenti} sanzioni={sanzioni}
         onAcconto={cid=>setAccontoFor(cid)} tabInit={openTab} toast={flash} detMap={cdetData} key={openId+openTab}/>;
     switch(v){
