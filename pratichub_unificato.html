@@ -7828,13 +7828,15 @@ function PayRomaNuovo({toast, collab}){
           finché non lo modifichi tu. RC33/storico serve solo come linea guida sulle voci, non come verità numerica.
           Non modificare nomi fogli né intestazioni riga 1; i dati partono dalla <b>riga 3</b>.
         </p>
-        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-          <label className="btn btn-p" style={{margin:0,cursor:busy?'not-allowed':'pointer'}}>
-            {busy?'Lettura…':'Scegli file Excel'}
-            <input id="pay-roma-file" type="file" accept=".xlsx,.xlsm" onChange={doAnteprima} disabled={busy} style={{display:'none'}}/>
-          </label>
-          {busy && <span className="muted">Elaborazione…</span>}
-          <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={busy} onClick={async()=>{
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+          <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+            <label className="btn btn-p" style={{margin:0,cursor:busy?'not-allowed':'pointer'}}>
+              {busy?'Lettura…':'Scegli file Excel'}
+              <input id="pay-roma-file" type="file" accept=".xlsx,.xlsm" onChange={doAnteprima} disabled={busy} style={{display:'none'}}/>
+            </label>
+            {busy && <span className="muted">Elaborazione…</span>}
+          </div>
+          <button type="button" className="btn btn-t btn-sm" disabled={busy} onClick={async()=>{
             try{ await payDownload('/import-roma/modello','import_Roma_modello.xlsx'); toast('Modello scaricato'); }
             catch(x){ toast(payFmtErr(x.detail)||'Download modello fallito',1); }
           }}>Scarica modello Excel</button>
@@ -8602,13 +8604,15 @@ function PayImport({toast}){
       e <b>non viene cancellato</b> quando re-importi la produzione Roma.
       Dopo la conferma i compensi (IMP/COMP) vengono ricalcolati automaticamente.
     </div>
-    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-      <label className="btn btn-p" style={{margin:0,cursor:patBusy?'not-allowed':'pointer'}}>
-        {patBusy?'Elaborazione…':'Scegli file Excel / CSV'}
-        <input id="pay-pat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaPatronato} disabled={patBusy} style={{display:'none'}}/>
-      </label>
-      {patBusy && <span className="muted">Elaborazione…</span>}
-      <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={patBusy} onClick={async()=>{
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <label className="btn btn-p" style={{margin:0,cursor:patBusy?'not-allowed':'pointer'}}>
+          {patBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+          <input id="pay-pat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaPatronato} disabled={patBusy} style={{display:'none'}}/>
+        </label>
+        {patBusy && <span className="muted">Elaborazione…</span>}
+      </div>
+      <button type="button" className="btn btn-t btn-sm" disabled={patBusy} onClick={async()=>{
         try{ await payDownload('/import/patronato-dettaglio/modello','esempio_patronato_dettaglio.xlsx'); toast('Esempio scaricato'); }
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
@@ -8681,16 +8685,18 @@ function PayImport({toast}){
       Se carichi PDF estratto conto Intesa: auto-aggancio su causale/codici dove certo, altrimenti errore con suggerimenti.
       Gli errori di match finiscono in <b>Da gestire → Anomalie import</b>.
     </div>
-    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-      <label className="btn btn-p" style={{margin:0,cursor:pagBusy?'not-allowed':'pointer'}}>
-        {pagBusy?'Elaborazione…':'Scegli file PDF / Excel / CSV'}
-        <input id="pay-pag-file" type="file"
-          accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
-          onChange={anteprimaPagamenti} disabled={pagBusy} style={{display:'none'}}/>
-      </label>
-      <span className="muted small">Accetta estratti conto Intesa in <b>.pdf</b> oppure .xlsx / .xls / .csv</span>
-      {pagBusy && <span className="muted">Elaborazione…</span>}
-      <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={pagBusy} onClick={async()=>{
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <label className="btn btn-p" style={{margin:0,cursor:pagBusy?'not-allowed':'pointer'}}>
+          {pagBusy?'Elaborazione…':'Scegli file PDF / Excel / CSV'}
+          <input id="pay-pag-file" type="file"
+            accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
+            onChange={anteprimaPagamenti} disabled={pagBusy} style={{display:'none'}}/>
+        </label>
+        <span className="muted small">Accetta estratti conto Intesa in <b>.pdf</b> oppure .xlsx / .xls / .csv</span>
+        {pagBusy && <span className="muted">Elaborazione…</span>}
+      </div>
+      <button type="button" className="btn btn-t btn-sm" disabled={pagBusy} onClick={async()=>{
         try{ await payDownload('/import/pagamenti-storici/modello','esempio_pagamenti_storici.xlsx'); toast('Esempio scaricato'); }
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
@@ -8889,15 +8895,17 @@ function PayImport({toast}){
         qui fai anteprima, conferma e ricalcolo come negli altri tab.
         Le righe senza match vanno in <b>Costi dipendenti → Gestione</b> (da attribuire).
       </div>
-      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-        <label className="btn btn-p" style={{margin:0,cursor:costiBusy?'not-allowed':'pointer'}}>
-          {costiBusy?'Elaborazione…':'Scegli file Excel'}
-          <input id="pay-costi-file" type="file" accept=".xlsx,.xlsm,.xls"
-            onChange={anteprimaCostiDip} disabled={costiBusy} style={{display:'none'}}/>
-        </label>
-        <span className="muted small">Accetta .xlsx / .xlsm / .xls (foglio costi totali)</span>
-        {costiBusy && <span className="muted">Elaborazione…</span>}
-        <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={costiBusy} onClick={async()=>{
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+          <label className="btn btn-p" style={{margin:0,cursor:costiBusy?'not-allowed':'pointer'}}>
+            {costiBusy?'Elaborazione…':'Scegli file Excel'}
+            <input id="pay-costi-file" type="file" accept=".xlsx,.xlsm,.xls"
+              onChange={anteprimaCostiDip} disabled={costiBusy} style={{display:'none'}}/>
+          </label>
+          <span className="muted small">Accetta .xlsx / .xlsm / .xls (foglio costi totali)</span>
+          {costiBusy && <span className="muted">Elaborazione…</span>}
+        </div>
+        <button type="button" className="btn btn-t btn-sm" disabled={costiBusy} onClick={async()=>{
           try{ await payDownload('/import/costi-dipendenti/modello','esempio_costi_dipendenti.xlsx'); toast('Esempio scaricato'); }
           catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
         }}>Scarica file esempio</button>
@@ -9054,14 +9062,16 @@ function PayImport({toast}){
       (visibile in situazione finanziaria, non decurta). Con data → decurta dal totale dovuto.
       Un nuovo import per lo stesso anno <b>sostituisce</b> i precedenti.
     </div>
-    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-      <label className="muted small">Anno <input type="number" value={fatAnno} onChange={e=>setFatAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
-      <label className="btn btn-p" style={{margin:0,cursor:fatBusy?'not-allowed':'pointer'}}>
-        {fatBusy?'Elaborazione…':'Scegli file Excel / CSV'}
-        <input id="pay-fat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaFatture} disabled={fatBusy} style={{display:'none'}}/>
-      </label>
-      {fatBusy && <span className="muted">Elaborazione…</span>}
-      <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={fatBusy} onClick={async()=>{
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <label className="btn btn-p" style={{margin:0,cursor:fatBusy?'not-allowed':'pointer'}}>
+          {fatBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+          <input id="pay-fat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaFatture} disabled={fatBusy} style={{display:'none'}}/>
+        </label>
+        <label className="muted small">Anno <input type="number" value={fatAnno} onChange={e=>setFatAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
+        {fatBusy && <span className="muted">Elaborazione…</span>}
+      </div>
+      <button type="button" className="btn btn-t btn-sm" disabled={fatBusy} onClick={async()=>{
         try{ await payDownload('/import/fatture-nazionale/modello','esempio_fatture_nazionale.xlsx'); toast('Esempio scaricato'); }
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
@@ -9130,17 +9140,19 @@ function PayImport({toast}){
       Excel: per le DS agricole usa <b>OPERATORE</b> / <b>NOME_OPER</b> e <b>CONTRIBUTO</b>
       (non il nominativo del beneficiario né COD_SAP).
     </div>
-    <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12,width:'100%'}}>
-      <label className="muted small">Voce <select value={provVoce} onChange={e=>setProvVoce(e.target.value)} style={{marginLeft:6}}>
-        {provVoci.map(v=><option key={v.codice} value={v.codice}>{v.label}</option>)}
-      </select></label>
-      <label className="muted small">Anno <input type="number" value={provAnno} onChange={e=>setProvAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
-      <label className="btn btn-p" style={{margin:0,cursor:provBusy?'not-allowed':'pointer'}}>
-        {provBusy?'Elaborazione…':'Scegli file Excel / CSV'}
-        <input id="pay-prov-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaProv} disabled={provBusy} style={{display:'none'}}/>
-      </label>
-      {provBusy && <span className="muted">Elaborazione…</span>}
-      <button type="button" className="btn btn-t btn-sm" style={{marginLeft:'auto'}} disabled={provBusy} onClick={async()=>{
+    <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+        <label className="btn btn-p" style={{margin:0,cursor:provBusy?'not-allowed':'pointer'}}>
+          {provBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+          <input id="pay-prov-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaProv} disabled={provBusy} style={{display:'none'}}/>
+        </label>
+        <label className="muted small">Voce <select value={provVoce} onChange={e=>setProvVoce(e.target.value)} style={{marginLeft:6}}>
+          {provVoci.map(v=><option key={v.codice} value={v.codice}>{v.label}</option>)}
+        </select></label>
+        <label className="muted small">Anno <input type="number" value={provAnno} onChange={e=>setProvAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
+        {provBusy && <span className="muted">Elaborazione…</span>}
+      </div>
+      <button type="button" className="btn btn-t btn-sm" disabled={provBusy} onClick={async()=>{
         try{ await payDownload('/import/provvisori/modello','esempio_provvisori.xlsx'); toast('Esempio scaricato'); }
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
