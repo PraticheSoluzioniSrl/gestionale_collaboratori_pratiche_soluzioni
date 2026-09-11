@@ -1074,7 +1074,7 @@ const OPT_PATRONATO = ["","Unità fondamentale","Seconda unità","Collaboratore 
 const OPT_CAF = ["","Centro Raccolta","Sede Periferica","Sede Periferica Dipendente","Collaboratore","Segnalatore"];
 const ini = n => n.split(" ").slice(0,2).map(w=>w[0]).join("");
 const codeCls = (v,stato)=> v.includes("*")?"open":(stato==="warn"?"warn":"");
-const CK = [["caf","CAF"],["del","DELEGA / MENS."],["misia","PATRONATO"],["naspi","NASPI / DS"],["gest","GESTIONE"]];
+const CK = [["caf","CAF"],["del","DELEGA / MENS."],["misia","PATRONATO"],["naspi","NASPI / DS"],["gest","GESTIONE"],["dip","DIPENDENTI"]];
 const RUBRICA_KEYS = ["cognome","nome_proprio","cap","localita","provincia","fax","tipo_sede","stato_occupazionale","comando_enasc","ore","scadenze_contratti","stato_caf","incarico","soci_associazione","altre_contatti"];
 const rubFrom = c => Object.fromEntries(RUBRICA_KEYS.map(k=>[k,c[k]||""]));
 const nomeDaAnag = (src, fallback)=>{
@@ -4329,7 +4329,7 @@ async function payApiMock(path, opts={}){
   if(path==='/collaboratori' && metodo==='POST'){
     const id=Math.max(...PAY_D.collaboratori.map(c=>c.id),0)+1;
     const card={id,nome:(corpo.nome||'').toUpperCase(),cf:corpo.cf||'',listino:corpo.listino||'Standard',
-      stato:'ok',f730:true,interno:false,codici:{caf:'',del:'',misia:'',naspi:'',gest:''},
+      stato:'ok',f730:true,interno:false,codici:{caf:'',del:'',misia:'',naspi:'',gest:'',dip:''},
       tel:[],email:[],citta:'',boll:{2024:'due',2025:'due',2026:'due'},note:'',cfg:[],prod:[0,0,0,0,0,0],
       pag:{ult:'—',ins:0,reg:true},portal:{dashboard:true,compensi:false,documenti:true,comunicazioni:true,mie_pratiche:true,nuova_pratica:true,impdocs:true},
       gestione:{g_prod:false,g_cont:false},
@@ -4398,6 +4398,14 @@ async function payApiMock(path, opts={}){
     e.pagamenti.unshift({id:p.id,data:p.data,tipo:p.tipo,importo:p.importo,anno_competenza:p.anno_competenza,riferimento:p.riferimento||null});
     payRicalcolaSaldi(dest); payCommitLocal();
     return {id:pid, collaboratore_id:dest};
+  }
+  if(path.startsWith('/pagamenti/') && path.endsWith('/ignora') && metodo==='POST'){
+    const pid=Number(path.split('/')[2]);
+    const lista=PAY_D.pagamentiDaAbbinare||[];
+    const i=lista.findIndex(p=>p.id===pid);
+    if(i<0) throw {status:404, detail:'pagamento non trovato'};
+    lista.splice(i,1); payCommitLocal();
+    return {id:pid, ignorato:true};
   }
   if(path.startsWith('/pagamenti/') && metodo==='DELETE'){
     const pid = Number(path.split('/')[2]);
@@ -5211,7 +5219,7 @@ function ModalNuovoCollab({onClose,onSave,toast}){
         const id=Math.max(0,...((window._collabIds)||[0]))+1;
         window._collabIds=[...(window._collabIds||[]),id];
         onSave({id,nome:nome.trim().toUpperCase(),cf:cf.trim(),listino,stato:'ok',f730:true,
-          codici:{caf:'',del:'',misia:'',naspi:'',gest:''},tel:[],email:[],citta:'',boll:{2024:'due',2025:'due',2026:'due'},
+          codici:{caf:'',del:'',misia:'',naspi:'',gest:'',dip:''},tel:[],email:[],citta:'',boll:{2024:'due',2025:'due',2026:'due'},
           note:'',cfg:[],prod:[0,0,0,0,0,0],pag:{ult:'—',ins:0,reg:true},
           portal:{dashboard:true,compensi:false,documenti:true,comunicazioni:true,stampa:false,mie_pratiche:true,nuova_pratica:true,impdocs:true},
           gestione:{g_prod:false,g_cont:false},
@@ -5394,15 +5402,15 @@ function PayDashboard({onOpenCollab,onNav}){
   </React.Fragment>;
 }
 
-function PayPagDaAbbinareBox({rows, collab, onRefresh, toast}){
+function PayPagDaAbbinareBox({rows, collab, onRefresh, toast, alwaysShow}){
   const [draft,setDraft]=useState({});
   const [busy,setBusy]=useState('');
   const lista=rows||[];
-  if(!lista.length) return null;
+  if(!lista.length && !alwaysShow) return null;
   const abbina=async p=>{
     const cid=draft[p.id];
     if(!cid){ toast&&toast('Seleziona il collaboratore corretto',1); return; }
-    setBusy(String(p.id));
+    setBusy('a'+p.id);
     try{
       await payApi('/pagamenti/'+p.id+'/abbina',{method:'POST',body:JSON.stringify({collaboratore_id:+cid})});
       toast&&toast('Pagamento abbinato');
@@ -5410,23 +5418,39 @@ function PayPagDaAbbinareBox({rows, collab, onRefresh, toast}){
     }catch(x){ toast&&toast(x.detail||'Errore abbinamento',1); }
     setBusy('');
   };
+  const ignora=async p=>{
+    if(!confirm('Ignorare questo pagamento?\nUscirà da «Da gestire» e non tornerà su nessuna scheda (importo '+eur(p.importo)+').')) return;
+    setBusy('i'+p.id);
+    try{
+      await payApi('/pagamenti/'+p.id+'/ignora',{method:'POST',body:'{}'});
+      toast&&toast('Pagamento ignorato');
+      onRefresh&&onRefresh();
+    }catch(x){ toast&&toast(x.detail||'Errore',1); }
+    setBusy('');
+  };
   return <div className="panel noprint" style={{border:'1.5px solid var(--teal)',marginBottom:14}}>
     <div className="ph"><h3>Pagamenti da abbinare ({lista.length})</h3>
-      <span className="sp muted small">Sganciati da una scheda — non cancellati. Assegna il collaboratore corretto.</span></div>
+      <span className="sp muted small">Solo in Da gestire. Abbina a un collaboratore oppure Ignora per toglierli dalla coda.</span></div>
     <div className="pad" style={{overflowX:'auto'}}>
-      <table className="tbl" style={{margin:0,fontSize:12.5}}>
-        <thead><tr><th>Data</th><th>Tipo</th><th>Descrizione</th><th className="r">Importo</th><th>Era su</th><th>Assegna a</th><th></th></tr></thead>
+      {!lista.length
+        ? <p className="muted" style={{margin:0}}>Nessun pagamento in coda.</p>
+        : <table className="tbl" style={{margin:0,fontSize:12.5}}>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Descrizione</th><th className="r">Importo</th><th>Competenza</th><th>Era su</th><th>Assegna a</th><th></th></tr></thead>
         <tbody>{lista.map(p=><tr key={p.id}>
           <td className="mono">{p.data}</td>
           <td>{p.tipo==='prestazione'?'Prestazione':p.tipo}</td>
           <td className="small">{p.riferimento||'—'}</td>
           <td className="r mono">{eur(p.importo)}</td>
+          <td className="mono">{p.anno_competenza||'—'}</td>
           <td>{p.era_su||'—'}</td>
           <td><PayCollabPick value={draft[p.id]||''} options={collab} inclInterni
             onChange={v=>setDraft(d=>({...d,[p.id]:v}))}/></td>
-          <td><button className="btn btn-p btn-sm" disabled={busy===String(p.id)} onClick={()=>abbina(p)}>Abbina</button></td>
+          <td style={{whiteSpace:'nowrap'}}>
+            <button className="btn btn-p btn-sm" style={{marginRight:6}} disabled={!!busy} onClick={()=>abbina(p)}>Abbina</button>
+            <button className="btn btn-g btn-sm" disabled={!!busy} onClick={()=>ignora(p)}>Ignora</button>
+          </td>
         </tr>)}</tbody>
-      </table>
+      </table>}
     </div>
   </div>;
 }
@@ -5441,7 +5465,6 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
   const [margCapo,setMargCapo]=useState(null);
   const [sediChiuse,setSediChiuse]=useState(null);
   const [pf,setPf]=useState({anno:new Date().getFullYear(),tipo:'bonifico',importo:'',data:'',riferimento:''});
-  const [pagDaAbb,setPagDaAbb]=useState([]);
   const anniDisponibili=useMemo(()=>{
     const fromSaldi=(d?.saldi||[]).map(s=>+s.anno);
     const fromComp=[...new Set((d?.compensi||[]).map(c=>+c.anno))].filter(Boolean);
@@ -5465,12 +5488,6 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
       const anni=payFilterAnni([...fromSaldi,...fromComp,...fromProv]);
       if(anni.length) setAnno(a=>(a!=null&&anni.includes(a))?a:anni[0]);
       else setAnno(null);
-      if(!readOnlyCollab){
-        try{
-          const r=await payApi('/pagamenti/da-abbinare');
-          setPagDaAbb(r.pagamenti||[]);
-        }catch(e){ setPagDaAbb([]); }
-      }
     } else setErr('Collaboratore "'+nome+'" non trovato nello snapshot pagamenti — verifica il nome in anagrafica');
   };
   useEffect(()=>{ carica().catch(e=>setErr(e.detail||'errore')); payApi('/collaboratori').then(setCollab).catch(()=>{}); },[nome,collabId]);
@@ -5509,8 +5526,7 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
   );
   if(err) return <div className="infobox">{err}</div>;
   if(!d) return <p className="muted">Caricamento compensi…</p>;
-  const boxDaAbb=!readOnlyCollab && <PayPagDaAbbinareBox rows={pagDaAbb} collab={collab} onRefresh={carica} toast={toast}/>;
-  if(anno==null||!anniDisponibili.length) return <React.Fragment>{boxDaAbb}<div className="infobox">Nessun anno con produzione importata per <b>{nome}</b>. Verifica che l&apos;import produzione Roma sia attivo e che i codici identificativi siano corretti.</div></React.Fragment>;
+  if(anno==null||!anniDisponibili.length) return <div className="infobox">Nessun anno con produzione importata per <b>{nome}</b>. Verifica che l&apos;import produzione Roma sia attivo e che i codici identificativi siano corretti.</div>;
   const a=d.anagrafica;
   const saldoAnno=(d.saldi||[]).find(s=>+s.anno===+anno)||{};
   const listino=a.listino||'—';
@@ -5547,10 +5563,10 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
       if(x.status!==409) toast('Errore: '+(x.detail||'pagamento'));
     }};
   const annulla=async pid=>{
-    if(!confirm('Sganciare questo pagamento dalla scheda?\nResterà visibile in «Pagamenti da abbinare» per assegnarlo al collaboratore corretto. Non viene cancellato.')) return;
+    if(!confirm('Sganciare questo pagamento dalla scheda?\nLo trovi in Da gestire → Pagamenti da abbinare (Abbina o Ignora). Non viene cancellato subito.')) return;
     try{
       await payApi('/pagamenti/'+pid,{method:'DELETE'});
-      toast('Pagamento sganciato: abbinalo qui sotto al collaboratore corretto');
+      toast('Pagamento sganciato → Da gestire · Pagamenti da abbinare');
       carica();
     }catch(x){ toast(x.detail||'Errore sgancio',1); }
   };
@@ -5649,8 +5665,6 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
       </div>
     </div>}
 
-    {boxDaAbb}
-
     {pagamentiAnno.length>0 && <details id="pay-pag-registrati" className="details-panel noprint" open>
       <summary>Pagamenti registrati — {anno} <span className="muted" style={{fontWeight:600}}>({pagamentiAnno.length})</span></summary>
       <div className="pad"><div style={{overflowX:'auto'}}>
@@ -5683,17 +5697,17 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
     </details>}
 
     {!readOnlyCollab && (d.costi||[]).length>0 && <details className="details-panel noprint">
-      <summary>Gestione costi dipendenti</summary>
-      <div className="pad">{Object.keys(costiPerAnno).sort().map(y=><div key={'c'+y} style={{marginTop:y===Object.keys(costiPerAnno).sort()[0]?0:14}}>
+      <summary>Costi dipendenti — {Object.keys(costiPerAnno).length?Object.keys(costiPerAnno).join(', '):'—'} (sola lettura)</summary>
+      <div className="pad">
+        <p className="muted small" style={{marginTop:0}}>Per modificare, eliminare o sbloccare le quote usa <b>Costi dipendenti → Gestione</b> (menu laterale), non questa scheda.</p>
+        {Object.keys(costiPerAnno).sort().map(y=><div key={'c'+y} style={{marginTop:y===Object.keys(costiPerAnno).sort()[0]?0:14}}>
         <div className="muted small" style={{fontWeight:700,marginBottom:8}}>Anno {y}</div>
-        <div style={{overflowX:'auto'}}><table className="tbl"><thead><tr><th>Dipendente</th><th className="r">Costo</th><th>Collaboratore</th><th className="r">Quota</th><th></th></tr></thead>
-        <tbody>{costiPerAnno[y].map(c=>{ const dr=draftC[c.id]||{cid:c.collaboratore_id||'',quota:c.quota_ribaltata??''};
-          return <tr key={c.id}><td>{c.nome}</td><td className="r mono">{eur(c.costo_totale)}</td>
-          <td><PayCollabPick value={dr.cid} options={collab} inclInterni
-            onChange={v=>setDraftC(d=>({...d,[c.id]:{...dr,cid:v}}))}/></td>
-          <td className="r"><input type="number" step="0.01" className="mono" style={{width:96,textAlign:'right',padding:'6px 8px',border:'1.5px solid var(--line)',borderRadius:8}} value={dr.quota}
-            onChange={e=>setDraftC(d=>({...d,[c.id]:{...dr,quota:e.target.value}}))}/></td>
-          <td><button className="btn btn-p btn-sm" onClick={()=>salvaCosto(c.id)}>Salva</button></td></tr>;})}</tbody></table></div>
+        <div style={{overflowX:'auto'}}><table className="tbl"><thead><tr><th>Dipendente</th><th className="r">Costo</th><th>Collaboratore</th><th className="r">Quota</th></tr></thead>
+        <tbody>{costiPerAnno[y].map(c=><tr key={c.id}>
+          <td>{c.nome}</td><td className="r mono">{eur(c.costo_totale)}</td>
+          <td>{c.collaboratore||'—'}</td>
+          <td className="r mono">{eur(c.quota_ribaltata)}</td>
+        </tr>)}</tbody></table></div>
       </div>)}</div>
     </details>}
 
@@ -6256,32 +6270,60 @@ function payFmtDataIt(iso){
   return iso;
 }
 function PayCostiDipendenti({toast, navHint, onNavConsumed}){
-  const [anno,setAnno]=useState(new Date().getFullYear());
+  const [anno,setAnno]=useState(null);
   const [d,setD]=useState(null); const [err,setErr]=useState('');
   const [collab,setCollab]=useState([]);
-  const [costiTab,setCostiTab]=useState('regole');
+  const [costiTab,setCostiTab]=useState('gestione');
   const [strutturaSel,setStrutturaSel]=useState('');
   const [draftAgg,setDraftAgg]=useState({});
+  const [editIds,setEditIds]=useState(()=>new Set());
+  const [draftGest,setDraftGest]=useState({});
   const [busta,setBusta]=useState('20');
+  const [editBusta,setEditBusta]=useState(false);
   const [regoleLoc,setRegoleLoc]=useState([]);
+  const [filtroQ,setFiltroQ]=useState('');
+  const [filtroStrutt,setFiltroStrutt]=useState('');
+  const [filtroStato,setFiltroStato]=useState('da_attribuire');
+  const [overrideQuota,setOverrideQuota]=useState(()=>new Set());
+  const [draftRegola,setDraftRegola]=useState({});
+  const [editRegola,setEditRegola]=useState(()=>new Set());
+  const [anniDisp,setAnniDisp]=useState([]);
   const normNomeCosto=n=>(n||'').trim().toUpperCase().replace(/\s+/g,' ');
-  const carica=()=>ensurePayAuth().then(()=>payApi('/costi-dipendenti?anno='+anno+'&solo_aperti=false'))
+  const carica=(annoForce)=>{
+    const y=annoForce!=null?annoForce:anno;
+    const qs=y!=null?('anno='+y+'&solo_aperti=false'):'solo_aperti=false';
+    return ensurePayAuth().then(()=>payApi('/costi-dipendenti?'+qs))
     .then(x=>{
-      setD(x); setBusta(String(x.tariffa_busta??20)); setErr('');
+      const anni=(x.anni&&x.anni.length)?x.anni:[2026,2025,2024,2023,2022,2021];
+      setAnniDisp(anni);
+      if(y==null){
+        setAnno(anni[0]||new Date().getFullYear());
+        return;
+      }
+      if(!(x.righe||[]).length && anni.length && +anni[0]!==+y){
+        setAnno(+anni[0]);
+        return;
+      }
+      setD(x); setBusta(String(x.tariffa_busta??20)); setEditBusta(false); setErr('');
       setRegoleLoc(x.regole||[]);
-      const da={};
+      const da={}; const dg={}; const dr={};
       (x.righe||[]).forEach(r=>{
         const k=normNomeCosto(r.nome)+'|'+r.struttura_label;
         da[k]=String(r.collaboratore_id||r.suggerito_id||'');
+        dg[r.id]={cid:String(r.collaboratore_id||r.suggerito_id||''),quota:r.quota_ribaltata??'',strutt:r.struttura_label||'',mesi:r.mesi??''};
       });
-      setDraftAgg(da);
+      (x.regole||[]).forEach(r=>{ dr[r.struttura]=r.modalita; });
+      (x.strutture_senza_regola||[]).forEach(s=>{ if(!dr[s]) dr[s]=''; });
+      setDraftAgg(da); setDraftGest(dg); setDraftRegola(dr);
+      setEditIds(new Set()); setOverrideQuota(new Set()); setEditRegola(new Set());
     })
     .catch(e=>setErr(e.detail||'errore'));
+  };
   useEffect(()=>{ carica(); payApi('/collaboratori').then(setCollab).catch(()=>{}); },[anno]);
   useEffect(()=>{
     if(!navHint) return;
     if(navHint.anno) setAnno(+navHint.anno);
-    if(navHint.tab) setCostiTab(navHint.tab);
+    if(navHint.tab) setCostiTab(navHint.tab==='regole'?'gestione':navHint.tab);
     onNavConsumed&&onNavConsumed();
     setTimeout(()=>document.getElementById('costi')?.scrollIntoView({behavior:'smooth',block:'start'}),200);
   },[navHint]);
@@ -6295,6 +6337,17 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
     const row=righe.find(r=>String(r.struttura_label).toUpperCase()===String(s).toUpperCase());
     return row?.modalita||'';
   };
+  const quotaDaRegola=r=>{
+    const mod=modStruttura(r.struttura_label)||r.modalita;
+    if(!mod) return null;
+    if(mod==='COSTO_PIENO') return Number(r.costo_totale||0);
+    // Solo busta: mesi del FILE (non dalle date)
+    let mesi=Number(r.mesi!=null&&r.mesi!==''?r.mesi:0);
+    if(!mesi && r.importo_gestione!=null && tariffa>0)
+      mesi=Math.round(Number(r.importo_gestione)/tariffa);
+    if(!mesi) mesi=Number(r.mesi_da_date||0);
+    return Math.round(mesi*tariffa*100)/100;
+  };
   const struttureRiep=useMemo(()=>{
     const map={};
     righe.forEach(r=>{
@@ -6302,8 +6355,12 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
       if(!map[s]) map[s]={struttura:s,n:0,costoFile:0,inScheda:0,noRegola:false};
       map[s].n++; map[s].costoFile+=Number(r.costo_totale||0); map[s].inScheda+=Number(r.quota_ribaltata||0);
     });
-    senza.forEach(s=>{ if(!map[s]) map[s]={struttura:s,n:0,costoFile:0,inScheda:0,noRegola:true}; else map[s].noRegola=true; });
-    regole.forEach(r=>{ const s=r.struttura; if(!map[s]) map[s]={struttura:s,n:0,costoFile:0,inScheda:0,noRegola:false}; });
+    // Solo strutture presenti nelle righe dell'anno (o segnalate senza regola su quelle righe).
+    // Non elencare regole orfane senza dipendenti.
+    senza.forEach(s=>{
+      if(!map[s]) return;
+      map[s].noRegola=true;
+    });
     return Object.values(map).sort((a,b)=>a.struttura.localeCompare(b.struttura,'it'));
   },[righe,senza,regole]);
   const agganci=useMemo(()=>{
@@ -6319,13 +6376,38 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
       return collab.some(c=>normNomePay(c.nome)===n)||r.collaboratore_id||r.suggerito_id;
     }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','it'));
   },[righe,collab]);
-  const anomalie=useMemo(()=>righe.filter(r=>r.bloccata||r.motivo_stato==='MESI_NON_COINCIDONO'||r.motivo_stato==='STRUTTURA_SENZA_REGOLA'||r.motivo_stato==='COSTO_FILE_MANCANTE'),[righe]);
+  const anomalie=useMemo(()=>righe.filter(r=>{
+    if(r.stato==='esclusa') return false;
+    // Stesso perimetro della dashboard: proposta / da attribuire = da confermare
+    if(r.stato==='proposta'||r.stato==='da_attribuire') return true;
+    if(r.bloccata||r.motivo_stato==='STRUTTURA_SENZA_REGOLA'||r.motivo_stato==='COSTO_FILE_MANCANTE'||r.motivo_stato==='GESTIONE_FILE_DIVERSA') return true;
+    if(r.motivo_stato==='MESI_NON_COINCIDONO'){
+      if(r.mesi_file_confermati) return false;
+      const mod=modStruttura(r.struttura_label)||r.modalita;
+      if(mod==='COSTO_PIENO') return false;
+      return true;
+    }
+    return false;
+  }),[righe,regole]);
+  const motivoLbl=m=>({
+    MESI_NON_COINCIDONO:'mesi dalle date ≠ mesi valorizzati nel file (in scheda contano i mesi file)',
+    STRUTTURA_SENZA_REGOLA:'struttura senza regola',
+    COSTO_FILE_MANCANTE:'manca COSTO TOTALE (col. BC) per regola costo pieno',
+    GESTIONE_FILE_DIVERSA:'GESTIONE file (BB) ≠ mesi × tariffa busta',
+  }[m]||m||'');
+  const problemaRiga=r=>{
+    if(r.motivo_stato) return motivoLbl(r.motivo_stato);
+    if(r.stato==='proposta') return 'match proposto — conferma in scheda';
+    if(r.stato==='da_attribuire') return 'senza collaboratore — da attribuire';
+    return r.stato||'da verificare';
+  };
   const struttureNomi=struttureRiep.map(s=>s.struttura);
   const struttureValide=struttureRiep.filter(s=>!s.noRegola&&!senza.includes(s.struttura)).map(s=>s.struttura);
   const strutturaAttiva=strutturaSel&&struttureNomi.includes(strutturaSel)?strutturaSel:(struttureNomi[0]||'');
   const righeStruttura=righe.filter(r=>(r.struttura_label||'—')===strutturaAttiva);
   const totDettaglio=useMemo(()=>{
-    const mesi=righeStruttura.reduce((s,r)=>s+Number(r.mesi_da_date??r.mesi??0),0);
+    // Solo busta: mesi del file (non dalle date)
+    const mesi=righeStruttura.reduce((s,r)=>s+Number(r.mesi??r.mesi_da_date??0),0);
     const file=righeStruttura.reduce((s,r)=>s+Number(r.costo_totale||0),0);
     const scheda=righeStruttura.reduce((s,r)=>s+Number(r.quota_ribaltata||0),0);
     return {mesi,file,scheda,n:righeStruttura.length};
@@ -6338,17 +6420,21 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
   const salvaBusta=async()=>{
     try{
       await payApi('/costi-dipendenti/tariffa-busta',{method:'POST',body:JSON.stringify({anno:+anno,importo:+busta})});
-      toast('Tariffa busta aggiornata'); carica();
+      toast('Tariffa busta salvata: '+eur(+busta)); setEditBusta(false); carica();
     }catch(e){ toast(e.detail||'Errore',1); }
   };
   const impostaRegola=async(s,mod)=>{
+    if(!mod){ toast('Scegli costo pieno o solo busta',1); return; }
     try{
-      await payApi('/costi-dipendenti/regole',{method:'POST',body:JSON.stringify({struttura:s,modalita:mod})});
+      const out=await payApi('/costi-dipendenti/regole',{method:'POST',body:JSON.stringify({struttura:s,modalita:mod})});
       setRegoleLoc(rs=>{
         const up=rs.filter(r=>String(r.struttura).toUpperCase()!==String(s).toUpperCase());
         return [...up,{struttura:s,modalita:mod}];
       });
-      toast('Regola impostata per '+s);
+      setDraftRegola(d=>({...d,[s]:mod}));
+      setEditRegola(es=>{ const n=new Set(es); n.delete(s); return n; });
+      toast('Regola salvata su '+s+' · '+(mod==='COSTO_PIENO'?'costo pieno':'solo busta')
+        +(out.righe_ricalcolate!=null?' · '+out.righe_ricalcolate+' quote aggiornate':''));
       await carica();
     }catch(e){ toast(e.detail||'Errore',1); }
   };
@@ -6374,25 +6460,314 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
       toast('Aggancio salvato per '+row.nome); carica();
     }catch(e){ toast(e.detail||'Errore aggancio',1); }
   };
-  const esporta=()=>toast('Esporta Excel — in preparazione',1);
+  const salvaRigaGestione=async(r)=>{
+    const dr=draftGest[r.id]||{};
+    if(!dr.cid){ toast('Seleziona il collaboratore',1); return; }
+    const strutt=(dr.strutt||r.struttura_label||'').trim();
+    if(!strutt){ toast('Indica la struttura',1); return; }
+    const mod=modStruttura(strutt)||(strutt===r.struttura_label?r.modalita:'');
+    if(!mod){ toast('Imposta prima la regola (costo pieno / solo busta) sulla struttura «'+strutt+'» nel riepilogo sotto',1); return; }
+    try{
+      const body={collaboratore_id:+dr.cid, struttura:strutt};
+      if(dr.mesi!==''&&dr.mesi!=null) body.mesi=+dr.mesi;
+      if(overrideQuota.has(r.id) && dr.quota!=='' && dr.quota!=null) body.quota=+dr.quota;
+      const out=await payApi('/costi-dipendenti/'+r.id+'/salva',{method:'POST',body:JSON.stringify(body)});
+      toast('Salvato: '+r.nome
+        +(out.mesi!=null?' · '+out.mesi+' mesi':'')
+        +(out.quota_ribaltata!=null?' · '+eur(out.quota_ribaltata):''));
+      setEditIds(s=>{ const n=new Set(s); n.delete(r.id); return n; });
+      setOverrideQuota(s=>{ const n=new Set(s); n.delete(r.id); return n; });
+      carica();
+    }catch(e){ toast(e.detail||'Errore salvataggio',1); }
+  };
+  const usaMesiFile=async(r)=>{
+    if(r.mesi==null||r.mesi===''){ toast('Questa riga non ha mesi valorizzati nel file',1); return; }
+    const mod=modStruttura(r.struttura_label)||r.modalita;
+    if(mod==='COSTO_PIENO'){ toast('Con regola costo pieno non si usano i mesi: vale il COSTO TOTALE',1); return; }
+    const cid=r.collaboratore_id||r.suggerito_id;
+    if(!cid){ toast('Abbina prima il collaboratore, poi applica i mesi file',1); setCostiTab('gestione'); setFiltroQ(r.nome||''); return; }
+    try{
+      const out=await payApi('/costi-dipendenti/'+r.id+'/salva',{method:'POST',body:JSON.stringify({
+        collaboratore_id:+cid, mesi:+r.mesi, conferma_mesi:true,
+      })});
+      toast(r.nome+': mesi file confermati ('+r.mesi+') · '+eur(out.quota_ribaltata));
+      carica();
+    }catch(e){ toast(e.detail||'Errore',1); }
+  };
+  const confermaProposta=async(r)=>{
+    const cid=r.collaboratore_id||r.suggerito_id;
+    if(!cid){
+      toast('Seleziona il collaboratore in Gestione',1);
+      setCostiTab('gestione'); setFiltroQ(r.nome||''); setFiltroStato('da_attribuire');
+      return;
+    }
+    try{
+      const body={collaboratore_id:+cid};
+      if(r.mesi!=null&&r.mesi!=='') body.mesi=+r.mesi;
+      const out=await payApi('/costi-dipendenti/'+r.id+'/salva',{method:'POST',body:JSON.stringify(body)});
+      toast('Confermato: '+r.nome+(out.quota_ribaltata!=null?' · '+eur(out.quota_ribaltata):''));
+      carica();
+    }catch(e){ toast(e.detail||'Errore conferma',1); }
+  };
+  const spostaRigaCalcolo=async(r, nuovaStrutt)=>{
+    const dest=(nuovaStrutt||'').trim();
+    if(!dest || dest===(r.struttura_label||'')) return;
+    if(!modStruttura(dest)){
+      toast('Struttura «'+dest+'» senza regola. Impostala in Gestione → Riepilogo, poi riprova.',1);
+      return;
+    }
+    if(!confirm('Spostare «'+r.nome+'» da «'+(r.struttura_label||'')+'» a «'+dest+'»?\nLa quota verrà ricalcolata con la regola di «'+dest+'».')) return;
+    try{
+      const out=await payApi('/costi-dipendenti/'+r.id+'/sposta',{method:'POST',body:JSON.stringify({struttura:dest})});
+      toast(r.nome+' spostato su '+dest+(out.quota_ribaltata!=null?' · '+eur(out.quota_ribaltata):''));
+      setStrutturaSel(dest);
+      carica();
+    }catch(e){ toast(e.detail||'Errore spostamento',1); }
+  };
+  const eliminaRigaGestione=async(r)=>{
+    if(!confirm('Eliminare definitivamente «'+r.nome+'» ('+(r.struttura_label||'')+')? Uscirà dalla scheda e dai saldi.')) return;
+    try{
+      await payApi('/costi-dipendenti/'+r.id,{method:'DELETE'});
+      toast('Eliminato: '+r.nome);
+      carica();
+    }catch(e){ toast(e.detail||'Errore eliminazione',1); }
+  };
+  const righeGestione=useMemo(()=>{
+    const q=(filtroQ||'').trim().toUpperCase();
+    return righe.filter(r=>{
+      if(r.stato==='esclusa') return false;
+      if(filtroStrutt && (r.struttura_label||'')!==filtroStrutt) return false;
+      if(filtroStato==='da_attribuire' && r.stato!=='da_attribuire' && r.stato!=='proposta') return false;
+      if(filtroStato==='senza_regola' && (modStruttura(r.struttura_label)||r.modalita)) return false;
+      if(filtroStato==='con_regola' && !(modStruttura(r.struttura_label)||r.modalita)) return false;
+      if(filtroStato==='anomalia' && !(r.bloccata||r.motivo_stato)) return false;
+      if(q){
+        const hay=[r.nome,r.struttura_label,r.collaboratore,lblCollab(r.collaboratore_id)].join(' ').toUpperCase();
+        if(!hay.includes(q)) return false;
+      }
+      return true;
+    }).sort((a,b)=>(a.nome||'').localeCompare(b.nome||'','it'));
+  },[righe,filtroQ,filtroStrutt,filtroStato,regole,collab]);
   if(err) return <div className="infobox">⚠ {err}</div>;
-  if(!d) return <p className="muted">Caricamento…</p>;
+  if(!d || anno==null) return <p className="muted">Caricamento…</p>;
   return <section id="costi">
-    <div className="head"><div><h1>Costi dipendenti</h1><p>Le regole si impostano una volta. Ogni import le applica da solo.</p></div>
+    <div className="head"><div><h1>Costi dipendenti</h1><p>Un solo posto: regola per struttura, mesi, collaboratore e quota calcolata. Import da Import dati → Costi dipendenti.</p></div>
       <div className="acts">
         <select value={anno} onChange={e=>setAnno(+e.target.value)}>
-          {[2026,2025,2024,2023,2022,2021].map(y=><option key={y} value={y}>{y}</option>)}
+          {(anniDisp.length?anniDisp:[2026,2025,2024,2023,2022,2021]).map(y=><option key={y} value={y}>{y}</option>)}
         </select>
-        <button type="button" className="btn btn-g" onClick={esporta}>Esporta</button>
       </div>
     </div>
     <div className="tabs">
-      <button type="button" aria-selected={costiTab==='regole'?'true':'false'} onClick={()=>setCostiTab('regole')}>Regole</button>
+      <button type="button" aria-selected={costiTab==='gestione'?'true':'false'} onClick={()=>setCostiTab('gestione')}>Gestione</button>
       <button type="button" aria-selected={costiTab==='calcolo'?'true':'false'} onClick={()=>setCostiTab('calcolo')}>Calcolo dell&apos;anno</button>
       <button type="button" aria-selected={costiTab==='controllare'?'true':'false'} onClick={()=>setCostiTab('controllare')}>Righe da controllare{anomalie.length>0?' ('+anomalie.length+')':''}</button>
     </div>
 
-    {costiTab==='regole' && <React.Fragment>
+    {costiTab==='gestione' && <React.Fragment>
+      <div className="infobox" style={{marginBottom:14}}>
+        <b>Come funziona</b> — per ogni riga: (1) regola <b>costo pieno</b> = COSTO TOTALE del file, oppure <b>solo busta</b> = mesi del file × tariffa;
+        (2) collaboratore a cui addebitare; (3) Salva applica la regola. Se mesi file ≠ date, puoi correggere i mesi o fare override della quota.
+        Il match automatico sull&apos;import usa il canale <b>DIPENDENTI</b> in Scheda → Codici (stesso testo della struttura nel file).
+      </div>
+      <div className="lista-filtri" style={{marginBottom:12}}>
+        <div className="f" style={{flex:'1 1 220px'}}><label>Cerca</label>
+          <input value={filtroQ} onChange={e=>setFiltroQ(e.target.value)} placeholder="dipendente, struttura, collaboratore…"/></div>
+        <div className="f"><label>Struttura</label>
+          <select value={filtroStrutt} onChange={e=>setFiltroStrutt(e.target.value)}>
+            <option value="">Tutte</option>
+            {struttureNomi.map(s=><option key={s} value={s}>{s}</option>)}
+          </select></div>
+        <div className="f"><label>Stato</label>
+          <select value={filtroStato} onChange={e=>setFiltroStato(e.target.value)}>
+            <option value="">Tutti</option>
+            <option value="da_attribuire">Da confermare</option>
+            <option value="senza_regola">Senza regola</option>
+            <option value="con_regola">Con regola</option>
+            <option value="anomalia">Con anomalia</option>
+          </select></div>
+        {(filtroQ||filtroStrutt||filtroStato) && <button type="button" className="btn btn-g btn-sm reset" onClick={()=>{setFiltroQ('');setFiltroStrutt('');setFiltroStato('');}}>Azzera filtri</button>}
+      </div>
+      <div className="card" style={{marginBottom:14}}>
+        <div className="chead"><h2>Tariffa busta paga {anno}</h2>
+          <span className="note">usata dalla regola «solo busta» · dopo Salva si blocca</span></div>
+        <div className="cbody" style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
+          <span className="muted small">€ per busta</span>
+          {editBusta
+            ? <React.Fragment>
+                <input type="number" step="0.01" value={busta} onChange={e=>setBusta(e.target.value)} style={{width:90,textAlign:'right'}}/>
+                <button type="button" className="btn btn-p btn-sm" onClick={salvaBusta}>Salva</button>
+                <button type="button" className="btn btn-g btn-sm" onClick={()=>{ setBusta(String(d.tariffa_busta??20)); setEditBusta(false); }}>Annulla</button>
+              </React.Fragment>
+            : <React.Fragment>
+                <b className="mono">{eur(Number(busta||0))}</b>
+                <button type="button" className="btn btn-g btn-sm" onClick={()=>setEditBusta(true)}>Modifica</button>
+              </React.Fragment>}
+          <span className="muted small">Solo busta: mesi del file × tariffa. Le date assunzione/cessazione restano un controllo (anomalia se diverse).</span>
+        </div>
+      </div>
+      <div className="card">
+        <div className="chead"><h2>Gestione costi {anno}</h2>
+          <span className="note">{righeGestione.length} righe · regola + mesi + collaboratore · dopo Salva le celle si bloccano</span></div>
+        <div className="cbody flush"><table>
+          <thead><tr>
+            <th>Dipendente</th><th>Struttura</th>
+            <th className="r">Mesi file</th><th className="r">Gestione file</th><th className="r">Costo file</th>
+            <th>Regola</th><th>Collaboratore</th><th className="r">Quota in scheda</th><th></th>
+          </tr></thead>
+          <tbody>{righeGestione.map(r=>{
+            const locked=(r.stato==='attribuita'||r.stato==='proposta')&&r.collaboratore_id&&!editIds.has(r.id);
+            const dr=draftGest[r.id]||{cid:String(r.collaboratore_id||''),quota:r.quota_ribaltata??'',strutt:r.struttura_label||'',mesi:r.mesi??''};
+            const struttNow=dr.strutt||r.struttura_label||'';
+            const mod=modStruttura(struttNow)||(struttNow===r.struttura_label?r.modalita:'')||'';
+            const mesiEff=(dr.mesi!==''&&dr.mesi!=null)?Number(dr.mesi):Number(r.mesi||0);
+            const prev=quotaDaRegola({...r, mesi:mesiEff, struttura_label:struttNow, modalita:mod});
+            const mesiFile=r.mesi;
+            const ov=overrideQuota.has(r.id);
+            const struttOpts=[...new Set([...(struttureNomi||[]), r.struttura_label, r.nome].filter(Boolean))];
+            return <tr key={r.id} style={r.bloccata||!mod?{background:'var(--red-bg)'}:undefined}>
+              <td>{r.nome}{r.motivo_stato && <span className="sub">{motivoLbl(r.motivo_stato)}</span>}</td>
+              <td style={{fontWeight:400,minWidth:140}}>{locked
+                ? (r.struttura_label||'—')
+                : <select value={struttNow} onChange={e=>setDraftGest(d=>({...d,[r.id]:{...dr,strutt:e.target.value}}))}
+                    style={{maxWidth:180}}>
+                    {struttOpts.map(s=><option key={s} value={s}>{s}</option>)}
+                  </select>}</td>
+              <td className="r mono" title={'date: '+(r.mesi_da_date??'—')}>
+                {locked
+                  ? <span>{mesiFile??'—'}{mesiFile!=null && r.mesi_da_date!=null && Number(mesiFile)!==Number(r.mesi_da_date)
+                      ? <span className="sub" style={{color:'var(--red)'}}>date {r.mesi_da_date}</span> : null}</span>
+                  : <div>
+                      <input type="number" min="0" max="12" step="1" className="mono" style={{width:56,textAlign:'right',padding:'6px 8px',border:'1.5px solid var(--line)',borderRadius:8}}
+                        value={dr.mesi??''} onChange={e=>{
+                          const m=e.target.value;
+                          const qAuto=quotaDaRegola({...r, mesi:m===''?0:Number(m), struttura_label:struttNow, modalita:mod});
+                          setDraftGest(d=>({...d,[r.id]:{...dr,mesi:m,quota:(!ov && qAuto!=null)?qAuto:dr.quota}}));
+                        }}/>
+                      {r.mesi_da_date!=null && Number(dr.mesi||mesiFile||0)!==Number(r.mesi_da_date)
+                        ? <span className="sub" style={{color:'var(--red)'}}>date {r.mesi_da_date}</span> : null}
+                    </div>}
+              </td>
+              <td className="r mono">{r.importo_gestione!=null?eur(r.importo_gestione):'—'}</td>
+              <td className="r mono">{eur(r.costo_totale)}</td>
+              <td style={{minWidth:140}}>
+                {locked
+                  ? <span className="small">{mod==='COSTO_PIENO'?'costo pieno':(mod==='SOLO_BUSTA_PAGA'?'solo busta':'—')}</span>
+                  : <select value={mod||''} onChange={e=>{const v=e.target.value; if(!v) return; impostaRegola(struttNow,v);}}
+                      style={{maxWidth:150}}>
+                      <option value="">imposta…</option>
+                      <option value="COSTO_PIENO">costo pieno</option>
+                      <option value="SOLO_BUSTA_PAGA">solo busta</option>
+                    </select>}
+              </td>
+              <td>{locked
+                ? <b>{lblCollab(r.collaboratore_id)}</b>
+                : <PayCollabPick value={dr.cid} options={collab} inclInterni placeholder="seleziona…"
+                    onChange={v=>{
+                      const qAuto=quotaDaRegola({...r, struttura_label:struttNow, modalita:mod});
+                      setDraftGest(d=>({...d,[r.id]:{...dr,cid:v,quota:(!ov && qAuto!=null)?qAuto:(dr.quota)}}));
+                    }}
+                    style={{minWidth:180,display:'inline-block'}}/>}</td>
+              <td className="r">
+                {locked
+                  ? <span className="mono">{eur(r.quota_ribaltata)}</span>
+                  : <div>
+                      {!ov
+                        ? <div>
+                            <span className="mono" style={{fontWeight:700}}>{prev!=null?eur(prev):'—'}</span>
+                            <div className="sub">{mod?('da regola'):'serve regola'}</div>
+                            <button type="button" className="btn-link" style={{fontSize:11,background:'none',border:'none',color:'var(--teal)',cursor:'pointer',padding:0}}
+                              onClick={()=>setOverrideQuota(s=>new Set(s).add(r.id))}>override manuale</button>
+                          </div>
+                        : <div>
+                            <input type="number" step="0.01" className="mono" style={{width:96,textAlign:'right',padding:'6px 8px',border:'1.5px solid var(--line)',borderRadius:8}}
+                              value={dr.quota} onChange={e=>setDraftGest(d=>({...d,[r.id]:{...dr,quota:e.target.value}}))}/>
+                            <button type="button" className="btn-link" style={{fontSize:11,background:'none',border:'none',display:'block',color:'var(--mut)',cursor:'pointer',padding:0}}
+                              onClick={()=>{
+                                setOverrideQuota(s=>{const n=new Set(s); n.delete(r.id); return n;});
+                                const qAuto=quotaDaRegola({...r, struttura_label:struttNow, modalita:mod});
+                                setDraftGest(d=>({...d,[r.id]:{...dr,quota:qAuto!=null?qAuto:dr.quota}}));
+                              }}>usa regola</button>
+                          </div>}
+                    </div>}
+              </td>
+              <td style={{whiteSpace:'nowrap',textAlign:'right'}}>
+                {locked
+                  ? <button type="button" className="btn btn-g btn-sm" style={{marginRight:6}} onClick={()=>{
+                      setEditIds(s=>new Set(s).add(r.id));
+                      const qAuto=quotaDaRegola(r);
+                      setDraftGest(d=>({...d,[r.id]:{cid:String(r.collaboratore_id||''),quota:r.quota_ribaltata??qAuto??'',strutt:r.struttura_label||'',mesi:r.mesi??''}}));
+                    }}>Modifica</button>
+                  : <button type="button" className="btn btn-p btn-sm" style={{marginRight:6}} onClick={()=>salvaRigaGestione(r)}>Salva</button>}
+                <button type="button" className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>eliminaRigaGestione(r)}>Elimina</button>
+              </td>
+            </tr>;
+          })}
+          {!righeGestione.length && <tr><td colSpan={9} className="muted" style={{textAlign:'center'}}>Nessuna riga con i filtri attuali. Importa da Import dati → Costi dipendenti.</td></tr>}
+          </tbody>
+        </table>
+        <div className="legend">Solo busta: mesi file × tariffa (modificabili). Override quota solo se serve. Elimina toglie la riga dal gestionale.</div></div>
+      </div>
+
+      <div className="card" style={{marginTop:14}}>
+        <div className="chead"><h2>Riepilogo per struttura</h2>
+          <span className="note">Regola e riassegna sono separate · Salva blocca la regola</span></div>
+        <div className="cbody flush"><table>
+          <thead><tr>
+            <th>Struttura</th><th>Dipendenti</th><th>Costo file</th>
+            <th>Regola</th><th></th><th>Riassegna etichetta</th><th>In scheda</th>
+          </tr></thead>
+          <tbody>{struttureRiep.map(s=>{
+            const modSalvata=modStruttura(s.struttura);
+            const draft=draftRegola[s.struttura]!==undefined?draftRegola[s.struttura]:(modSalvata||'');
+            const editing=editRegola.has(s.struttura)||!modSalvata;
+            const isBad=!modSalvata;
+            const altre=struttureValide.filter(n=>n!==s.struttura);
+            return <tr key={s.struttura} style={isBad?{background:'var(--red-bg)'}:undefined}>
+              <td>{s.struttura}{isBad && <span className="sub" style={{color:'var(--red)'}}>senza regola</span>}</td>
+              <td className="mono">{num(s.n)}</td>
+              <td className="mono" style={{color:'var(--muted)'}}>{eur(s.costoFile)}</td>
+              <td style={{minWidth:150}}>
+                {editing
+                  ? <select value={draft||''} onChange={e=>setDraftRegola(d=>({...d,[s.struttura]:e.target.value}))}>
+                      <option value="">scegli…</option>
+                      <option value="COSTO_PIENO">costo pieno</option>
+                      <option value="SOLO_BUSTA_PAGA">solo busta paga</option>
+                    </select>
+                  : <b>{modSalvata==='COSTO_PIENO'?'costo pieno':'solo busta paga'}</b>}
+              </td>
+              <td style={{whiteSpace:'nowrap'}}>
+                {editing
+                  ? <button type="button" className="btn btn-p btn-sm" disabled={!draft}
+                      onClick={()=>impostaRegola(s.struttura,draft)}>Salva</button>
+                  : <button type="button" className="btn btn-g btn-sm"
+                      onClick={()=>{ setEditRegola(es=>new Set(es).add(s.struttura)); setDraftRegola(d=>({...d,[s.struttura]:modSalvata||''})); }}>Modifica</button>}
+              </td>
+              <td>
+                <select defaultValue="" onChange={e=>{
+                  const v=e.target.value; e.target.value='';
+                  if(!v) return;
+                  if(!confirm('Riassegnare le righe «'+s.struttura+'» a «'+v+'»?\n(serve già una regola su «'+v+'»)')) return;
+                  remappaStruttura(s.struttura,v);
+                }}>
+                  <option value="">— non riassegnare —</option>
+                  {altre.map(n=><option key={n} value={n}>{n}</option>)}
+                </select>
+              </td>
+              <td className={'mono'+(isBad?' bad':'')}>{isBad?'bloccato':eur(s.inScheda)}</td>
+            </tr>;
+          })}
+          {!struttureRiep.length && <tr><td colSpan={7} className="muted" style={{textAlign:'center'}}>Nessuna struttura per {anno}.</td></tr>}
+          </tbody>
+        </table>
+        <div className="legend">
+          <b>Regola</b> = costo pieno o solo busta (Salva per bloccare).
+          <b> Riassegna</b> = solo se l&apos;etichetta nel file è sbagliata (es. data al posto del nome): sposta le righe su un&apos;altra struttura che ha già la regola.
+        </div></div>
+      </div>
+    </React.Fragment>}
+
+    {false && costiTab==='regole' && <React.Fragment>
       <div className="card">
         <div className="chead"><h2>Regola per struttura</h2><span className="note">vale per tutti i dipendenti della struttura, salvo aggancio individuale</span></div>
         <div className="cbody flush"><table>
@@ -6486,54 +6861,105 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
           {struttureNomi.map(s=><option key={s} value={s}>{s}</option>)}
         </select>
       </div>}
+      <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
+        Qui puoi <b>spostare</b> una voce su un&apos;altra struttura (es. Falcone da CARA ANNA a FALCONE ALFONSO).
+        Prima imposta la regola sulla struttura di destinazione in Gestione → Riepilogo. La quota si ricalcola da sola.
+        La struttura in import arriva dalla colonna <b>STRUTTURA</b> del file Excel.
+      </div>
       <div className="card">
         <div className="chead"><h2>Struttura {strutturaAttiva||'—'} — dettaglio del calcolo</h2>
           <span className="val mono">{eur(totDettaglio.scheda)} {totDettaglio.file>totDettaglio.scheda && <span className="note" style={{marginLeft:8}}>invece di {eur(totDettaglio.file)}</span>}</span></div>
         <div className="cbody flush"><table>
-          <thead><tr><th>Dipendente</th><th>Assunzione</th><th>Cessazione</th><th>Mesi</th><th>Costo dal file</th><th>In scheda</th></tr></thead>
-          <tbody>{righeStruttura.map(r=><tr key={r.id}>
-            <td>{r.nome}{r.motivo_stato==='MESI_NON_COINCIDONO' && <span className="sub">mesi file ≠ mesi date</span>}</td>
+          <thead><tr>
+            <th>Dipendente</th><th>Assunzione</th><th>Cessazione</th><th>Mesi file</th>
+            <th>Gestione file</th><th>Costo totale file</th><th>In scheda</th>
+            <th>Sposta su struttura</th><th></th>
+          </tr></thead>
+          <tbody>{righeStruttura.map(r=>{
+            const destOpts=[...new Set([...(struttureNomi||[]), r.nome].filter(s=>s && s!==r.struttura_label))];
+            return <tr key={r.id}>
+            <td>{r.nome}{r.motivo_stato==='MESI_NON_COINCIDONO' && <span className="sub">mesi file ≠ mesi date</span>}{r.motivo_stato==='GESTIONE_FILE_DIVERSA' && <span className="sub">gestione file ≠ tariffa</span>}</td>
             <td className="mono">{payFmtDataIt(r.data_assunzione)}</td>
             <td className="mono">{payFmtDataIt(r.data_cessazione)}</td>
-            <td className="mono">{r.mesi_da_date??r.mesi??'—'}</td>
+            <td className="mono" title={'date: '+(r.mesi_da_date??'—')}>
+              {r.mesi??'—'}
+              {r.mesi!=null && r.mesi_da_date!=null && Number(r.mesi)!==Number(r.mesi_da_date)
+                ? <span className="sub" style={{color:'var(--red)'}}>date {r.mesi_da_date}</span> : null}
+            </td>
+            <td className="mono" style={{color:'var(--muted)'}}>{r.importo_gestione!=null?eur(r.importo_gestione):'—'}</td>
             <td className="mono" style={{color:'var(--muted)'}}>{eur(r.costo_totale)}</td>
             <td className="mono">{eur(r.quota_ribaltata)}</td>
-          </tr>)}
-          {!righeStruttura.length && <tr><td colSpan={6} className="muted" style={{textAlign:'center'}}>Nessun dipendente per questa struttura nell&apos;anno {anno}.</td></tr>}
+            <td>
+              <select defaultValue="" onChange={e=>{ const v=e.target.value; e.target.value=''; if(v) spostaRigaCalcolo(r,v); }}
+                style={{maxWidth:200}}>
+                <option value="">— sposta… —</option>
+                {destOpts.map(s=><option key={s} value={s}>{s}{modStruttura(s)?'':' (senza regola)'}</option>)}
+              </select>
+            </td>
+            <td style={{whiteSpace:'nowrap'}}>
+              <button type="button" className="btn btn-g btn-sm" style={{marginRight:4}} onClick={()=>{
+                setCostiTab('gestione'); setFiltroQ(r.nome||''); setFiltroStrutt(''); setFiltroStato('');
+                setEditIds(s=>new Set(s).add(r.id));
+                setDraftGest(d=>({...d,[r.id]:{cid:String(r.collaboratore_id||r.suggerito_id||''),quota:r.quota_ribaltata??'',strutt:r.struttura_label||'',mesi:r.mesi??''}}));
+              }}>Modifica</button>
+              <button type="button" className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>eliminaRigaGestione(r)}>Elimina</button>
+            </td>
+          </tr>;})}
+          {!righeStruttura.length && <tr><td colSpan={9} className="muted" style={{textAlign:'center'}}>Nessun dipendente per questa struttura nell&apos;anno {anno}.</td></tr>}
           </tbody>
           {righeStruttura.length>0 && <tfoot><tr>
-            <td colSpan={3}>{totDettaglio.n} dipendenti · {totDettaglio.mesi} mesi × € {tariffa}</td>
+            <td colSpan={3}>{totDettaglio.n} dipendenti · {totDettaglio.mesi} mesi</td>
             <td className="mono">{totDettaglio.mesi}</td>
+            <td className="mono" style={{color:'var(--muted)'}}>—</td>
             <td className="mono" style={{color:'var(--muted)'}}>{eur(totDettaglio.file)}</td>
             <td className="mono">{eur(totDettaglio.scheda)}</td>
+            <td colSpan={2}></td>
           </tr></tfoot>}
         </table></div>
       </div>
     </React.Fragment>}
 
     {costiTab==='controllare' && <div className="card">
-      <div className="chead"><h2>Righe da controllare</h2><span className="note">i mesi dalle date non coincidono con quelli valorizzati nel file</span></div>
+      <div className="chead"><h2>Righe da controllare{anomalie.length?(' ('+anomalie.length+')'):''}</h2>
+        <span className="note">da confermare in scheda, oppure mesi / regola / GESTIONE</span></div>
       <div className="cbody flush"><table>
-        <thead><tr><th>Dipendente</th><th>Mesi dalle date</th><th>Mesi valorizzati</th><th>Problema</th><th></th></tr></thead>
+        <thead><tr><th>Dipendente</th><th>Collaboratore</th><th className="r">Quota</th><th>Problema</th><th></th></tr></thead>
         <tbody>{anomalie.map(r=><tr key={r.id} style={{background:'var(--red-bg)'}}>
-          <td>{r.nome}<span className="sub">{r.struttura_label}</span></td>
-          <td className={'mono'+(r.mesi_da_date==null&&!r.data_assunzione?' bad':'')}>{r.mesi_da_date==null&&!r.data_assunzione?'nessuna data':r.mesi_da_date}</td>
-          <td className="mono">{r.mesi??'—'}</td>
-          <td style={{textAlign:'right',fontWeight:400}}>{r.motivo_stato==='MESI_NON_COINCIDONO'?'mesi dalle date ≠ mesi valorizzati nel file':(r.motivo_stato||r.stato||'da verificare')}</td>
-          <td style={{textAlign:'right'}}>
-            <button type="button" className="btn btn-g" onClick={()=>{setCostiTab('calcolo'); setStrutturaSel(r.struttura_label);}}>Correggi</button>
+          <td>{r.nome}<span className="sub">{r.struttura_label}{r.mesi!=null?' · '+r.mesi+' mesi':''}</span></td>
+          <td>{r.collaboratore||lblCollab(r.collaboratore_id)||lblCollab(r.suggerito_id)||<span className="neg">da attribuire</span>}</td>
+          <td className="r mono">{r.quota_ribaltata!=null?eur(r.quota_ribaltata):'—'}</td>
+          <td style={{textAlign:'right',fontWeight:400}}>{problemaRiga(r)}</td>
+          <td style={{textAlign:'right',whiteSpace:'nowrap'}}>
+            {(r.stato==='proposta'||r.stato==='da_attribuire') && (r.collaboratore_id||r.suggerito_id) &&
+              <button type="button" className="btn btn-p btn-sm" style={{marginRight:6}} onClick={()=>confermaProposta(r)}
+                title="Conferma collaboratore e quota in scheda">Conferma</button>}
+            {r.motivo_stato==='MESI_NON_COINCIDONO' && !r.mesi_file_confermati
+              && (modStruttura(r.struttura_label)||r.modalita)==='SOLO_BUSTA_PAGA'
+              && r.mesi!=null && (r.collaboratore_id||r.suggerito_id) &&
+              <button type="button" className="btn btn-p btn-sm" style={{marginRight:6}} onClick={()=>usaMesiFile(r)}
+                title="Conferma i mesi del file, ricalcola la quota e togli dalla lista">Usa mesi file ({r.mesi})</button>}
+            <button type="button" className="btn btn-g btn-sm" onClick={()=>{
+              setCostiTab('calcolo'); setStrutturaSel(r.struttura_label);
+            }}>Vedi calcolo</button>
+            <button type="button" className="btn btn-p btn-sm" style={{marginLeft:6}} onClick={()=>{
+              setCostiTab('gestione'); setFiltroQ(r.nome||''); setFiltroStrutt(''); setFiltroStato('');
+              setEditIds(s=>new Set(s).add(r.id));
+              const qAuto=quotaDaRegola(r);
+              setDraftGest(d=>({...d,[r.id]:{cid:String(r.collaboratore_id||r.suggerito_id||''),quota:r.quota_ribaltata??qAuto??'',strutt:r.struttura_label||'',mesi:r.mesi??''}}));
+            }}>Modifica</button>
           </td>
         </tr>)}
         {!anomalie.length && <tr><td colSpan={5} className="muted" style={{textAlign:'center'}}>Nessuna riga da controllare per {anno}.</td></tr>}
         </tbody>
       </table>
-      <div className="legend">Il calcolo usa le date. Il conteggio dei mesi valorizzati serve da controllo incrociato: quando i due numeri non coincidono la riga finisce qui e non entra in scheda finché non la sistemi.</div></div>
+      <div className="legend">Le proposte dall&apos;import restano qui finché non le <b>Confermi</b> (entrano in scheda come attribuite). Solo busta → mesi file × tariffa. Costo pieno → vale il COSTO TOTALE.</div></div>
     </div>}
   </section>;
 }
 
 function PayCode({toast}){
   const [d,setD]=useState(null); const [collab,setCollab]=useState([]);
+  const [pagDaAbb,setPagDaAbb]=useState([]);
   const [draftSanz,setDraftSanz]=useState({});
   const [draftQ,setDraftQ]=useState({});
   const [selS,setSelS]=useState(()=>new Set());
@@ -6553,8 +6979,12 @@ function PayCode({toast}){
   const [showQuarIns,setShowQuarIns]=useState(false);
   const [errLoad,setErrLoad]=useState('');
   useEffect(()=>{ setShowCodeDett(false); },[codeTab]);
-  const carica=()=>ensurePayAuth().then(()=>payApi('/code')).then(x=>{
+  const carica=()=>ensurePayAuth().then(()=>Promise.all([
+    payApi('/code'),
+    payApi('/pagamenti/da-abbinare').catch(()=>({pagamenti:[]})),
+  ])).then(([x, pag])=>{
     setD(x); setErrLoad('');
+    setPagDaAbb(pag.pagamenti||[]);
     const ds={}, dq={}, da={};
     (x.sanzioni||[]).forEach(s=>{
       const cid=s.collaboratore_id||s.suggerito_id||'';
@@ -6566,14 +6996,16 @@ function PayCode({toast}){
     setSelS(new Set()); setSelQ(new Set()); setSelA(new Set());
     const nA=(x.anomalie_import||[]).length;
     const nPag=(x.anomalie_import||[]).filter(a=>a.tipo==='pagamenti').length;
-    if(nA>0 && !codeTabAutoDone.current){
-      setCodeTab('anom');
-      setFiltAnomTipo(nPag>0?'pagamenti':'');
+    const nDaAbb=(pag.pagamenti||[]).length;
+    if(!codeTabAutoDone.current){
+      if(nDaAbb>0 && nA===0){ setCodeTab('pagabb'); }
+      else if(nA>0){ setCodeTab('anom'); setFiltAnomTipo(nPag>0?'pagamenti':''); }
       codeTabAutoDone.current=true;
     }
   }).catch(e=>{
     setErrLoad(e.detail||e.message||'API non raggiungibile');
     setD({sanzioni:[],quarantena:[],anomalie_import:[]});
+    setPagDaAbb([]);
   });
   useEffect(()=>{ carica(); payApi('/collaboratori').then(setCollab).catch(()=>{}); },[]);
   if(!d) return <p className="muted">Caricamento…</p>;
@@ -6750,12 +7182,13 @@ function PayCode({toast}){
   const thS={position:'sticky',top:0,background:'#F8FAFD',color:'var(--mut)',zIndex:1,padding:'9px 14px',fontSize:10.5,fontWeight:700,letterSpacing:'.5px',textTransform:'uppercase',borderBottom:'1px solid var(--line)'};
   const codeTabs=[
     ['anom','Anomalie import'+(nAnomTot?' ('+nAnomTot+')':'')],
+    ['pagabb','Pagamenti da abbinare'+(pagDaAbb.length?' ('+pagDaAbb.length+')':'')],
     ['sanz','Sanzioni ('+d.sanzioni.length+')'],
     ['quar','Quarantena'+(d.quarantena.length?' ('+d.quarantena.length+')':'')],
   ];
   return <React.Fragment>
     <div className="top"><div><h1>Da gestire</h1>
-      <div className="sub">Anomalie import, sanzioni e quarantena — attribuzione singola o massiva. I costi dipendenti si gestiscono in «Costi dipendenti».</div></div>
+      <div className="sub">Anomalie import, pagamenti sganciati, sanzioni e quarantena. I costi dipendenti si gestiscono in «Costi dipendenti».</div></div>
       <div className="toolbar-actions">
         <button className="btn btn-g" onClick={()=>payStampa('pay-code-print')}>🖨 Stampa</button>
         {PAY_USE_API && codeTab!=='anom' && <button className="btn btn-g" onClick={ripristina}>↺ Ripristina</button>}
@@ -6789,7 +7222,20 @@ function PayCode({toast}){
       Ci sono <b>{nAnomTot} anomalie import</b> da sistemare ({nAnomPag} pagamenti).
       {' '}<b style={{textDecoration:'underline'}}>Apri tab Anomalie import →</b>
     </div>}
+    {pagDaAbb.length>0 && codeTab!=='pagabb' && <div className="infobox noprint" style={{marginBottom:12,fontSize:12.5,borderColor:'var(--teal)',cursor:'pointer'}}
+      onClick={()=>setCodeTab('pagabb')} role="button" tabIndex={0}
+      onKeyDown={e=>{ if(e.key==='Enter'||e.key===' ') setCodeTab('pagabb'); }}>
+      Ci sono <b>{pagDaAbb.length} pagamenti sganciati</b> da riassegnare.
+      {' '}<b style={{textDecoration:'underline'}}>Apri Pagamenti da abbinare →</b>
+    </div>}
     <div id="pay-code-print">
+    {codeTab==='pagabb' && <React.Fragment>
+      <h3 className="disp" style={{marginTop:0}}>Pagamenti da abbinare ({pagDaAbb.length})</h3>
+      <p className="muted noprint" style={{marginBottom:10}}>
+        Pagamenti tolti da una scheda con <b>Annulla</b>. Qui puoi <b>Abbina</b>ri a un collaboratore oppure <b>Ignora</b>ri (escono dalla coda, non tornano in scheda).
+      </p>
+      <PayPagDaAbbinareBox rows={pagDaAbb} collab={collab} onRefresh={carica} toast={toast} alwaysShow/>
+    </React.Fragment>}
     {codeTab==='anom' && <React.Fragment>
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
       <h3 className="disp" style={{color:nAnomTot?'var(--red)':'inherit',margin:0}}>
@@ -7382,15 +7828,16 @@ function PayRomaNuovo({toast, collab}){
           finché non lo modifichi tu. RC33/storico serve solo come linea guida sulle voci, non come verità numerica.
           Non modificare nomi fogli né intestazioni riga 1; i dati partono dalla <b>riga 3</b>.
         </p>
-        <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:12}}>
-          <button className="btn btn-t btn-sm" disabled={busy} onClick={async()=>{
+        <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+          <button type="button" className="btn btn-t btn-sm" disabled={busy} onClick={async()=>{
             try{ await payDownload('/import-roma/modello','import_Roma_modello.xlsx'); toast('Modello scaricato'); }
             catch(x){ toast(payFmtErr(x.detail)||'Download modello fallito',1); }
           }}>Scarica modello Excel</button>
-          <label className="btn btn-p btn-sm" style={{cursor:busy?'not-allowed':'pointer'}}>
-            {busy?'Lettura…':'Carica file compilato'}
-            <input type="file" accept=".xlsx,.xlsm" onChange={doAnteprima} disabled={busy} style={{display:'none'}}/>
+          <label className="btn btn-p" style={{margin:0,cursor:busy?'not-allowed':'pointer'}}>
+            {busy?'Lettura…':'Scegli file Excel'}
+            <input id="pay-roma-file" type="file" accept=".xlsx,.xlsm" onChange={doAnteprima} disabled={busy} style={{display:'none'}}/>
           </label>
+          {busy && <span className="muted">Elaborazione…</span>}
         </div>
         {convErr && <div className="notebox" style={{marginTop:8,fontSize:12.5,color:'var(--red)',whiteSpace:'pre-wrap'}}>{convErr}</div>}
     {prev && <React.Fragment>
@@ -7509,13 +7956,38 @@ function PayRomaNuovo({toast, collab}){
         </React.Fragment>}
         <h4 className="disp" style={{marginTop:16}}>Storico</h4>
         {!storico ? <p className="muted">Caricamento…</p> :
+        !(storico||[]).length ? <p className="muted">Nessun import Roma ancora confermato.</p> :
         <table className="tbl" style={{margin:0,fontSize:12}}>
-          <thead><tr><th>Data</th><th>File</th><th>Anni</th><th>Stato</th></tr></thead>
+          <thead><tr><th>Data</th><th>File</th><th>Anni</th><th>Stato</th><th></th></tr></thead>
           <tbody>{(storico||[]).map(r=><tr key={r.id}>
             <td className="mono small">{(r.eseguito_il||'').slice(0,16)}</td>
-            <td>{r.file_nome}</td>
+            <td><b>{r.file_nome}</b></td>
             <td className="mono">{(r.anni||[]).join(', ')}</td>
             <td>{r.stato}</td>
+            <td style={{whiteSpace:'nowrap'}}>
+              {r.scaricabile && <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={async()=>{
+                try{ await payDownload('/import-roma/'+r.id+'/download', r.file_nome); toast('Download avviato'); }
+                catch(x){ toast(payFmtErr(x.detail)||'Download non disponibile — reimporta il file',1); }
+              }}>Scarica file</button>}
+              <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={()=>{
+                if(confirm('Seleziona il file Roma aggiornato (sostituisce la produzione degli stessi anni dopo conferma).')){
+                  const el=document.getElementById('pay-roma-file'); if(el){ el.value=''; el.click(); }
+                }
+              }}>Sostituisci</button>
+              <button className="btn btn-g btn-sm" disabled={busy} onClick={async()=>{
+                const msg=r.stato==='attivo'
+                  ? ('Eliminare import Roma #'+r.id+' «'+r.file_nome+'»? Verrà ripristinata la produzione precedente (se presente) e il file sarà rimosso dallo storico.')
+                  : ('Eliminare dallo storico import Roma #'+r.id+' «'+r.file_nome+'»? La produzione attiva non cambia.');
+                if(!confirm(msg)) return;
+                setBusy(true);
+                try{
+                  await payApi('/import-roma/'+r.id,{method:'DELETE'});
+                  toast(r.stato==='attivo'?'Import annullato e rimosso':'Import rimosso dallo storico');
+                  setAnnullaTxt(''); carica();
+                }catch(x){ toast(payFmtErr(x.detail)||'Errore eliminazione',1); }
+                setBusy(false);
+              }}>Elimina</button>
+            </td>
           </tr>)}</tbody>
         </table>}
       </div>
@@ -7524,7 +7996,7 @@ function PayRomaNuovo({toast, collab}){
 }
 
 function PayImport({toast}){
-  const [tab,setTab]=useState('pag');
+  const [tab,setTab]=useState('roma');
   const [showImpDett,setShowImpDett]=useState(false);
   const [esito,setEsito]=useState(null); const [busy,setBusy]=useState(false);
   const [storico,setStorico]=useState(null);
@@ -7547,6 +8019,10 @@ function PayImport({toast}){
   const [provFile,setProvFile]=useState(null);
   const [provErr,setProvErr]=useState('');
   const [provErrOpen,setProvErrOpen]=useState(null);
+  const [costiPrev,setCostiPrev]=useState(null); const [costiBusy,setCostiBusy]=useState(false); const [costiFile,setCostiFile]=useState(null);
+  const [costiStorico,setCostiStorico]=useState(null);
+  const [costiConf,setCostiConf]=useState(null);
+  const [costiDettOpen,setCostiDettOpen]=useState(null);
   const [importAlert,setImportAlert]=useState(null);
   const [alertBusy,setAlertBusy]=useState(false);
   const [romaPrev,setRomaPrev]=useState(null);
@@ -7597,9 +8073,25 @@ function PayImport({toast}){
   const caricaFatStorico=()=>ensurePayAuth().then(()=>payApi('/import/fatture-nazionale/storico')).then(setFatStorico).catch(()=>setFatStorico([]));
   const caricaProvStorico=()=>ensurePayAuth().then(()=>payApi('/import/provvisori/storico')).then(setProvStorico).catch(()=>setProvStorico([]));
   const caricaProvVoci=()=>ensurePayAuth().then(()=>payApi('/import/provvisori/voci')).then(rows=>{ if(rows&&rows.length) setProvVoci(rows); }).catch(()=>{});
+  const caricaCostiStorico=()=>ensurePayAuth().then(()=>payApi('/import/costi-dipendenti/storico'))
+    .then(rows=>{
+      setCostiStorico(rows||[]);
+      if(rows&&rows.length){
+        const u=rows[0];
+        const rj=typeof u.report_json==='string'?(()=>{try{return JSON.parse(u.report_json||'{}')}catch(e){return{}}})():(u.report_json||{});
+        setCostiConf({
+          batch_id:u.id, inseriti:u.n_inseriti, abbinati:u.n_abbinati, da_attribuire:u.n_da_attribuire,
+          errori:u.n_errori||u.n_da_attribuire||0, saltati:0,
+          file:u.nome_file, caricato_il:u.caricato_il, scaricabile:!!u.scaricabile,
+          anni:u.anni||[],
+          dettaglio_inseriti:rj.inseriti||rj.abbinati||[],
+          dettaglio_da_attribuire:rj.da_attribuire||[],
+        });
+      }
+    }).catch(()=>setCostiStorico([]));
   const caricaConfronto=()=>ensurePayAuth().then(()=>payApi('/import/confronto')).then(setConfronto).catch(()=>setConfronto(null));
-  useEffect(()=>{ caricaStorico(); caricaPatUltimo(); caricaPatStorico(); caricaPagStorico(); caricaFatStorico(); caricaProvStorico(); caricaProvVoci(); caricaImportAlert(); caricaConfronto(); payApi('/collaboratori').then(setPagCollab).catch(()=>{}); },[]);
-  useEffect(()=>{ setShowImpDett(false); setPagDettOpen(null); setFatErrOpen(null); setProvErrOpen(null); },[tab]);
+  useEffect(()=>{ caricaStorico(); caricaPatUltimo(); caricaPatStorico(); caricaPagStorico(); caricaFatStorico(); caricaProvStorico(); caricaCostiStorico(); caricaProvVoci(); caricaImportAlert(); caricaConfronto(); payApi('/collaboratori').then(setPagCollab).catch(()=>{}); },[]);
+  useEffect(()=>{ setShowImpDett(false); setPagDettOpen(null); setFatErrOpen(null); setProvErrOpen(null); setCostiDettOpen(null); },[tab]);
   const clickFile=(id)=>{ const el=document.getElementById(id); if(el){ el.value=''; el.click(); } };
   const btnAzioniImport=(opts)=>{
     const o=opts||{};
@@ -7614,7 +8106,7 @@ function PayImport({toast}){
   };
   const doRicalcolaImport=async()=>{
     if(!confirm('Ricalcolare i compensi con i listini e i codici attuali, senza ricaricare i file di import?')) return;
-    setBusy(true); setPatBusy(true); setPagBusy(true);
+    setBusy(true); setPatBusy(true); setPagBusy(true); setCostiBusy(true);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/ricalcola',{method:'POST'});
@@ -7626,17 +8118,17 @@ function PayImport({toast}){
         r.produzione_riabilitata?r.produzione_riabilitata+' voci produzione riabilitate':null,
         r.sanzioni_proposte?r.sanzioni_proposte+' sanzioni ri-proposte':null,
         r.costi_proposti?r.costi_proposti+' costi ri-proposti':null].filter(Boolean).join(' · ');
-      toast(msg); caricaStorico(); caricaPatUltimo(); caricaPagStorico(); caricaImportAlert();
+      toast(msg); caricaStorico(); caricaPatUltimo(); caricaPagStorico(); caricaCostiStorico(); caricaImportAlert();
     }catch(x){ toast(x.detail||'Errore ricalcolo',1); }
-    setBusy(false); setPatBusy(false); setPagBusy(false);
+    setBusy(false); setPatBusy(false); setPagBusy(false); setCostiBusy(false);
   };
   const btnRicalcolaImport=(disabled)=>(
     <div className="panel" style={{marginTop:14,marginBottom:14,padding:14,border:'1.5px solid var(--teal,#0a7e72)',background:'rgba(10,126,114,.05)'}}>
       <button className="btn btn-t" disabled={disabled} onClick={doRicalcolaImport}>↺ Ricalcola import (codici / listini)</button>
       <p className="muted small" style={{margin:'8px 0 0'}}>
         Usa questo tasto dopo aver <b>modificato una % o un fisso in Listini</b> (es. Listino BASE),
-        oppure dopo aver salvato/spostato codici in scheda: aggiorna compensi e saldi
-        <b> senza eliminare né ricaricare</b> i file di Produzione Nazionale / Patronato.
+        oppure dopo aver salvato/spostato codici in scheda (anche canale DIPENDENTI): aggiorna compensi, saldi e ri-abbinamento costi
+        <b> senza eliminare né ricaricare</b> i file di Produzione / Patronato / Costi dipendenti.
       </p>
     </div>
   );
@@ -7650,21 +8142,24 @@ function PayImport({toast}){
     const low=f.name.toLowerCase();
     if(/pagament/i.test(f.name)||low.includes('pagament')) return 'pag';
     if(/patronato/i.test(f.name)) return 'pat';
+    if(/cost[oi].*dipendent|dipendent.*cost|costi.?total/i.test(f.name)||low.includes('costo dipendenti')||low.includes('costi_dipendenti')||low.includes('esempio_costi')) return 'costi';
     return null;
   };
   const su=async e=>{
     const f=e.target.files[0]; if(!f)return;
     const low=f.name.toLowerCase();
     const hint=hintFile(f);
-    if(hint==='pag'||hint==='pat'){
+    if(hint==='pag'||hint==='pat'||hint==='costi'){
       setTab(hint);
       toast(hint==='pag'
         ?'File Pagamenti: usa il tab «Pagamenti storici» qui sotto'
-        :'File Patronato: usa il tab «Patronato dettaglio» qui sotto',1);
+        : hint==='pat'
+          ?'File Patronato: usa il tab «Patronato dettaglio» qui sotto'
+          :'File Costi dipendenti: usa il tab «Costi dipendenti» qui sotto',1);
       e.target.value=''; return;
     }
     if(low.endsWith('.xlsx')||(!low.endsWith('.xls')&&!low.endsWith('.xlsx'))){
-      toast('Produzione Nazionale accetta solo file .xls (Excel 97-2003). I file .xlsx/.xls/.csv di Patronato/Pagamenti/Fatture/Provvisori vanno nei tab dedicati.',1);
+      toast('Produzione Nazionale accetta solo file .xls (Excel 97-2003). Costi / Patronato / Pagamenti / Fatture / Provvisori → tab dedicati (.xlsx).',1);
       e.target.value=''; return;
     }
     setBusy(true); setRomaPrev(null); setEsito(null);
@@ -7889,14 +8384,51 @@ function PayImport({toast}){
       toast('Import #'+id+' sostituito'); caricaProvStorico();
     }catch(x){ toast(x.detail||'Errore',1); }
   };
+  const anteprimaCostiDip=async e=>{
+    const f=e.target.files[0]; if(!f)return;
+    setCostiBusy(true); setCostiPrev(null); setCostiConf(null); setCostiFile(f);
+    const fd=new FormData(); fd.append('file',f);
+    try{
+      await ensurePayAuth();
+      const r=await payApi('/import/costi-dipendenti/anteprima',{method:'POST',body:fd});
+      setCostiPrev({...r,_file:f});
+      toast('Anteprima costi: '+r.n+' dipendenti · '+(r.abbinati_n||0)+' abbinabili · '+(r.da_attribuire_n||0)+' da attribuire'
+        +(r.anni&&r.anni.length?' · anni '+r.anni.join(', '):''));
+    }catch(x){ toast(x.detail||'Errore anteprima costi dipendenti',1); setCostiFile(null); }
+    setCostiBusy(false); e.target.value='';
+  };
+  const confermaCostiDip=async()=>{
+    const f=costiFile||costiPrev?._file; if(!f) return;
+    if(!confirm('Confermi l\'import di '+((costiPrev&&costiPrev.n)||'?')+' costi dipendenti? Le righe con stesso nome/struttura/ditta nello stesso anno vengono sostituite.')) return;
+    setCostiBusy(true);
+    const fd=new FormData(); fd.append('file',f);
+    try{
+      await ensurePayAuth();
+      const r=await payApi('/import/costi-dipendenti/conferma',{method:'POST',body:fd});
+      setCostiConf({
+        batch_id:r.batch_id||r.import_id, inseriti:r.inseriti||r.costi_dipendenti||0,
+        abbinati:r.abbinati||0, da_attribuire:r.da_attribuire||0, saltati:0,
+        errori:r.da_attribuire||0, file:r.file, anni:r.anni||[],
+        dettaglio_inseriti:r.dettaglio_inseriti||[],
+        dettaglio_da_attribuire:r.dettaglio_da_attribuire||[],
+        scaricabile:true,
+      });
+      setCostiPrev(null); setCostiFile(null); caricaCostiStorico(); caricaImportAlert();
+      toast('Costi importati: '+(r.costi_dipendenti||r.inseriti||0)+' righe'
+        +(r.abbinati?' · '+r.abbinati+' abbinati':'')
+        +(r.da_attribuire?' · '+r.da_attribuire+' da attribuire in Gestione':'')
+        +(r.anni&&r.anni.length?' · anni '+r.anni.join(', '):''));
+    }catch(x){ toast(x.detail||'Errore conferma costi',1); }
+    setCostiBusy(false);
+  };
   return <React.Fragment>
     <div className="top"><div><h1>Import dati</h1>
-      <div className="sub">Produzione · Patronato · Pagamenti · Fatture Nazionale · Provvisori</div></div></div>
-    <PayTabs tabs={[['roma','Produzione Nazionale'],['pat','Patronato dettaglio'],['pag','Pagamenti storici'],['fat','Fatture Nazionale'],['prov','Import provvisori']]} active={tab} onChange={setTab}/>
+      <div className="sub">Produzione · Patronato · Pagamenti · Costi dipendenti · Fatture · Provvisori</div></div></div>
+    <PayTabs tabs={[['roma','Produzione Nazionale'],['pat','Patronato dettaglio'],['pag','Pagamenti storici'],['costi','Costi dipendenti'],['fat','Fatture Nazionale'],['prov','Import provvisori']]} active={tab} onChange={setTab}/>
     <PayConfrontoTariffe toast={toast}/>
     {tab==='roma' && <React.Fragment>
     <PayRomaNuovo toast={toast} collab={pagCollab}/>
-    {btnRicalcolaImport(busy||patBusy||pagBusy)}
+    {btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
     {false && <React.Fragment>
     <div className="panel" style={{marginBottom:14}}>
       <div className="ph"><h3>Produzione Nazionale (.xls)</h3>
@@ -7973,7 +8505,7 @@ function PayImport({toast}){
           <button className="btn btn-g btn-sm" onClick={()=>elimina(row.id)}>Elimina</button>
         </td>
       </tr>)}</tbody></table></div>}
-    {storico&&storico.length>0 && btnRicalcolaImport(busy||patBusy||pagBusy)}
+    {storico&&storico.length>0 && btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
     {(()=>{
       const a=importAlert;
       const rie=a&&a.riepilogo;
@@ -8075,7 +8607,10 @@ function PayImport({toast}){
         try{ await payDownload('/import/patronato-dettaglio/modello','esempio_patronato_dettaglio.xlsx'); toast('Esempio scaricato'); }
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
-      <input id="pay-pat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaPatronato} disabled={patBusy}/>
+      <label className="btn btn-p" style={{margin:0,cursor:patBusy?'not-allowed':'pointer'}}>
+        {patBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+        <input id="pay-pat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaPatronato} disabled={patBusy} style={{display:'none'}}/>
+      </label>
       {patBusy && <span className="muted">Elaborazione…</span>}
     </div>
     {patPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
@@ -8136,7 +8671,7 @@ function PayImport({toast}){
         })}</td>
       </tr>)}</tbody>
     </table></div>}
-    {(patRec?.import_id || (patStorico&&patStorico.length>0) || (storico&&storico.length>0)) && btnRicalcolaImport(busy||patBusy||pagBusy)}
+    {(patRec?.import_id || (patStorico&&patStorico.length>0) || (storico&&storico.length>0)) && btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
     </React.Fragment>}
     {tab==='pag' && <React.Fragment>
     <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
@@ -8152,7 +8687,7 @@ function PayImport({toast}){
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
       <label className="btn btn-p" style={{margin:0,cursor:pagBusy?'not-allowed':'pointer'}}>
-        Scegli file PDF / Excel / CSV
+        {pagBusy?'Elaborazione…':'Scegli file PDF / Excel / CSV'}
         <input id="pay-pag-file" type="file"
           accept=".pdf,.xlsx,.xls,.csv,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv"
           onChange={anteprimaPagamenti} disabled={pagBusy} style={{display:'none'}}/>
@@ -8344,7 +8879,173 @@ function PayImport({toast}){
         })}
       </td></tr>}
       </React.Fragment>;})}</tbody></table></div>}
-    {(pagStorico&&pagStorico.length>0) && btnRicalcolaImport(busy||patBusy||pagBusy)}
+    {(pagStorico&&pagStorico.length>0) && btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
+    </React.Fragment>}
+    {tab==='costi' && <React.Fragment>
+      <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
+        Carica il foglio <b>costi totali</b> (.xlsx/.xlsm/.xls: colonne <b>GESTIONE</b> e <b>COSTO TOTALE</b>).
+        Non usare più il foglio «solo stipendi» (solo netti mensili).
+        Le regole per struttura (busta paga / costo pieno) si impostano in <b>Costi dipendenti → Regole</b>;
+        qui fai anteprima, conferma e ricalcolo come negli altri tab.
+        Le righe senza match vanno in <b>Costi dipendenti → Gestione</b> (da attribuire).
+      </div>
+      <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap',marginBottom:12}}>
+        <button type="button" className="btn btn-t btn-sm" disabled={costiBusy} onClick={async()=>{
+          try{ await payDownload('/import/costi-dipendenti/modello','esempio_costi_dipendenti.xlsx'); toast('Esempio scaricato'); }
+          catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
+        }}>Scarica file esempio</button>
+        <label className="btn btn-p" style={{margin:0,cursor:costiBusy?'not-allowed':'pointer'}}>
+          {costiBusy?'Elaborazione…':'Scegli file Excel'}
+          <input id="pay-costi-file" type="file" accept=".xlsx,.xlsm,.xls"
+            onChange={anteprimaCostiDip} disabled={costiBusy} style={{display:'none'}}/>
+        </label>
+        <span className="muted small">Accetta .xlsx / .xlsm / .xls (foglio costi totali)</span>
+        {costiBusy && <span className="muted">Elaborazione…</span>}
+      </div>
+      {costiPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
+        <h3 className="disp" style={{marginTop:0}}>Anteprima {costiPrev.file}</h3>
+        <div className="row"><span className="l">Dipendenti</span><span className="r mono pos">{num(costiPrev.n)}</span></div>
+        <div className="row"><span className="l">Abbinabili (match certo)</span><span className="r mono pos">{num(costiPrev.abbinati_n||0)}</span></div>
+        <div className="row"><span className="l">Da attribuire dopo conferma</span><span className="r mono neg">{num(costiPrev.da_attribuire_n||0)}</span></div>
+        <div className="row"><span className="l">Anni</span><span className="r mono">{(costiPrev.anni||[]).join(', ')||'—'}</span></div>
+        {(costiPrev.senza_regola||[]).length>0 && <div className="row"><span className="l">Strutture senza regola</span><span className="r mono neg">{costiPrev.senza_regola.join(', ')}</span></div>}
+        {(costiPrev.avvisi||[]).length>0 && <ul className="muted small" style={{marginTop:8}}>{costiPrev.avvisi.map((a,i)=><li key={i}>{a}</li>)}</ul>}
+        {(costiPrev.righe||[]).length>0 && <details style={{marginTop:12}} open>
+          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Cosa verrà importato ({costiPrev.righe.length}) — clicca per espandere</summary>
+          <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:280}}>
+            <table className="tbl" style={{margin:0,fontSize:12}}>
+              <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th>Collaboratore</th><th className="n">Mesi</th><th className="n">Gestione</th><th className="n">Costo totale</th></tr></thead>
+              <tbody>{(costiPrev.righe||[]).map((r,i)=><tr key={i}>
+                <td className="mono">{r.anno}</td>
+                <td><b>{r.nome}</b></td>
+                <td>{r.struttura}</td>
+                <td>{r.collaboratore? <b>{r.collaboratore}</b> : <span className="neg">da attribuire</span>}</td>
+                <td className="n mono">{r.mesi??'—'}</td>
+                <td className="n mono">{r.gestione_file!=null?eur(r.gestione_file):'—'}</td>
+                <td className="n mono">{eur(r.costo_totale)}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </details>}
+        <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
+          <button className="btn btn-p" onClick={confermaCostiDip} disabled={costiBusy||!costiPrev.importabile||!costiPrev.n}>
+            Conferma import ({num(costiPrev.n)})
+          </button>
+          <button className="btn btn-g" onClick={()=>{ setCostiPrev(null); setCostiFile(null); }} disabled={costiBusy}>Scarta anteprima</button>
+        </div>
+      </div>}
+      {costiConf && !costiPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
+        <h3 className="disp" style={{marginTop:0,display:'flex',alignItems:'center',flexWrap:'wrap',gap:4}}>
+          Ultimo import costi #{costiConf.batch_id}
+          {costiConf.file ? ' · '+costiConf.file : ''}
+          {costiConf.caricato_il ? ' · '+(costiConf.caricato_il||'').slice(0,16) : ''}
+          {costiConf.batch_id && btnScarica('/import/costi-dipendenti/'+costiConf.batch_id+'/download', costiConf.file)}
+        </h3>
+        <div className="row"><span className="l">Inseriti correttamente</span><span className="r mono pos">{num(costiConf.inseriti)}</span></div>
+        <div className="row"><span className="l">Abbinati a collaboratore</span><span className="r mono pos">{num(costiConf.abbinati)}</span></div>
+        <div className="row"><span className="l">Da attribuire</span><span className={'r mono '+(Number(costiConf.da_attribuire||0)>0?'neg':'pos')}>{num(costiConf.da_attribuire)}</span></div>
+        {(costiConf.anni||[]).length>0 && <div className="row"><span className="l">Anni</span><span className="r mono">{costiConf.anni.join(', ')}</span></div>}
+        {Number(costiConf.da_attribuire||0)>0
+          ? <div className="infobox" style={{marginTop:10,fontSize:12.5,borderColor:'var(--red)'}}>
+              Le righe senza collaboratore vanno in <b>Costi dipendenti → Gestione</b>. Dopo aver impostato regola e abbinamento (o i codici DIPENDENTI), torna qui: i contatori si aggiornano da soli. Oppure usa <b>Ricalcola import</b> sotto.
+            </div>
+          : <div className="infobox" style={{marginTop:10,fontSize:12.5}}>
+              Tutte le righe di questo import hanno un collaboratore: niente da attribuire. Lo storico Import riflette lo stato attuale di Gestione.
+            </div>}
+        {(costiConf.dettaglio_inseriti||[]).length>0 && <details style={{marginTop:12}}>
+          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Importati correttamente ({costiConf.dettaglio_inseriti.length}) — clicca per espandere</summary>
+          <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:280}}>
+          <table className="tbl" style={{margin:0,fontSize:12}}>
+            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th>Collaboratore</th><th className="n">Quota</th><th>Stato</th></tr></thead>
+            <tbody>{costiConf.dettaglio_inseriti.map((e,i)=><tr key={i}>
+              <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
+              <td>{e.collaboratore||<span className="muted">—</span>}</td>
+              <td className="n mono">{eur(e.quota||e.costo_totale)}</td>
+              <td className="small">{e.stato||'—'}</td>
+            </tr>)}</tbody>
+          </table></div>
+        </details>}
+        {Number(costiConf.da_attribuire||0)>0 && (costiConf.dettaglio_da_attribuire||[]).length>0 && <details style={{marginTop:12}} open>
+          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--red)'}}>Da attribuire ({costiConf.dettaglio_da_attribuire.length})</summary>
+          <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:220}}>
+          <table className="tbl" style={{margin:0,fontSize:12}}>
+            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th className="n">Costo totale</th></tr></thead>
+            <tbody>{costiConf.dettaglio_da_attribuire.map((e,i)=><tr key={i}>
+              <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
+              <td className="n mono neg">{eur(e.costo_totale)}</td>
+            </tr>)}</tbody>
+          </table></div>
+          <p className="muted small" style={{marginTop:8}}>Per abbinarle usa <b>Costi dipendenti → Gestione</b> (qui non si assegna il collaboratore).</p>
+        </details>}
+      </div>}
+      <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
+        <h3 className="disp" style={{margin:0}}>Storico import costi ({(costiStorico||[]).length})</h3>
+        {(costiStorico&&costiStorico.length>0) && <button type="button" className="btn btn-g btn-sm" onClick={()=>setShowImpDett(v=>!v)}>
+          {showImpDett?'Nascondi dettaglio':'Visualizza dettaglio'}
+        </button>}
+      </div>
+      {!costiStorico ? <p className="muted">Caricamento…</p> : costiStorico.length===0 ? <p className="muted">Nessun import costi ancora confermato.</p> :
+      !showImpDett ? <p className="muted">Storico nascosto ({costiStorico.length} import). Premi <b>Visualizza dettaglio</b>.</p> :
+      <div className="panel" style={{padding:0,overflow:'auto'}}>
+      <table className="tbl" style={{margin:0,fontSize:12.5}}>
+        <thead><tr><th>Data</th><th>File</th><th>Anni</th><th className="n">Inseriti</th><th className="n">Abbinati</th><th className="n">Da attribuire</th><th></th></tr></thead>
+        <tbody>{costiStorico.map(row=>{
+          const rj=typeof row.report_json==='string'?(()=>{try{return JSON.parse(row.report_json||'{}')}catch(e){return{}}})():(row.report_json||{});
+          const open=costiDettOpen===row.id;
+          return <React.Fragment key={row.id}>
+          <tr>
+            <td className="mono small">{(row.caricato_il||'').slice(0,16)}</td>
+            <td><b>{row.nome_file}</b></td>
+            <td className="mono small">{(row.anni||[]).join(', ')||'—'}</td>
+            <td className="n mono pos">{num(row.n_inseriti)}</td>
+            <td className="n mono pos">{num(row.n_abbinati)}</td>
+            <td className="n mono neg">{num(row.n_da_attribuire)}</td>
+            <td style={{whiteSpace:'nowrap'}}>{btnAzioniImport({
+              download: row.scaricabile!==false ? '/import/costi-dipendenti/'+row.id+'/download' : null,
+              nome:row.nome_file,
+              onSostituisci:()=>{ if(confirm('Seleziona il file Costi aggiornato.')) clickFile('pay-costi-file'); },
+              onElimina:async()=>{
+                if(!confirm('Eliminare import costi #'+row.id+' e le righe costi collegate a questo batch?')) return;
+                try{
+                  await payApi('/import/costi-dipendenti/'+row.id,{method:'DELETE'});
+                  toast('Import eliminato'); caricaCostiStorico(); setCostiConf(null); setCostiDettOpen(null);
+                }catch(x){ toast(x.detail||'Errore eliminazione',1); }
+              },
+            })}
+            <button className="btn btn-g btn-sm" style={{marginLeft:6}} onClick={()=>setCostiDettOpen(open?null:row.id)}>
+              {open?'Nascondi':'Vedi dettaglio'}
+            </button>
+            </td>
+          </tr>
+          {open && <tr><td colSpan={7} style={{background:'#F8FAFC',padding:12}}>
+            {(rj.inseriti||[]).length>0 && <div style={{marginBottom:12}}>
+              <h4 style={{margin:'0 0 6px',color:'var(--teal)'}}>Importati ({(rj.inseriti||[]).length})</h4>
+              <div className="panel" style={{padding:0,overflow:'auto',maxHeight:220}}>
+              <table className="tbl" style={{margin:0,fontSize:12}}>
+                <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th>Collaboratore</th><th className="n">Quota</th></tr></thead>
+                <tbody>{(rj.inseriti||[]).map((e,i)=><tr key={i}>
+                  <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
+                  <td>{e.collaboratore||'—'}</td>
+                  <td className="n mono">{eur(e.quota||e.costo_totale)}</td>
+                </tr>)}</tbody>
+              </table></div>
+            </div>}
+            {(rj.da_attribuire||[]).length>0 && <div>
+              <h4 style={{margin:'0 0 6px',color:'var(--red)'}}>Ancora da attribuire ({(rj.da_attribuire||[]).length})</h4>
+              <div className="panel" style={{padding:0,overflow:'auto',maxHeight:180}}>
+              <table className="tbl" style={{margin:0,fontSize:12}}>
+                <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th className="n">Costo</th></tr></thead>
+                <tbody>{(rj.da_attribuire||[]).map((e,i)=><tr key={i}>
+                  <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
+                  <td className="n mono neg">{eur(e.costo_totale)}</td>
+                </tr>)}</tbody>
+              </table></div>
+              <p className="muted small" style={{marginTop:6}}>Gestiscile in Costi dipendenti → Gestione.</p>
+            </div>}
+            {(rj.da_attribuire||[]).length===0 && <p className="muted" style={{margin:0}}>Nessuna riga ancora da attribuire (stato aggiornato).</p>}
+          </td></tr>}
+          </React.Fragment>;})}</tbody></table></div>}
+      {btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
     </React.Fragment>}
     {tab==='fat' && <React.Fragment>
     <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
@@ -8359,7 +9060,10 @@ function PayImport({toast}){
         catch(x){ toast(payFmtErr(x.detail)||'Download esempio fallito',1); }
       }}>Scarica file esempio</button>
       <label className="muted small">Anno <input type="number" value={fatAnno} onChange={e=>setFatAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
-      <input id="pay-fat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaFatture} disabled={fatBusy}/>
+      <label className="btn btn-p" style={{margin:0,cursor:fatBusy?'not-allowed':'pointer'}}>
+        {fatBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+        <input id="pay-fat-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaFatture} disabled={fatBusy} style={{display:'none'}}/>
+      </label>
       {fatBusy && <span className="muted">Elaborazione…</span>}
     </div>
     {fatPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
@@ -8435,7 +9139,10 @@ function PayImport({toast}){
         {provVoci.map(v=><option key={v.codice} value={v.codice}>{v.label}</option>)}
       </select></label>
       <label className="muted small">Anno <input type="number" value={provAnno} onChange={e=>setProvAnno(+e.target.value)} style={{width:90,marginLeft:6}}/></label>
-      <input id="pay-prov-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaProv} disabled={provBusy}/>
+      <label className="btn btn-p" style={{margin:0,cursor:provBusy?'not-allowed':'pointer'}}>
+        {provBusy?'Elaborazione…':'Scegli file Excel / CSV'}
+        <input id="pay-prov-file" type="file" accept=".xlsx,.xls,.csv" onChange={anteprimaProv} disabled={provBusy} style={{display:'none'}}/>
+      </label>
       {provBusy && <span className="muted">Elaborazione…</span>}
     </div>
     {provErr && <div className="infobox" style={{marginBottom:12,borderColor:'var(--red)',background:'#FEF2F2'}}>
