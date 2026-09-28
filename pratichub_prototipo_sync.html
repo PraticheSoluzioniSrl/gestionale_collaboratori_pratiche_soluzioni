@@ -287,8 +287,10 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .prof-meta b{color:var(--ink);font-weight:600}
 .prof-meta .mono{color:var(--navy);font-weight:600}
 .stabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px;padding-bottom:0}
-.stabs button{background:transparent;border:none;border-bottom:2.5px solid transparent;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);cursor:pointer;margin-bottom:-1px}
+.stabs button{background:transparent;border:none;border-bottom:2.5px solid transparent;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);cursor:pointer;margin-bottom:-1px;border-radius:8px 8px 0 0}
 .stabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+.stabs button.has-note{background:#E4F7E8;color:#0B6B3A}
+.stabs button.has-note.on{background:#CDEFD4;color:#0B6B3A;border-bottom-color:#0B6B3A}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:860px){.two-col{grid-template-columns:1fr}}
 .info-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
@@ -1911,7 +1913,9 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
         </div>
         <div className="stabs">
           {schedaTabs.map(([k,l])=>
-            <button key={k} type="button" className={stab===k?"on":""} onClick={()=>setStab(k)}>{l}</button>)}
+            <button key={k} type="button"
+              className={(stab===k?"on":"")+(k==="note"&&String(c.note||"").trim()?" has-note":"")}
+              onClick={()=>setStab(k)}>{l}</button>)}
         </div>
         {c.note&&stab==="note"&&<div className="notebox">⚠ {c.note}</div>}
         {stab==="contatti"&&<div className="two-col">
@@ -2208,6 +2212,15 @@ function collabListaCmp(a,b,fOrd){
   if(ord==="nome_za") return String(b.nome).localeCompare(String(a.nome),"it");
   if(ord==="listino") return String(a.listino||"").localeCompare(String(b.listino||""),"it");
   if(ord==="stato") return String(a.stato||"").localeCompare(String(b.stato||""),"it");
+  if(ord==="saldo_desc"||ord==="saldo_asc"){
+    const sa=a.saldo==null||a.saldo===""?null:Number(a.saldo);
+    const sb=b.saldo==null||b.saldo===""?null:Number(b.saldo);
+    if(sa==null&&sb==null) return String(a.nome).localeCompare(String(b.nome),"it");
+    if(sa==null) return 1;
+    if(sb==null) return -1;
+    const d=ord==="saldo_desc"?(sb-sa):(sa-sb);
+    return d||String(a.nome).localeCompare(String(b.nome),"it");
+  }
   return String(a.nome).localeCompare(String(b.nome),"it");
 }
 function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
@@ -2219,15 +2232,19 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
   const [fProv,setFProv]=useState("");
   const [fCod,setFCod]=useState("");
   const [fExtra,setFExtra]=useState("");
+  const [fSaldoOp,setFSaldoOp]=useState("");
+  const [fSaldoVal,setFSaldoVal]=useState("");
+  const [fSaldoVal2,setFSaldoVal2]=useState("");
   const [fOrd,setFOrd]=useState("nome_az");
+  const [tabSedi,setTabSedi]=useState("attive");
   const [showFiltri,setShowFiltri]=useState(false);
   const impRef=useRef(null);
   const optsCaf=useMemo(()=>[...new Set(collab.map(c=>(c.tipo_sede||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsPatr=useMemo(()=>[...new Set(collab.map(c=>(c.stato_caf||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsListino=useMemo(()=>[...new Set(collab.map(c=>(c.listino||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsProv=useMemo(()=>[...new Set(collab.map(c=>(c.provincia||"").trim().toUpperCase()).filter(Boolean))].sort(),[collab]);
-  const hasFiltri=!!(fStato||fCaf||fPatr||fListino||fProv||fCod||fExtra||q.trim()||fOrd!=="nome_az");
-  const resetFiltri=()=>{setQ("");setFStato("");setFCaf("");setFPatr("");setFListino("");setFProv("");setFCod("");setFExtra("");setFOrd("nome_az");};
+  const hasFiltri=!!(fStato||fCaf||fPatr||fListino||fProv||fCod||fExtra||fSaldoOp||fSaldoVal||fSaldoVal2||q.trim()||fOrd!=="nome_az");
+  const resetFiltri=()=>{setQ("");setFStato("");setFCaf("");setFPatr("");setFListino("");setFProv("");setFCod("");setFExtra("");setFSaldoOp("");setFSaldoVal("");setFSaldoVal2("");setFOrd("nome_az");};
   const sorted=useMemo(()=>{
     const cmp=typeof payCmpCollabLista==="function"?payCmpCollabLista:collabListaCmp;
     return [...collab].sort((a,b)=>cmp(a,b,"nome_az"));
@@ -2255,14 +2272,20 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
       if(fExtra==="chiusura"&&!(c.data_chiusura_sede||"").trim()) return false;
       if(fExtra==="risk"&&trend(c.prod).lvl!=="hi") return false;
       if(fExtra==="gestione"&&!Object.values(c.gestione||{}).some(Boolean)) return false;
+      if(typeof payMatchSaldoFiltro==="function"){
+        if(!payMatchSaldoFiltro(c,fSaldoOp,fSaldoVal,fSaldoVal2)) return false;
+      }
+      const sedeChiusa = c.stato==="chiusa" || !!(c.data_chiusura_sede||"").trim();
+      if(tabSedi==="attive" && sedeChiusa) return false;
+      if(tabSedi==="chiuse" && !sedeChiusa) return false;
       if(!t) return true;
       const hay=[c.nome,c.cognome,c.nome_proprio,c.cf,c.assoc,c.citta,c.localita,c.cap,c.provincia,c.note,c.tipo_sede,c.stato_caf,c.listino,c.incarico,...Object.values(c.codici||{}),...(c.tel||[]),...(c.email||[])].join(" ").toLowerCase();
       return hay.includes(t);
     }).sort((a,b)=>cmp(a,b,fOrd));
-  },[q,fStato,fCaf,fPatr,fListino,fProv,fCod,fExtra,fOrd,sorted]);
+  },[q,fStato,fCaf,fPatr,fListino,fProv,fCod,fExtra,fSaldoOp,fSaldoVal,fSaldoVal2,fOrd,tabSedi,sorted]);
   return <React.Fragment>
     <div className="top">
-      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · filtra per stato, CAF, listino, codici, bollettino…</div></div>
+      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · filtra per stato, CAF, listino, saldo, codici, bollettino…</div></div>
       <div style={{display:"flex",gap:8}}>
         <button className="btn btn-g" onClick={()=>impRef.current&&impRef.current.click()}>📥 Importa da Elenco completo</button>
         <input ref={impRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0]; if(f)onImportAnagrafica(f); e.target.value="";}}/>
@@ -2274,6 +2297,12 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
     <div style={{display:"flex",gap:8,alignItems:"center",margin:"8px 0 4px",flexWrap:"wrap"}}>
       <button type="button" className="btn btn-g btn-sm" onClick={()=>setShowFiltri(v=>!v)}>
         {showFiltri?"▲ Nascondi filtri":"▼ Filtri e ordine"}{hasFiltri&&!showFiltri?" · attivi":""}
+      </button>
+      <button type="button" className={"btn btn-sm "+(tabSedi==="attive"?"btn-p":"btn-g")} onClick={()=>setTabSedi("attive")}>
+        Sedi Attive
+      </button>
+      <button type="button" className={"btn btn-sm "+(tabSedi==="chiuse"?"btn-p":"btn-g")} onClick={()=>setTabSedi("chiuse")}>
+        Sedi Chiuse
       </button>
       {hasFiltri&&<button type="button" className="btn btn-g btn-sm" onClick={resetFiltri}>Azzera filtri</button>}
     </div>
@@ -2328,12 +2357,33 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
           <option value="risk">Produzione a rischio</option>
           <option value="gestione">Con permessi gestione</option>
         </select></div>
+      <div className="f"><label>Saldo netto</label>
+        <select value={fSaldoOp} onChange={e=>setFSaldoOp(e.target.value)}>
+          <option value="">Tutti</option>
+          <option value="gt">Maggiore di</option>
+          <option value="gte">Maggiore o uguale</option>
+          <option value="lt">Minore di</option>
+          <option value="lte">Minore o uguale</option>
+          <option value="eq">Uguale a</option>
+          <option value="between">Compreso tra</option>
+          <option value="pos">Positivo (&gt; 0)</option>
+          <option value="neg">Negativo (&lt; 0)</option>
+          <option value="zero">Zero</option>
+          <option value="has">Con saldo</option>
+          <option value="none">Senza saldo</option>
+        </select></div>
+      {fSaldoOp&&!["pos","neg","zero","has","none",""].includes(fSaldoOp)&&<div className="f"><label>{fSaldoOp==="between"?"Da €":"Importo €"}</label>
+        <input type="text" inputMode="decimal" placeholder="es. 1000" value={fSaldoVal} onChange={e=>setFSaldoVal(e.target.value)}/></div>}
+      {fSaldoOp==="between"&&<div className="f"><label>A €</label>
+        <input type="text" inputMode="decimal" placeholder="es. 5000" value={fSaldoVal2} onChange={e=>setFSaldoVal2(e.target.value)}/></div>}
       <div className="f"><label>Ordine</label>
         <select value={fOrd} onChange={e=>setFOrd(e.target.value)}>
           <option value="nome_az">Nome A→Z (attivi prima)</option>
           <option value="nome_za">Nome Z→A</option>
           <option value="listino">Listino A→Z</option>
           <option value="stato">Stato A→Z</option>
+          <option value="saldo_desc">Saldo alto → basso</option>
+          <option value="saldo_asc">Saldo basso → alto</option>
         </select></div>
     </div>}
     {importReport&&<div className="infobox" style={{marginTop:10}}>

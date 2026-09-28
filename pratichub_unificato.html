@@ -287,8 +287,10 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .prof-meta b{color:var(--ink);font-weight:600}
 .prof-meta .mono{color:var(--navy);font-weight:600}
 .stabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin-bottom:16px;padding-bottom:0}
-.stabs button{background:transparent;border:none;border-bottom:2.5px solid transparent;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);cursor:pointer;margin-bottom:-1px}
+.stabs button{background:transparent;border:none;border-bottom:2.5px solid transparent;padding:10px 14px;font-weight:700;font-size:12px;letter-spacing:.4px;text-transform:uppercase;color:var(--mut);cursor:pointer;margin-bottom:-1px;border-radius:8px 8px 0 0}
 .stabs button.on{color:var(--navy);border-bottom-color:var(--navy)}
+.stabs button.has-note{background:#E4F7E8;color:#0B6B3A}
+.stabs button.has-note.on{background:#CDEFD4;color:#0B6B3A;border-bottom-color:#0B6B3A}
 .two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:860px){.two-col{grid-template-columns:1fr}}
 .info-row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13.5px}
@@ -2106,6 +2108,7 @@ function Card({c,onOpen}){
       <div style={{minWidth:0,flex:1}}>
         <div className="sc-cc-name">{c.nome} <span className={"st "+cls} style={{marginLeft:6,fontSize:10}}>{lb}</span></div>
         <div className="sc-cc-addr">{c.assoc?c.assoc+" · ":""}{c.citta||c.localita||"—"}</div>
+        {c.tel&&c.tel[0]&&<div className="sc-cc-tel mono">☎ {c.tel[0]}</div>}
         <div className="sc-chips">
           {c.listino&&<span className="sc-chip">Listino<b>{c.listino}</b></span>}
           {CK.map(([k,l])=>c.codici[k]?<span key={k} className="sc-chip"><span>{l}</span><b>{c.codici[k].replace("*","")}</b></span>:null)}
@@ -2114,7 +2117,7 @@ function Card({c,onOpen}){
         {blocco.bloccata&&<div className="sc-chip miss" style={{marginTop:8,display:"inline-block"}}>Scheda bloccata · {blocco.righe_bloccanti} voci</div>}
         {due&&<div className="sc-chip miss" style={{marginTop:8,display:"inline-block"}}>Bollettino 2026 da versare</div>}
       </div>
-      <div className="sc-cc-right">{c.tel[0]&&<div className="mono" style={{fontWeight:600,fontSize:12}}>{c.tel[0]}</div>}</div>
+      <div className="sc-cc-right"><div className={"sc-cc-saldo"+(c.saldo==null||c.saldo===""?" miss":(Number(c.saldo)<0?" neg":""))}><div className="l">Saldo netto{c.saldo_anno?" "+c.saldo_anno:""}</div><div className="v">{(c.saldo==null||c.saldo==="")?"—":eur(Number(c.saldo))}</div></div></div>
     </div>
   </div>;
 }
@@ -2271,7 +2274,9 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
         </div>
         <div className="stabs">
           {schedaTabs.map(([k,l])=>
-            <button key={k} type="button" className={stab===k?"on":""} onClick={()=>setStab(k)}>{l}</button>)}
+            <button key={k} type="button"
+              className={(stab===k?"on":"")+(k==="note"&&String(c.note||"").trim()?" has-note":"")}
+              onClick={()=>setStab(k)}>{l}</button>)}
         </div>
         {c.note&&stab==="note"&&<div className="notebox">⚠ {c.note}</div>}
         {stab==="contatti"&&<div className="two-col">
@@ -2459,18 +2464,7 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
     {tab==="prod"&&<ProduzioneMonitor collabDemo={[c]} filterNome={c.nome} collabId={c.id} soloCollab adminScheda />}
     {tab==="prest"&&<PayPrestazioniTab nome={c.nome} collabId={c.id} toast={toast} onVaiCompensi={()=>{setTab("compensi"); setTimeout(()=>document.getElementById("pay-pag-registrati")?.scrollIntoView({behavior:"smooth",block:"start"}),250);}}/>}
 
-    {tab==="docs"&&<React.Fragment>
-      <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginBottom:12}}>
-        <button className="btn btn-g btn-sm" onClick={()=>printHTML("Documenti "+c.nome,buildDocs(c))}>🖨 Stampa / Esporta elenco</button>
-        <button className="btn btn-p btn-sm">+ Carica documento</button></div>
-      {c.docs.length===0&&<div className="empty"><div className="big">📂</div>Nessun documento caricato.</div>}
-      {c.docs.map((d,i)=>
-        <div className={"docrow"+(d.vis?"":" hidden-doc")} key={i}>
-          <div className="fi">📄</div>
-          <div style={{minWidth:0}}><div className="dn">{d.n}</div><div className="dm">{d.c} · {d.d}</div></div>
-          <VTog vis={d.vis} onClick={()=>onTogDoc(c.id,i)}/>
-        </div>)}
-    </React.Fragment>}
+    {tab==="docs"&&<PayDocumentiTab collabId={c.id} nome={c.nome} toast={toast} onUpdateDocs={mapped=>{if(Array.isArray(mapped)) onUpdate&&onUpdate(c.id,{docs:mapped}); else if(typeof mapped==="number") onTogDoc(c.id,mapped);}}/>}
 
     {tab==="cred"&&<React.Fragment>
       <div className="sec"><h3>Credenziali di accesso</h3>
@@ -2570,6 +2564,15 @@ function collabListaCmp(a,b,fOrd){
   if(ord==="nome_za") return String(b.nome).localeCompare(String(a.nome),"it");
   if(ord==="listino") return String(a.listino||"").localeCompare(String(b.listino||""),"it");
   if(ord==="stato") return String(a.stato||"").localeCompare(String(b.stato||""),"it");
+  if(ord==="saldo_desc"||ord==="saldo_asc"){
+    const sa=a.saldo==null||a.saldo===""?null:Number(a.saldo);
+    const sb=b.saldo==null||b.saldo===""?null:Number(b.saldo);
+    if(sa==null&&sb==null) return String(a.nome).localeCompare(String(b.nome),"it");
+    if(sa==null) return 1;
+    if(sb==null) return -1;
+    const d=ord==="saldo_desc"?(sb-sa):(sa-sb);
+    return d||String(a.nome).localeCompare(String(b.nome),"it");
+  }
   return String(a.nome).localeCompare(String(b.nome),"it");
 }
 function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
@@ -2581,15 +2584,19 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
   const [fProv,setFProv]=useState("");
   const [fCod,setFCod]=useState("");
   const [fExtra,setFExtra]=useState("");
+  const [fSaldoOp,setFSaldoOp]=useState("");
+  const [fSaldoVal,setFSaldoVal]=useState("");
+  const [fSaldoVal2,setFSaldoVal2]=useState("");
   const [fOrd,setFOrd]=useState("nome_az");
+  const [tabSedi,setTabSedi]=useState("attive");
   const [showFiltri,setShowFiltri]=useState(false);
   const impRef=useRef(null);
   const optsCaf=useMemo(()=>[...new Set(collab.map(c=>(c.tipo_sede||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsPatr=useMemo(()=>[...new Set(collab.map(c=>(c.stato_caf||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsListino=useMemo(()=>[...new Set(collab.map(c=>(c.listino||"").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"it")),[collab]);
   const optsProv=useMemo(()=>[...new Set(collab.map(c=>(c.provincia||"").trim().toUpperCase()).filter(Boolean))].sort(),[collab]);
-  const hasFiltri=!!(fStato||fCaf||fPatr||fListino||fProv||fCod||fExtra||q.trim()||fOrd!=="nome_az");
-  const resetFiltri=()=>{setQ("");setFStato("");setFCaf("");setFPatr("");setFListino("");setFProv("");setFCod("");setFExtra("");setFOrd("nome_az");};
+  const hasFiltri=!!(fStato||fCaf||fPatr||fListino||fProv||fCod||fExtra||fSaldoOp||fSaldoVal||fSaldoVal2||q.trim()||fOrd!=="nome_az");
+  const resetFiltri=()=>{setQ("");setFStato("");setFCaf("");setFPatr("");setFListino("");setFProv("");setFCod("");setFExtra("");setFSaldoOp("");setFSaldoVal("");setFSaldoVal2("");setFOrd("nome_az");};
   const sorted=useMemo(()=>{
     const cmp=typeof payCmpCollabLista==="function"?payCmpCollabLista:collabListaCmp;
     return [...collab].sort((a,b)=>cmp(a,b,"nome_az"));
@@ -2617,14 +2624,20 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
       if(fExtra==="chiusura"&&!(c.data_chiusura_sede||"").trim()) return false;
       if(fExtra==="risk"&&trend(c.prod).lvl!=="hi") return false;
       if(fExtra==="gestione"&&!Object.values(c.gestione||{}).some(Boolean)) return false;
+      if(typeof payMatchSaldoFiltro==="function"){
+        if(!payMatchSaldoFiltro(c,fSaldoOp,fSaldoVal,fSaldoVal2)) return false;
+      }
+      const sedeChiusa = c.stato==="chiusa" || !!(c.data_chiusura_sede||"").trim();
+      if(tabSedi==="attive" && sedeChiusa) return false;
+      if(tabSedi==="chiuse" && !sedeChiusa) return false;
       if(!t) return true;
       const hay=[c.nome,c.cognome,c.nome_proprio,c.cf,c.assoc,c.citta,c.localita,c.cap,c.provincia,c.note,c.tipo_sede,c.stato_caf,c.listino,c.incarico,...Object.values(c.codici||{}),...(c.tel||[]),...(c.email||[])].join(" ").toLowerCase();
       return hay.includes(t);
     }).sort((a,b)=>cmp(a,b,fOrd));
-  },[q,fStato,fCaf,fPatr,fListino,fProv,fCod,fExtra,fOrd,sorted]);
+  },[q,fStato,fCaf,fPatr,fListino,fProv,fCod,fExtra,fSaldoOp,fSaldoVal,fSaldoVal2,fOrd,tabSedi,sorted]);
   return <React.Fragment>
     <div className="top">
-      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · filtra per stato, CAF, listino, codici, bollettino…</div></div>
+      <div><h1>Collaboratori</h1><div className="sub">{collab.length} collaboratori · filtra per stato, CAF, listino, saldo, codici, bollettino…</div></div>
       <div style={{display:"flex",gap:8}}>
         <button className="btn btn-g" onClick={()=>impRef.current&&impRef.current.click()}>📥 Importa da Elenco completo</button>
         <input ref={impRef} type="file" accept=".xlsx,.xls,.csv" style={{display:"none"}} onChange={e=>{const f=e.target.files&&e.target.files[0]; if(f)onImportAnagrafica(f); e.target.value="";}}/>
@@ -2636,6 +2649,12 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
     <div style={{display:"flex",gap:8,alignItems:"center",margin:"8px 0 4px",flexWrap:"wrap"}}>
       <button type="button" className="btn btn-g btn-sm" onClick={()=>setShowFiltri(v=>!v)}>
         {showFiltri?"▲ Nascondi filtri":"▼ Filtri e ordine"}{hasFiltri&&!showFiltri?" · attivi":""}
+      </button>
+      <button type="button" className={"btn btn-sm "+(tabSedi==="attive"?"btn-p":"btn-g")} onClick={()=>setTabSedi("attive")}>
+        Sedi Attive
+      </button>
+      <button type="button" className={"btn btn-sm "+(tabSedi==="chiuse"?"btn-p":"btn-g")} onClick={()=>setTabSedi("chiuse")}>
+        Sedi Chiuse
       </button>
       {hasFiltri&&<button type="button" className="btn btn-g btn-sm" onClick={resetFiltri}>Azzera filtri</button>}
     </div>
@@ -2690,12 +2709,33 @@ function Lista({collab,onOpen,onImportAnagrafica,importReport,onNuovoCollab}){
           <option value="risk">Produzione a rischio</option>
           <option value="gestione">Con permessi gestione</option>
         </select></div>
+      <div className="f"><label>Saldo netto</label>
+        <select value={fSaldoOp} onChange={e=>setFSaldoOp(e.target.value)}>
+          <option value="">Tutti</option>
+          <option value="gt">Maggiore di</option>
+          <option value="gte">Maggiore o uguale</option>
+          <option value="lt">Minore di</option>
+          <option value="lte">Minore o uguale</option>
+          <option value="eq">Uguale a</option>
+          <option value="between">Compreso tra</option>
+          <option value="pos">Positivo (&gt; 0)</option>
+          <option value="neg">Negativo (&lt; 0)</option>
+          <option value="zero">Zero</option>
+          <option value="has">Con saldo</option>
+          <option value="none">Senza saldo</option>
+        </select></div>
+      {fSaldoOp&&!["pos","neg","zero","has","none",""].includes(fSaldoOp)&&<div className="f"><label>{fSaldoOp==="between"?"Da €":"Importo €"}</label>
+        <input type="text" inputMode="decimal" placeholder="es. 1000" value={fSaldoVal} onChange={e=>setFSaldoVal(e.target.value)}/></div>}
+      {fSaldoOp==="between"&&<div className="f"><label>A €</label>
+        <input type="text" inputMode="decimal" placeholder="es. 5000" value={fSaldoVal2} onChange={e=>setFSaldoVal2(e.target.value)}/></div>}
       <div className="f"><label>Ordine</label>
         <select value={fOrd} onChange={e=>setFOrd(e.target.value)}>
           <option value="nome_az">Nome A→Z (attivi prima)</option>
           <option value="nome_za">Nome Z→A</option>
           <option value="listino">Listino A→Z</option>
           <option value="stato">Stato A→Z</option>
+          <option value="saldo_desc">Saldo alto → basso</option>
+          <option value="saldo_asc">Saldo basso → alto</option>
         </select></div>
     </div>}
     {importReport&&<div className="infobox" style={{marginTop:10}}>
@@ -3127,7 +3167,7 @@ function GestioneFiltrata({view,me,collab,pagamenti,sanzioni,batches,listini,onA
     <Card c={me} onOpen={()=>{}}/>
   </React.Fragment>;
   if(view==="g_comp")return <PayDashboard/>;
-  if(view==="g_imp")return <PayImport toast={flash}/>;
+  if(view==="g_imp")return <PayImport toast={flash} onNav={h=>{setPayNavCtx(h);setV(h.view||h.azione||"costi");}}/>;
   if(view==="g_tar")return <PayListini toast={flash}/>;
   if(view==="g_prod")return <ProduzioneMonitor collabDemo={soloMe} filterNome={me?.nome} collabId={me?.id} soloCollab canStampa={!!me?.portal?.stampa} />;
   if(view==="g_cont")return <PayPagamentiSanzioniCollab collabId={me?.id} nome={me?.nome} toast={flash}/>;
@@ -4168,6 +4208,12 @@ async function saveSharedBlob(id, data){
 .sc-cc-name{font-size:15px;font-weight:700}
 .sc-cc-addr{font-size:12.5px;color:var(--muted);margin-top:2px}
 .sc-cc-right{margin-left:auto;text-align:right;flex-shrink:0}
+.sc-cc-tel{font-size:12px;color:var(--muted,#8A94A6);margin-top:3px;font-weight:600}
+.sc-cc-saldo{background:#12224A;color:#fff;border-radius:10px;padding:10px 14px;min-width:118px;text-align:right}
+.sc-cc-saldo .l{font-size:9.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;opacity:.78}
+.sc-cc-saldo .v{font-size:15px;font-weight:800;margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.sc-cc-saldo.neg{background:#7A1F1A}
+.sc-cc-saldo.miss{background:#5A6480}
 .sc-chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:11px}
 .sc-chip{font-size:10.5px;font-weight:700;padding:3px 8px;border-radius:6px;background:#F4F6FB;color:#5A6480;border:1px solid var(--line)}
 .sc-chip b{font-family:IBM Plex Mono,monospace;font-weight:600;color:var(--ink);margin-left:4px}
@@ -4199,6 +4245,36 @@ async function saveSharedBlob(id, data){
 .sc-src{display:inline-block;font-family:IBM Plex Mono,monospace;font-size:9.5px;padding:1px 5px;border-radius:4px;background:#EEF1F8;color:#5A6480;margin-left:5px;vertical-align:1px}
 .sc-src.roma{background:#E4F1FB;color:#0F5E8C}
 .sc-src.list{background:#E6F7F6;color:#0A6B66}
+.pay-ctrl-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:10px;background:#fff}
+.pay-ctrl-tbl{border-collapse:separate;border-spacing:0;width:max-content;min-width:100%;font-size:12px}
+.pay-ctrl-tbl th,.pay-ctrl-tbl td{border-bottom:1px solid #E8ECF4;border-right:1px solid #EEF1F8;padding:8px 10px;vertical-align:middle}
+.pay-ctrl-tbl th{position:sticky;top:0;background:#F4F6FB;z-index:2;font-size:11px;text-transform:uppercase;letter-spacing:.02em;color:#5A6480}
+.pay-ctrl-tbl th.sticky-l,.pay-ctrl-tbl td.sticky-l{position:sticky;left:0;background:#FFF8DC;z-index:1;font-weight:700;min-width:180px}
+.pay-ctrl-tbl th.sticky-l{z-index:3;background:#F7EFA8}
+.pay-ctrl-tbl td.sticky-c{position:sticky;left:180px;background:#fff;z-index:1;font-family:IBM Plex Mono,monospace;min-width:100px}
+.pay-ctrl-tbl th.sticky-c{left:180px;z-index:3;background:#F4F6FB}
+.pay-ctrl-cell{font-size:11.5px;line-height:1.35;max-width:160px}
+.pay-ctrl-cell.ok{background:#EEF8F0;color:#1B6B3A}
+.pay-ctrl-cell.calo{background:#FDECEA;color:#8B1E18;font-weight:700}
+.pay-ctrl-cell.assente{background:#FCE8E6;color:#B71C1C;font-weight:800;box-shadow:inset 0 0 0 1.5px #E57373}
+.pay-ctrl-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;margin:10px 0 14px}
+.pay-ctrl-legend span{display:inline-flex;align-items:center;gap:6px}
+.pay-ctrl-legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.pay-ctrl-tabs{display:flex;gap:8px;align-items:center;margin:0 0 10px;flex-wrap:wrap}
+.pay-ctrl-lacune{margin-top:22px}
+.pay-ctrl-lacune .item{padding:10px 12px;border:1px solid #F0DCA8;background:#FFF8E8;border-radius:8px;margin-bottom:8px;font-size:13px}
+.pay-ctrl-lacune .item b{font-family:IBM Plex Mono,monospace}
+.pay-ctrl-marg-neg{margin-top:22px}
+.pay-ctrl-marg-neg .item{padding:10px 12px;border:1px solid #F5C6C2;background:#FDECEA;border-radius:8px;margin-bottom:8px;font-size:13px}
+.pay-ctrl-marg-neg .item b{font-family:IBM Plex Mono,monospace}
+.pay-ctrl-marg-neg .warn-title{color:#8B1E18;font-weight:800;font-size:16px;margin:0 0 8px}
+.pay-ctrl-marg-neg .nums{font-family:IBM Plex Mono,monospace;font-size:12px;color:#5A6480;margin-top:4px}
+.pay-strutt{margin-top:4px}
+.pay-strutt .tbl .mono{font-family:IBM Plex Mono,JetBrains Mono,monospace;font-variant-numeric:tabular-nums}
+.pay-strutt .pay-strutt-form{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:14px}
+.pay-strutt .pay-strutt-form label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
+.pay-strutt .pay-strutt-form input,.pay-strutt .pay-strutt-form select{height:34px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#fff;font-weight:600;text-transform:none}
+.pay-strutt .ph h3{flex:1;min-width:0}
 `;
   document.head.appendChild(s);
 })();
@@ -4316,7 +4392,7 @@ async function payApiMock(path, opts={}){
       adempimenti_aperti:(codeIdx.sanzioni_da_attribuire||0)+(codeIdx.sanzioni_proposte||0)+
         (codeIdx.costi_proposti||0)+(codeIdx.quarantena||0)+(codeIdx.anomalie_import||0),
       sedi_in_calo:0,voci_senza_tariffa:0,da_liquidare:base.esposizione||0};
-    return {...base,kpi,scadenze:base.scadenze||[],gap:base.gap||[],sedi_in_calo:base.sedi_in_calo||[]};
+    return {...base,kpi,anni:base.anni||[kpi.anno],scadenze:base.scadenze||[],gap:base.gap||[],sedi_in_calo:base.sedi_in_calo||[]};
   }
   if(path==='/collaboratori/cards'){
     return payClona(PAY_D.collaboratori).map(c=>({
@@ -4407,6 +4483,14 @@ async function payApiMock(path, opts={}){
     lista.splice(i,1); payCommitLocal();
     return {id:pid, ignorato:true};
   }
+  if(path.startsWith('/pagamenti/') && path.endsWith('/elimina') && metodo==='POST'){
+    const pid=Number(path.split('/')[2]);
+    const lista=PAY_D.pagamentiDaAbbinare||[];
+    const i=lista.findIndex(p=>p.id===pid);
+    if(i<0) throw {status:404, detail:'pagamento non trovato'};
+    lista.splice(i,1); payCommitLocal();
+    return {id:pid, eliminato:true};
+  }
   if(path.startsWith('/pagamenti/') && metodo==='DELETE'){
     const pid = Number(path.split('/')[2]);
     for(const [cid,e] of Object.entries(PAY_D.estratti)){
@@ -4432,6 +4516,12 @@ async function payApiMock(path, opts={}){
   }
   if(path.startsWith('/sanzioni/') && path!=='/sanzioni/massa'){
     const sid=Number(path.split('/')[2]);
+    if(metodo==='DELETE'){
+      const i=(PAY_D.code.sanzioni||[]).findIndex(x=>x.id===sid);
+      if(i<0) throw {status:404, detail:'sanzione non trovata'};
+      PAY_D.code.sanzioni.splice(i,1); payCommitLocal();
+      return {id:sid, eliminato:true};
+    }
     const s=PAY_D.code.sanzioni.find(x=>x.id===sid);
     if(s){ if(corpo.collaboratore_id){ s.collaboratore_id=corpo.collaboratore_id;
              s.collaboratore=(PAY_D.collaboratori.find(c=>c.id===corpo.collaboratore_id)||{}).nome; s.stato='attribuita'; }
@@ -4495,7 +4585,8 @@ async function payApiMock(path, opts={}){
   }
   if(path==='/import/storico') return payClona(PAY_D.import_storico||[]);
   if(path.startsWith('/produzione') && !path.startsWith('/produzione/grafici')
-      && !path.startsWith('/produzione/collaboratore') && !path.startsWith('/produzione/margini')){
+      && !path.startsWith('/produzione/collaboratore') && !path.startsWith('/produzione/margini')
+      && !path.startsWith('/produzione/struttura') && !path.startsWith('/produzione/sedi-chiuse')){
     const qs=path.includes('?')?path.split('?')[1]:'';
     const solo=Number((qs.match(/solo=(\d+)/)||[])[1]||0);
     const periodi=[2021,2022,2023,2024,2025,2026];
@@ -4506,6 +4597,27 @@ async function payApiMock(path, opts={}){
     }));
     if(solo) rows=rows.filter(c=>c.id===solo);
     return {periodi, collaboratori: rows};
+  }
+  if(path.startsWith('/produzione/struttura')){
+    const qs=path.includes('?')?path.split('?')[1]:'';
+    const anno=Number((qs.match(/anno=(\d+)/)||[])[1]||2025);
+    return {anno,anni:[2023,2024,2025],riporto:-63342.35,
+      sezione_a:[
+        {voce:'DS_AGRICOLE',label:'Disoccupazioni AGRICOLE',presentate:null,accolte:176,nota:null,riscosso:26398,rif_conv:0.75,dovuto:19798.5},
+        {voce:'DS_ORD',label:'Disoccupazioni ORD - R/RID',presentate:null,accolte:616,nota:null,riscosso:51339.87,rif_conv:0.75,dovuto:38504.9},
+        {voce:'PATR_PUNTO_REALE',label:'Punto reale PATRONATO',presentate:2892.5,accolte:null,nota:null,riscosso:104130,rif_conv:0.7,dovuto:72891},
+        {voce:'M730_SENZA_MOD',label:'MOD 730 SENZA MODIFICHE',presentate:null,accolte:1717,nota:'in appl. Riduz. A.E. del 54,912982%',riscosso:13083.04,rif_conv:0.7,dovuto:9158.12},
+      ],
+      totale_sezione_a:192481.51,
+      sezione_b:[
+        {voce:'MENS_INPS',ente:'INPS',label:'Mensilità INPS',tot_anno:92295.19,rif_conv:0.6,dovuto:55377.11},
+        {voce:'MENS_INPDAP',ente:'INPDAP',label:'Mensilità INPDAP',tot_anno:24622.04,rif_conv:0.7,dovuto:17235.43},
+      ],
+      totale_sezione_b:72612.54,
+      sezione_c:{totale:122270.41,righe:[{ditta:'Dip. UNSIC',struttura:'RC',n_dipendenti:3,costo_totale:80000,quota_ribaltata:80000}]},
+      sezione_d:[{tipo:'BONIFICO',data:'GENNAIO',causale:'CONTRIBUTO A.T. UNSIC',importo:50000}],
+      totale_sezione_d:466363.6,
+      riepilogo:{produzione:79481.29,acconti:466363.6,carta_servizi:0,credito_debito:-386882.31,costi:122270.41,formula:'(R+A+B)-C'}};
   }
   if(path.startsWith('/produzione/margini')){
     const qs=path.includes('?')?path.split('?')[1]:'';
@@ -4764,7 +4876,39 @@ function payCmpCollabLista(a,b,fOrd){
   if(ord==='nome_za') return String(b.nome).localeCompare(String(a.nome),'it');
   if(ord==='listino') return String(a.listino||'').localeCompare(String(b.listino||''),'it');
   if(ord==='stato') return String(a.stato||'').localeCompare(String(b.stato||''),'it');
+  if(ord==='saldo_desc'||ord==='saldo_asc'){
+    const sa=a.saldo==null||a.saldo===''?null:Number(a.saldo);
+    const sb=b.saldo==null||b.saldo===''?null:Number(b.saldo);
+    if(sa==null&&sb==null) return String(a.nome).localeCompare(String(b.nome),'it');
+    if(sa==null) return 1;
+    if(sb==null) return -1;
+    const d=ord==='saldo_desc'?(sb-sa):(sa-sb);
+    return d||String(a.nome).localeCompare(String(b.nome),'it');
+  }
   return String(a.nome).localeCompare(String(b.nome),'it');
+}
+function payParseImportoFiltro(v){
+  if(v==null||v==='') return null;
+  const n=Number(String(v).trim().replace(/\s/g,'').replace(/\./g,'').replace(',','.'));
+  return Number.isFinite(n)?n:null;
+}
+function payMatchSaldoFiltro(c,op,v1,v2){
+  if(!op) return true;
+  const s=c.saldo==null||c.saldo===''?null:Number(c.saldo);
+  if(op==='has') return s!=null;
+  if(op==='none') return s==null;
+  if(op==='pos') return s!=null&&s>0;
+  if(op==='neg') return s!=null&&s<0;
+  if(op==='zero') return s!=null&&Math.abs(s)<0.005;
+  if(s==null) return false;
+  const a=payParseImportoFiltro(v1), b=payParseImportoFiltro(v2);
+  if(op==='gt') return a!=null&&s>a;
+  if(op==='gte') return a!=null&&s>=a;
+  if(op==='lt') return a!=null&&s<a;
+  if(op==='lte') return a!=null&&s<=a;
+  if(op==='eq') return a!=null&&Math.abs(s-a)<0.005;
+  if(op==='between') return a!=null&&b!=null&&s>=Math.min(a,b)&&s<=Math.max(a,b);
+  return true;
 }
 function paySortCollabCards(list){
   return [...list].sort((a,b)=>payCmpCollabLista(a,b,'nome_az'));
@@ -4905,11 +5049,11 @@ function PayCollabPick({value,options,onChange,placeholder,inclInterni,style,dis
   </div>;
 }
 const PAY_MACROAREE=["Sindacato", "Patronato", "CAF"];
-const PAY_COMP_SEZIONI=[{"macro": "Sindacato", "tit": "Mensilit\u00e0 pensionati", "codCanale": "MENSILITA", "slot": "del", "kind": "mensilita", "voci": ["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL"]}, {"macro": "Sindacato", "tit": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "voci": ["ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "tit": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "voci": ["PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO"]}, {"macro": "CAF", "tit": "CAF", "codCanale": "CAF", "slot": "caf", "voci": ["M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"]}];
+const PAY_COMP_SEZIONI=[{"macro": "Sindacato", "tit": "Mensilit\u00e0 pensionati", "codCanale": "MENSILITA", "slot": "del", "kind": "mensilita", "voci": ["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL"]}, {"macro": "Sindacato", "tit": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "voci": ["ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "tit": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "voci": ["PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO"]}, {"macro": "CAF", "tit": "CAF", "codCanale": "CAF", "slot": "caf", "voci": ["M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_FRANCHIGIA", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"]}];
 const PAY_LISTINO_MACROAREE=[{"macro": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "categorie": ["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "categorie": ["PATRONATO"]}, {"macro": "CAF", "codCanale": "CAF", "slot": "caf", "categorie": ["M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"]}];
 const PAY_LISTINO_ORDINE=["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI", "PATRONATO", "M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"];
-const PAY_CAT_LBL={"MENS_INPS": "Pensionati INPS", "DELEGHE_INPS": "Deleghe INPS", "MENS_INPDAP": "Pensionati INPDAP", "DELEGHE_INPDAP": "Deleghe INPDAP", "MENS_IPOST": "Pensionati IPOST", "MENS_ENPALS": "Pensionati ENPALS", "DELEGHE_ENPALS": "Deleghe ENPALS", "MENS_INAIL": "Pensionati INAIL", "ART_COM_INPS": "ART/COM (INPS)", "ART_COM_INAIL": "ART/COM (INAIL)", "AZIENDE_AGRICOLE": "AZIENDE AGRICOLE", "DS_AGRICOLE": "Disoccupazioni AGRICOLE", "DS_ORD": "Disoccupazioni ORD - R/RID", "CONFIAL_VOCE": "CONFIAL 2024", "IMPRESE": "IMPRESE", "BOLLETTINI": "BOLLETTINI", "PATR_PREALI_PRES": "Punto reale PATRONATO", "PATR_PT_PRES": "Punto telematico PATRONATO", "PATR_P_RDC": "Punto RDC", "PATR_P_T_ADI": "Punto REM", "PATR_P_ORG": "Punto ORG. PATRONATO", "PATR_PUNTI_ESTERO": "PUNTI ESTERO ANNO 2020", "PENALE_SCOSTAMENTO": "Penale applicata per scostamento", "M730_SENZA_MOD": "MOD 730 SENZA MODIFICHE", "M730_ESONERO": "MOD 730 ESONERO PRES.", "M730_MODIFICATO": "MOD 730 CON MODIFICHE", "M730_INTEGRATIVO": "MOD 730 CON INTEGRAZIONE", "M730_TOT_SOGGETTI": "730 totale soggetti", "ISEE_F1": "MOD ISEE I FASCIA", "ISEE_F2": "MOD ISEE II FASCIA", "ISEE_F3": "MOD ISEE III FASCIA", "ISEE_INVIATE": "DSU totale inviate", "RED_ASSEVERATI": "MOD RED ASSEVERATI", "RED_AUTOCERT": "MOD RED AUTOCERTIFICATI", "RED_BREVI": "MOD. RED BREVI", "ICRIC_ICLAV_ACCAS": "ICRIC01 - ICLAV - ACCA/PS", "RDC_PDC": "RdC/PdC", "RDC_COMUNICAZIONE": "COMUNICAZIONE RdC/PdC", "ADI": "ADI", "ADI_COMUNICAZIONE": "COMUNICAZIONE ADI", "F24_INVIO": "Invio F24", "UNICO_INVIO": "Invio UNICO", "LOCAZIONI": "Locazioni", "CATASTO": "Catasto", "DISOCCUPAZIONI": "Disoccupazioni AGRICOLE", "NASPI": "Disoccupazioni ORD - R/RID", "CONFIAL": "CONFIAL 2024", "PATRONATO": "Patronato", "M730": "Mod. 730", "ISEE": "ISEE / DSU", "RED": "RED", "RDC": "RdC / PdC", "ICRIC": "ICRIC / ICLAV / ACCAS", "F24": "Invio F24", "UNICO": "Invio UNICO"};
-const PAY_VOCE_ORDINE=["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI", "PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO", "M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"];
+const PAY_CAT_LBL={"MENS_INPS": "Pensionati INPS", "DELEGHE_INPS": "Deleghe INPS", "MENS_INPDAP": "Pensionati INPDAP", "DELEGHE_INPDAP": "Deleghe INPDAP", "MENS_IPOST": "Pensionati IPOST", "MENS_ENPALS": "Pensionati ENPALS", "DELEGHE_ENPALS": "Deleghe ENPALS", "MENS_INAIL": "Pensionati INAIL", "ART_COM_INPS": "ART/COM (INPS)", "ART_COM_INAIL": "ART/COM (INAIL)", "AZIENDE_AGRICOLE": "AZIENDE AGRICOLE", "DS_AGRICOLE": "Disoccupazioni AGRICOLE", "DS_ORD": "Disoccupazioni ORD - R/RID", "CONFIAL_VOCE": "CONFIAL 2024", "IMPRESE": "IMPRESE", "BOLLETTINI": "BOLLETTINI", "PATR_PREALI_PRES": "Punto reale PATRONATO", "PATR_PT_PRES": "Punto telematico PATRONATO", "PATR_P_RDC": "Punto RDC", "PATR_P_T_ADI": "Punto REM", "PATR_P_ORG": "Punto ORG. PATRONATO", "PATR_PUNTI_ESTERO": "PUNTI ESTERO ANNO 2020", "PENALE_SCOSTAMENTO": "Penale applicata per scostamento", "M730_SENZA_MOD": "MOD 730 SENZA MODIFICHE", "M730_ESONERO": "MOD 730 ESONERO PRES.", "M730_MODIFICATO": "MOD 730 CON MODIFICHE", "M730_INTEGRATIVO": "MOD 730 CON INTEGRAZIONE", "M730_FRANCHIGIA": "Franchigia 730", "M730_TOT_SOGGETTI": "730 totale soggetti", "ISEE_F1": "MOD ISEE I FASCIA", "ISEE_F2": "MOD ISEE II FASCIA", "ISEE_F3": "MOD ISEE III FASCIA", "ISEE_INVIATE": "DSU totale inviate", "RED_ASSEVERATI": "MOD RED ASSEVERATI", "RED_AUTOCERT": "MOD RED AUTOCERTIFICATI", "RED_BREVI": "MOD. RED BREVI", "ICRIC_ICLAV_ACCAS": "ICRIC01 - ICLAV - ACCA/PS", "RDC_PDC": "RdC/PdC", "RDC_COMUNICAZIONE": "COMUNICAZIONE RdC/PdC", "ADI": "ADI", "ADI_COMUNICAZIONE": "COMUNICAZIONE ADI", "F24_INVIO": "Invio F24", "UNICO_INVIO": "Invio UNICO", "LOCAZIONI": "Locazioni", "CATASTO": "Catasto", "DISOCCUPAZIONI": "Disoccupazioni AGRICOLE", "NASPI": "Disoccupazioni ORD - R/RID", "CONFIAL": "CONFIAL 2024", "PATRONATO": "Patronato", "M730": "Mod. 730", "ISEE": "ISEE / DSU", "RED": "RED", "RDC": "RdC / PdC", "ICRIC": "ICRIC / ICLAV / ACCAS", "F24": "Invio F24", "UNICO": "Invio UNICO"};
+const PAY_VOCE_ORDINE=["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI", "PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO", "M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_FRANCHIGIA", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"];
 function payLblVoce(c, p){ return (p&&p._lbl)||PAY_CAT_LBL[c]||(c||'—'); }
 function payLblCategoria(c, p){ return payLblVoce(c, p); }
 function payOrdinaVociCodici(codici){
@@ -4995,6 +5139,10 @@ const PAY_MENS_ENTI=[
   {mens:'MENS_INAIL', del:null, lbl:'Pensionati INAIL'},
 ];
 function payIsDeleghe(c){ return !!PAY_DELEGHE_MENS[c]; }
+function payParseListiniResp(r){
+  if(Array.isArray(r)) return {anni:[], anno:null, listini:r};
+  return {anni:r&&r.anni||[], anno:r&&r.anno!=null?+r.anno:null, listini:(r&&r.listini)||[]};
+}
 function payFmtTariffa(r){
   // NBSP evita spezzatura in stampa (€ 36,00 | €/pr)
   if(r.tipo_conv==='fisso') return eur(r.valore_conv)+'\u00A0€/pr';
@@ -5022,22 +5170,26 @@ function payMkMensilitaLine(enti, byCod, prodM, convEff){
   const tipo=(cfg&&cfg.tipo)||(mens&&mens.tipo_conv)||(del&&del.tipo_conv)||'perc';
   const isFisso=tipo==='fisso';
   const val=(cfg&&cfg.valore!=null)?cfg.valore:((mens&&mens.valore_conv!=null)?mens.valore_conv:((del&&del.valore_conv!=null)?del.valore_conv:null));
-  const mensQta=Number((mens&&mens.quantita)||prodM[enti.mens]||0);
+  // Mensilità: preferisci produzione se il rigo MENS in compenso è a zero (LEFT JOIN vuoto)
+  const mensFromComp=mens&&mens.quantita!=null?Number(mens.quantita):null;
+  const mensFromProd=prodM[enti.mens]!=null?Number(prodM[enti.mens]):null;
+  const mensQta=(mensFromComp!=null&&mensFromComp!==0)?mensFromComp
+    :((mensFromProd!=null)?mensFromProd:(mensFromComp!=null?mensFromComp:0));
   const delQta=enti.del?Number((del&&del.quantita)||prodM[enti.del]||0):0;
   const netto=Number((mens&&mens.importo)||0);
   let compenso=0, segnale='OK', trattenuto=null;
   if(isFisso){
-    // Excel Aloi: quantità (deleghe se presenti, altrimenti mensilità) × € fisso
+    // Fisso: n. mensilità × € (mai n. deleghe)
     if(del && del.segnale!=='NON_CALCOLABILE' && del.segnale!=='SENZA_TARIFFA'){
       compenso=Number(del.compenso||0);
       segnale=del.segnale||'OK';
     }else if(mens && mens.segnale!=='NON_CALCOLABILE' && mens.segnale!=='SENZA_TARIFFA'){
       compenso=Number(mens.compenso||0);
       segnale=mens.segnale||'OK';
-    }else if(val!=null && (delQta||mensQta)){
-      compenso=(delQta||mensQta)*Number(val);
+    }else if(val!=null && mensQta){
+      compenso=mensQta*Number(val);
       segnale='OK';
-    }else if(delQta||mensQta){
+    }else if(mensQta||delQta){
       segnale='NON_CALCOLABILE';
     }
   }else{
@@ -5118,20 +5270,23 @@ function payCompRowsForAnno(compensi, anno, prodVoci, provDettaglio, convEff){
 }
 function PayCompRiga({r}){
   const blocked=r.segnale==='NON_CALCOLABILE'||r.segnale==='SENZA_TARIFFA';
-  const warn=!blocked&&r.segnale&&r.segnale!=='OK'?r.segnale:(r._soloProd?'solo produzione':null);
+  const isFr730=(r.codice==='M730_FRANCHIGIA')||String(r.segnale||'').startsWith('FRANCHIGIA_730');
+  const warn=!blocked&&r.segnale&&r.segnale!=='OK'&&!String(r.segnale).startsWith('FRANCHIGIA_730')?r.segnale:(r._soloProd?'solo produzione':null);
   const isFisso=r.tipo_conv==='fisso';
   const isProv=!!r._provvisorio;
   const impCell=r._soloProd?'—':(isFisso&&!isProv?'':eur(r.importo));
   const compCell=blocked?'non calcolabile':(r._soloProd?'—':eur(r.compenso));
   const qtaCell=<>{r.quantita!=null?num(r.quantita):'—'}</>;
   const convCell=r._soloProd||isProv?'—':payFmtConv(r);
+  const tarCell=r._soloProd||isProv||blocked||isFr730?'—':payFmtTariffa(r);
+  const frHint=isFr730?(r.segnale==='FRANCHIGIA_730_AZZERATA'?'azzerata':(r.segnale==='FRANCHIGIA_730_PARZ'?'parzialmente restituita':null)):null;
   return <tr className={'pay-comp-row'+(blocked?' sc-row-block':isProv?'':'')} style={isProv?{background:'#FFF8E8'}:undefined}>
-    <td>{r.lbl||r.voce}{warn&&<div className="muted small" style={{fontSize:10,marginTop:2}} title={warn}>{warn}</div>}</td>
-    <td className="r small pay-comp-tar" style={{whiteSpace:'nowrap'}}>{r._soloProd||isProv||blocked?'—':payFmtTariffa(r)}</td>
+    <td>{r.lbl||r.voce}{(warn||frHint)&&<div className="muted small" style={{fontSize:10,marginTop:2}} title={warn||frHint}>{warn||frHint}</div>}</td>
+    <td className="r small pay-comp-tar" style={{whiteSpace:'nowrap'}}>{tarCell}</td>
     <td className="r mono">{qtaCell}</td>
     <td className="r mono">{impCell}</td>
     <td className="r small">{convCell}</td>
-    <td className="r mono" style={{fontWeight:700,color:blocked?'var(--red)':'inherit'}}>{compCell}</td>
+    <td className="r mono" style={{fontWeight:700,color:blocked?'var(--red)':(Number(r.compenso)<0?'var(--red)':'inherit')}}>{compCell}</td>
   </tr>;
 }
 function PayCompRigaDeleghe({r}){
@@ -5140,7 +5295,8 @@ function PayCompRigaDeleghe({r}){
   const isFisso=r._mensTipo==='fisso';
   const isProv=!!r._provvisorio;
   const convSrc={tipo_conv:r._mensTipo||r.tipo_conv, valore_conv:r._mensVal!=null?r._mensVal:r.valore_conv};
-  const mensCell=r._mensQta!=null&&Number(r._mensQta)!==0?num(r._mensQta):'—';
+  // Mensilità sempre esposta (anche 0); non nascondere con "—" se il dato c'è
+  const mensCell=r._mensQta!=null&&r._mensQta!==''?num(r._mensQta):'—';
   const qtaCell=r.quantita!=null&&Number(r.quantita)!==0?num(r.quantita):(r.quantita===0?'0':'—');
   const trattenutoCell=r._soloProd?'—':(blocked?'—':(r.importo!=null?eur(r.importo):'—'));
   const convCell=r._soloProd||isProv?'—':payFmtConv(convSrc);
@@ -5203,7 +5359,7 @@ function ModalNuovoCollab({onClose,onSave,toast}){
   useEffect(()=>{
     if(!PAY_USE_API){ setListiniOpts(['Standard','Sedi Cosenza']); return; }
     ensurePayAuth().then(()=>payApi('/listini')).then(rows=>{
-      const names=paySortListiniNomi((rows||[]).map(r=>r.listino).filter(Boolean));
+      const names=paySortListiniNomi(payParseListiniResp(rows).listini.map(r=>r.listino).filter(Boolean));
       if(names.length){ setListiniOpts(names); setListino(names.includes('Standard')?'Standard':names[0]); }
     }).catch(()=>{});
   },[]);
@@ -5307,15 +5463,20 @@ function PayModeBanner(){
 
 function PayDashboard({onOpenCollab,onNav}){
   const [d,setD]=useState(null); const [err,setErr]=useState('');
-  const [anno,setAnno]=useState(new Date().getFullYear());
+  const [anno,setAnno]=useState(null);
   const carica=()=>{
-    ensurePayAuth().then(()=>payApi('/dashboard?anno='+anno))
+    const qAnno=anno!=null?('?anno='+anno):'';
+    ensurePayAuth().then(()=>payApi('/dashboard'+qAnno))
       .then(x=>{
         const codeIdx={};
         (x.code||[]).forEach(c=>{codeIdx[c.k]=Number(c.n)||0;});
+        const anniDisp=(x.anni&&x.anni.length)?x.anni.map(Number):[];
+        const y=x.kpi?.anno??x.confronto_anno??anno??(anniDisp[0]||new Date().getFullYear());
+        if(anno==null && y!=null) setAnno(+y);
+        else if(anniDisp.length && anno!=null && !anniDisp.includes(+anno)) setAnno(+anniDisp[0]);
         const k={
           ...(x.kpi||{}),
-          anno:x.kpi?.anno??x.confronto_anno??anno,
+          anno:y,
           adempimenti_aperti:x.kpi?.adempimenti_aperti??(
             (codeIdx.sanzioni_da_attribuire||0)+(codeIdx.sanzioni_proposte||0)+
             (codeIdx.costi_proposti||0)+(codeIdx.quarantena||0)+(codeIdx.anomalie_import||0)),
@@ -5324,7 +5485,7 @@ function PayDashboard({onOpenCollab,onNav}){
           voci_senza_tariffa:x.kpi?.voci_senza_tariffa??((x.gap||[]).find(g=>g.azione==='tar'&&g.tab==='tariffe')?.righe||0),
           da_liquidare:x.kpi?.da_liquidare??0,
         };
-        setD({...x,kpi:k,gap:x.gap||[],scadenze:x.scadenze||[],sedi_in_calo:x.sedi_in_calo||[]});
+        setD({...x,anni:anniDisp,kpi:k,gap:x.gap||[],scadenze:x.scadenze||[],sedi_in_calo:x.sedi_in_calo||[]});
         setErr('');
       })
       .catch(e=>setErr(e.detail||'errore caricamento'));
@@ -5333,6 +5494,7 @@ function PayDashboard({onOpenCollab,onNav}){
   if(err) return <div className="infobox">⚠ Dashboard: {err}</div>;
   if(!d) return <p className="muted">Caricamento…</p>;
   const k=d.kpi||{};
+  const anniOpts=(d.anni&&d.anni.length)?d.anni:[k.anno||anno].filter(Boolean);
   const gap=d.gap||[];
   const nav=(g)=>{
     if(!onNav) return;
@@ -5348,9 +5510,11 @@ function PayDashboard({onOpenCollab,onNav}){
   return <React.Fragment>
     <div className="sc-head">
       <div><h1>Dashboard</h1><p>Cosa scade, cosa manca, chi sta calando — anno {k.anno||anno}.</p></div>
-      <select value={anno} onChange={e=>setAnno(+e.target.value)} className="pay-dash-anno">
-        {[2026,2025,2024,2023].map(y=><option key={y} value={y}>{y}</option>)}
-      </select>
+      {anniOpts.length
+        ? <select value={anno||k.anno||''} onChange={e=>setAnno(+e.target.value)} className="pay-dash-anno">
+            {anniOpts.map(y=><option key={y} value={y}>{y}</option>)}
+          </select>
+        : <span className="muted small">Nessun anno con produzione importata</span>}
     </div>
     <div className="sc-card"><div className="sc-cbody flush"><div className="sc-kpi">
       <div><div className="k">Scadenze entro 30 gg</div><div className="v mono">{num(k.scadenze_30||0)}</div></div>
@@ -5419,7 +5583,7 @@ function PayPagDaAbbinareBox({rows, collab, onRefresh, toast, alwaysShow}){
     setBusy('');
   };
   const ignora=async p=>{
-    if(!confirm('Ignorare questo pagamento?\nUscirà da «Da gestire» e non tornerà su nessuna scheda (importo '+eur(p.importo)+').')) return;
+    if(!confirm('Ignorare questo pagamento?\nUscirà da «Da gestire» e non tornerà su nessuna scheda (importo '+eur(p.importo)+').\n\nSe riappare dopo un aggiornamento, usa Elimina per cancellarlo definitivamente.')) return;
     setBusy('i'+p.id);
     try{
       await payApi('/pagamenti/'+p.id+'/ignora',{method:'POST',body:'{}'});
@@ -5428,9 +5592,19 @@ function PayPagDaAbbinareBox({rows, collab, onRefresh, toast, alwaysShow}){
     }catch(x){ toast&&toast(x.detail||'Errore',1); }
     setBusy('');
   };
+  const elimina=async p=>{
+    if(!confirm('ELIMINARE definitivamente questo pagamento ('+eur(p.importo)+')?\nNon verrà più riproposto dopo aggiornamenti o ripristini. Operazione irreversibile.')) return;
+    setBusy('e'+p.id);
+    try{
+      await payApi('/pagamenti/'+p.id+'/elimina',{method:'POST',body:'{}'});
+      toast&&toast('Pagamento eliminato definitivamente');
+      onRefresh&&onRefresh();
+    }catch(x){ toast&&toast(x.detail||'Errore eliminazione',1); }
+    setBusy('');
+  };
   return <div className="panel noprint" style={{border:'1.5px solid var(--teal)',marginBottom:14}}>
     <div className="ph"><h3>Pagamenti da abbinare ({lista.length})</h3>
-      <span className="sp muted small">Solo in Da gestire. Abbina a un collaboratore oppure Ignora per toglierli dalla coda.</span></div>
+      <span className="sp muted small">Solo in Da gestire. Abbina, Ignora (nasconde) oppure Elimina (cancella per sempre).</span></div>
     <div className="pad" style={{overflowX:'auto'}}>
       {!lista.length
         ? <p className="muted" style={{margin:0}}>Nessun pagamento in coda.</p>
@@ -5447,7 +5621,8 @@ function PayPagDaAbbinareBox({rows, collab, onRefresh, toast, alwaysShow}){
             onChange={v=>setDraft(d=>({...d,[p.id]:v}))}/></td>
           <td style={{whiteSpace:'nowrap'}}>
             <button className="btn btn-p btn-sm" style={{marginRight:6}} disabled={!!busy} onClick={()=>abbina(p)}>Abbina</button>
-            <button className="btn btn-g btn-sm" disabled={!!busy} onClick={()=>ignora(p)}>Ignora</button>
+            <button className="btn btn-g btn-sm" style={{marginRight:6}} disabled={!!busy} onClick={()=>ignora(p)}>Ignora</button>
+            <button className="btn btn-g btn-sm" style={{color:'var(--red)'}} disabled={!!busy} onClick={()=>elimina(p)}>Elimina</button>
           </td>
         </tr>)}</tbody>
       </table>}
@@ -5520,7 +5695,7 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
       anno,
       prodVoci,
       d?.compensi_provvisori_dettaglio||[],
-      d?.convenzioni_effettive||{}
+      (d?.convenzioni_per_anno&&(d.convenzioni_per_anno[String(anno)]||d.convenzioni_per_anno[anno]))||d?.convenzioni_effettive||{}
     ),
     [d,anno,prodVoci]
   );
@@ -5539,16 +5714,44 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
   const riporto=Number(saldoAnno.riporto_iniziale||0);
   const saldoFin=Number(saldoAnno.saldo_finale||0);
   const totDovuto=totComp+totProv+riporto-totSanz-totCosti;
-  const isProf=!!(a.tipo_sede&&(/Sede Periferica/i.test(a.tipo_sede)||/^SP/i.test(a.tipo_sede)));
+  const tipoSedeNorm=String(a.tipo_sede||'').trim().toLowerCase().replace(/\s+/g,' ');
+  // Solo «Sede Periferica» (non Dipendente / non Centro Raccolta)
+  const isSedePerifericaCaf=tipoSedeNorm==='sede periferica';
   const fattAnno=(d.fatture_nazionale||[]).filter(f=>+f.anno===+anno);
   const fattDaSaldare=fattAnno.filter(f=>!f.data_pagamento);
   const fattSaldate=fattAnno.filter(f=>f.data_pagamento);
   const fattTotAnno=fattAnno.reduce((s,f)=>s+Number(f.importo||0),0);
+  const totFattDaSaldare=fattDaSaldare.reduce((s,f)=>s+Number(f.importo||0),0);
+  const totFattSaldate=fattSaldate.reduce((s,f)=>s+Number(f.importo||0),0);
+  // Tutte le fatture non saldate (qualsiasi anno): impatto sul saldo reale
+  const fattDaSaldareTutte=(d.fatture_nazionale||[]).filter(f=>!f.data_pagamento);
+  const totFattDaSaldareTutte=fattDaSaldareTutte.reduce((s,f)=>s+Number(f.importo||0),0);
   const provAnno=(d.compensi_provvisori_dettaglio||[]).filter(p=>+p.anno===+anno);
   const totMargCapo=Number((margCapo?.totali_anni||[]).find(t=>+t.anno===+anno)?.margine
     ?? (margCapo?.righe||[]).reduce((s,r)=>s+Number(r.margine||0),0));
   const totSediChiuse=Number(sediChiuse?.totale||0);
-  const saldoFinCapo=saldoFin+totMargCapo+totSediChiuse;
+  // Il margine struttura è del titolare/ufficio: NON va sommato al saldo del collaboratore
+  const saldoFinCapo=isCapo?(saldoFin+totMargCapo+totSediChiuse):saldoFin;
+  const saldoSeFattureSaldate=Math.round((saldoFinCapo-totFattDaSaldareTutte)*100)/100;
+  const alertFatture=totFattDaSaldareTutte>0.005;
+  const alertFattureCritico=alertFatture && saldoSeFattureSaldate < saldoFinCapo - 0.005
+    && (saldoFinCapo>0.005 || saldoSeFattureSaldate< -0.005);
+  // Anni con produzione CAF senza alcuna fattura Nazionale (solo Sede Periferica)
+  const cafVociSet=new Set();
+  (PAY_COMP_SEZIONI||[]).filter(s=>s.slot==='caf'||s.macro==='CAF').forEach(s=>(s.voci||[]).forEach(v=>cafVociSet.add(v)));
+  const payHasProdCafY=y=>{
+    const hitComp=(d.compensi||[]).some(c=>+c.anno===+y && (cafVociSet.has(c.codice)||payVoceMacro(c.codice)==='CAF')
+      && (Number(c.quantita||0)>0 || Number(c.compenso||0)>0.005 || Number(c.importo||0)>0.005));
+    if(hitComp) return true;
+    if(+y===+anno) return sezioni.some(s=>(s.slot==='caf'||s.macro==='CAF')&&(s.lines||[]).some(l=>
+      Number(l.quantita||0)>0 || Number(l.compenso||0)>0.005 || Number(l.importo||0)>0.005));
+    return false;
+  };
+  const anniMancaFattura=isSedePerifericaCaf
+    ? anniDisponibili.filter(y=>payHasProdCafY(y) && !(d.fatture_nazionale||[]).some(f=>+f.anno===+y))
+    : [];
+  const annoUltimoCompensi=anniDisponibili.length?anniDisponibili[0]:null;
+  const alertMancaFattura=anniMancaFattura.length>0 && +anno===+annoUltimoCompensi;
   const statoScheda=d?.stato_scheda||{};
   const schedaBloccata=!!statoScheda.bloccata;
   const righeBloc=statoScheda.righe_bloccanti||0;
@@ -5615,7 +5818,24 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
           {anniDisponibili.map(y=><option key={y} value={y}>Anno {y}</option>)}
         </select>
         {canStampa && <button className="btn btn-g btn-sm" onClick={()=>payStampa('pay-comp-print')}>🖨 Stampa riepilogo</button>}
-        {!readOnlyCollab && <button className="btn btn-p btn-sm" disabled={schedaBloccata} title={schedaBloccata?'La liquidazione è impedita finché ci sono righe bloccate':''}>Liquida</button>}
+        {!readOnlyCollab && <button className="btn btn-p btn-sm" disabled={schedaBloccata}
+          title={schedaBloccata?'La liquidazione è impedita finché ci sono righe bloccate'
+            :(alertMancaFattura?'Sede Periferica: mancano fatture Nazionale su uno o più anni'
+            :(alertFatture?'Ci sono fatture Nazionale non saldate: verifica il saldo sotto prima di liquidare':''))}
+          onClick={()=>{
+            if(alertMancaFattura && !confirm(
+              'Attenzione: tipologia CAF «Sede Periferica» con produzione CAF ma senza fattura Nazionale negli anni: '
+              +anniMancaFattura.join(', ')+'.\n'
+              +'Per le Sedi Periferiche alla produzione CAF deve corrispondere una fattura.\n\n'
+              +'Vuoi continuare comunque con la liquidazione?'
+            )) return;
+            if(alertFatture && !confirm(
+              'Attenzione: risultano fatture Nazionale non saldate per '+eur(totFattDaSaldareTutte)+'.\n'
+              +'Saldo netto attuale (collaboratore): '+eur(saldoFinCapo)+'\n'
+              +'Saldo se le fatture fossero saldate: '+eur(saldoSeFattureSaldate)+'\n\n'
+              +'Vuoi continuare comunque con la liquidazione?'
+            )) return;
+          }}>Liquida</button>}
       </div>
     </div>
     {schedaBloccata && <div className="sc-banner warn noprint">
@@ -5631,6 +5851,40 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
 
     <PaySaldoKpiRow className="noprint" saldoAnno={saldoAnno} fattAnno={fattAnno} fattTotAnno={fattTotAnno}
       extraMargine={isCapo?totMargCapo:0} extraSediChiuse={isCapo?totSediChiuse:0} />
+
+    {alertFatture && <div className={'sc-banner noprint '+(alertFattureCritico?'bad':'warn')} style={{marginTop:4}}>
+      <div>
+        <div style={{fontWeight:800,fontSize:14}}>
+          {alertFattureCritico?'⚠ Fatture Nazionale non saldate — non liquidare solo sul saldo netto':'Fatture Nazionale caricate ma non saldate'}
+        </div>
+        <p style={{margin:'6px 0 0',fontSize:13,lineHeight:1.45}}>
+          Il <b>saldo netto del collaboratore</b> ({eur(saldoFinCapo)}) non include il margine struttura e non sottrae le fatture senza data di pagamento.
+          Risultano <b>{fattDaSaldareTutte.length}</b> fattur{fattDaSaldareTutte.length===1?'a':'e'} da saldare per <b>{eur(totFattDaSaldareTutte)}</b>
+          {fattDaSaldareTutte.some(f=>+f.anno!==+anno)?' (anche su altri anni)':''}.
+          Se venissero saldate, il saldo reale sarebbe <b className={saldoSeFattureSaldate<0?'neg':''}>{eur(saldoSeFattureSaldate)}</b>
+          {saldoFinCapo>0 && saldoSeFattureSaldate<0?' (passerebbe in debito — da recuperare)':''}.
+        </p>
+        <p style={{margin:'6px 0 0',fontSize:12.5}} className="muted">
+          Dettaglio e riepilogo in fondo alla scheda → «Verifica contabilità · Fatture Nazionale».
+        </p>
+      </div>
+    </div>}
+
+    {alertMancaFattura && <div className="sc-banner bad noprint" style={{marginTop:4}}>
+      <div>
+        <div style={{fontWeight:800,fontSize:14}}>
+          ⚠ Manca fattura Nazionale — Sede Periferica
+        </div>
+        <p style={{margin:'6px 0 0',fontSize:13,lineHeight:1.45}}>
+          Per le sedi con CAF <b>Sede Periferica</b>, se c&apos;è produzione CAF deve esserci la relativa fattura Nazionale.
+          Anni senza fattura: <b>{anniMancaFattura.join(', ')}</b>
+          {anniMancaFattura.length===1?'':' (elencati qui sull\'ultimo anno disponibile: '+annoUltimoCompensi+')'}.
+        </p>
+        <p style={{margin:'6px 0 0',fontSize:12.5}} className="muted">
+          Carica le fatture da Import → Fatture Nazionale, oppure verifica tipologia CAF e produzione.
+        </p>
+      </div>
+    </div>}
 
     <div className="pay-layout noprint">{panelsSezioni}</div>
 
@@ -5654,12 +5908,15 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
     {!readOnlyCollab && !a.interno && <div className="panel noprint">
       <div className="ph"><h3>Registra pagamento</h3></div>
       <div className="pad">
-        <div className="selrow" style={{margin:0}}>
+        <div className="selrow" style={{margin:0,flexWrap:'wrap',gap:8}}>
           <select value={pf.tipo} onChange={e=>setPf({...pf,tipo:e.target.value})}>
             {['bonifico','assegno','contanti','compensazione'].map(t=><option key={t}>{t}</option>)}</select>
-          <input type="number" placeholder="Importo €" value={pf.importo} onChange={e=>setPf({...pf,importo:e.target.value})}/>
+          <input type="number" placeholder="Importo €" value={pf.importo} onChange={e=>setPf({...pf,importo:e.target.value})} style={{width:120}}/>
           <select value={pf.anno} onChange={e=>setPf({...pf,anno:e.target.value})}>
             {anniDisponibili.map(y=><option key={y} value={y}>{y}</option>)}</select>
+          <input type="text" placeholder="Descrizione" value={pf.riferimento||''}
+            onChange={e=>setPf({...pf,riferimento:e.target.value})}
+            style={{flex:1,minWidth:180}} title="Causale / descrizione del pagamento"/>
           <button className="btn btn-p" disabled={!pf.importo} onClick={()=>registra(false)}>Registra</button>
         </div>
       </div>
@@ -5760,6 +6017,57 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
             <td className="r mono">{eur(totSediChiuse)}</td></tr>
         </tbody></table></div>}
     </div>}
+
+    {(fattAnno.length>0 || alertFatture || alertMancaFattura || (+anno===+annoUltimoCompensi && anniMancaFattura.length>0)) && <div id="pay-fatture-verifica" className="panel noprint" style={(alertFatture||alertMancaFattura)?{borderColor:'#E0B100',boxShadow:'0 0 0 1px rgba(224,177,0,.25)'}:undefined}>
+      <div className="ph" style={(alertFatture||alertMancaFattura)?{background:'#FFF8E8'}:undefined}>
+        <h3>Verifica contabilità · Fatture Nazionale — {anno}</h3>
+        {(alertFatture||alertMancaFattura) && <span className="st" style={{background:'#FDECEA',color:'var(--red)'}}>Da verificare</span>}
+      </div>
+      <div className="pad">
+        <p className="muted small" style={{marginTop:0,lineHeight:1.45}}>
+          Solo le fatture con <b>data di pagamento</b> riducono il saldo del collaboratore.
+          Il <b>margine struttura</b> resta a parte (non entra nel saldo qui sotto).
+        </p>
+        <div className="saldo" style={{marginBottom:14}}>
+          <div className="sbox"><div className="l">Saldo netto collaboratore</div><div className={'v'+(saldoFinCapo<0?' neg':'')}>{eur(saldoFinCapo)}</div></div>
+          <div className="sbox"><div className="l">Fatture saldate ({anno})</div><div className="v">{eur(totFattSaldate)}</div></div>
+          <div className={'sbox'+(totFattDaSaldareTutte>0?' warn':'')}><div className="l">Non saldate (tutti gli anni)</div><div className="v">{eur(totFattDaSaldareTutte)}</div></div>
+          <div className={'sbox final'}><div className="l">Saldo se fatture saldate</div><div className={'v'+(saldoSeFattureSaldate<0?' neg':'')}>{eur(saldoSeFattureSaldate)}</div></div>
+        </div>
+        {alertMancaFattura && <p className="muted small" style={{marginTop:0}}>
+          Anni senza fattura (Sede Periferica + produzione CAF): <b>{anniMancaFattura.join(', ')}</b>.
+        </p>}
+        {fattAnno.length===0
+          ? <p className="muted small" style={{margin:0}}>
+              {anniMancaFattura.includes(+anno)
+                ? <>Nessuna fattura Nazionale per l&apos;anno {anno} — richiesta per tipologia <b>Sede Periferica</b> con produzione CAF.</>
+                : <>Nessuna fattura Nazionale per l&apos;anno {anno}.</>}
+            </p>
+          : <div style={{overflowX:'auto'}}>
+              <table className="tbl">
+                <thead><tr>
+                  <th>Riferimento</th><th>Sede</th><th className="r">Importo</th><th>Stato</th><th>Data pagamento</th>
+                </tr></thead>
+                <tbody>
+                  {fattAnno.map(f=><tr key={f.id} style={!f.data_pagamento?{background:'#FFF8E8'}:undefined}>
+                    <td>{f.riferimento||'—'}</td>
+                    <td className="mono">{f.codice_sede||'—'}</td>
+                    <td className="r mono">{eur(f.importo)}</td>
+                    <td>{f.data_pagamento
+                      ? <span className="sc-pill ok">Saldata</span>
+                      : <span className="sc-pill warn">Non saldata</span>}</td>
+                    <td className="mono">{f.data_pagamento||'—'}</td>
+                  </tr>)}
+                  <tr className="tot">
+                    <td colSpan={2} className="r">Totale fatture {anno}</td>
+                    <td className="r mono">{eur(fattTotAnno)}</td>
+                    <td colSpan={2}/>
+                  </tr>
+                </tbody>
+              </table>
+            </div>}
+      </div>
+    </div>}
   </React.Fragment>;
 }
 
@@ -5769,26 +6077,30 @@ function PayPrestazioniTab({nome,collabId,toast,onVaiCompensi}){
   const [err,setErr]=useState('');
   const [anno,setAnno]=useState(new Date().getFullYear());
   const [form,setForm]=useState({data:new Date().toISOString().slice(0,10),descrizione:'',importo:''});
-  const carica=async()=>{
-    await ensurePayAuth();
-    const id=collabId||await apiIdDaNome(nome);
-    setCid(id);
-    if(!id){ setErr('Collaboratore non trovato'); return; }
-    const x=await payApi('/collaboratori/'+id);
-    setD(x);
-    const anni=[...new Set([...(x.saldi||[]).map(s=>+s.anno),...(x.pagamenti||[]).map(p=>+p.anno_competenza)].filter(Boolean))].sort((a,b)=>b-a);
-    if(anni.length && !anni.includes(+anno)) setAnno(anni[0]);
-  };
-  useEffect(()=>{ carica().catch(e=>setErr(e.detail||'errore')); },[nome,collabId]);
-  const nPrest=(d?.pagamenti||[]).filter(p=>p.tipo==='prestazione'&&+p.anno_competenza===+anno).length;
-  const totPrest=(d?.pagamenti||[]).filter(p=>p.tipo==='prestazione'&&+p.anno_competenza===+anno)
-    .reduce((s,p)=>s+Number(p.importo||0),0);
   const anniSel=useMemo(()=>{
     const fromSaldi=(d?.saldi||[]).map(s=>+s.anno);
     const fromPag=(d?.pagamenti||[]).filter(p=>p.tipo==='prestazione').map(p=>+p.anno_competenza);
     const y=new Date().getFullYear();
     return [...new Set([...fromSaldi,...fromPag,y,y-1,y-2])].filter(Boolean).sort((a,b)=>b-a);
   },[d]);
+  const nPrest=useMemo(()=>(d?.pagamenti||[]).filter(p=>p.tipo==='prestazione'&&+p.anno_competenza===+anno).length,[d,anno]);
+  const totPrest=useMemo(()=>(d?.pagamenti||[]).filter(p=>p.tipo==='prestazione'&&+p.anno_competenza===+anno)
+    .reduce((s,p)=>s+Number(p.importo||0),0),[d,anno]);
+  const carica=async()=>{
+    try{
+      await ensurePayAuth();
+      const id=collabId||await apiIdDaNome(nome);
+      setCid(id);
+      if(!id){ setErr('Collaboratore non trovato'); return; }
+      const x=await payApi('/collaboratori/'+id);
+      setD(x); setErr('');
+      const anni=[...new Set([...(x.saldi||[]).map(s=>+s.anno),...(x.pagamenti||[]).map(p=>+p.anno_competenza)].filter(Boolean))].sort((a,b)=>b-a);
+      setAnno(a=>(anni.length && !anni.includes(+a))?anni[0]:a);
+    }catch(e){
+      setErr(e.detail||e.message||'Errore caricamento prestazioni');
+    }
+  };
+  useEffect(()=>{ carica(); },[nome,collabId]);
   const registra=async()=>{
     if(!cid) return;
     if(!form.descrizione.trim()){ toast&&toast('Indica la descrizione del servizio',1); return; }
@@ -5801,9 +6113,11 @@ function PayPrestazioniTab({nome,collabId,toast,onVaiCompensi}){
       setForm(f=>({...f,descrizione:'',importo:''}));
       await carica();
       if(onVaiCompensi && confirm('Aprire il tab Compensi per vedere il movimento in Pagamenti registrati?')) onVaiCompensi();
-    }catch(x){ toast&&toast(x.detail||'Errore registrazione',1); }
+    }catch(x){ toast&&toast(x.detail||x.message||'Errore registrazione',1); }
   };
-  if(err) return <div className="infobox">{err}</div>;
+  if(err) return <div className="infobox" style={{borderColor:'#E57373',background:'#FDECEA'}}>{err}
+    <div style={{marginTop:8}}><button type="button" className="btn btn-g btn-sm" onClick={()=>{setErr(''); carica();}}>Riprova</button></div>
+  </div>;
   if(!d) return <p className="muted">Caricamento prestazioni…</p>;
   return <React.Fragment>
     <div className="infobox" style={{marginBottom:14}}>
@@ -5835,6 +6149,98 @@ function PayPrestazioniTab({nome,collabId,toast,onVaiCompensi}){
         </div>
       </div>
     </div>
+  </React.Fragment>;
+}
+
+function PayDocumentiTab({collabId,nome,toast,onUpdateDocs}){
+  const [docs,setDocs]=useState([]);
+  const [busy,setBusy]=useState(false);
+  const [busyConv,setBusyConv]=useState(false);
+  const [err,setErr]=useState('');
+  const mapDoc=r=>({
+    id:r.id, n:r.nome||r.n||'—', c:r.categoria||r.c||'Generale',
+    d:(r.data_caricamento||r.d||'').slice(0,10), vis:!!(r.visibile_portale??r.vis),
+  });
+  const carica=async()=>{
+    if(!collabId||!PAY_USE_API){ setDocs([]); return; }
+    try{
+      await ensurePayAuth();
+      const rows=await payApi('/collaboratori/'+collabId+'/documenti');
+      const mapped=(rows||[]).map(mapDoc);
+      setDocs(mapped); setErr('');
+      onUpdateDocs&&onUpdateDocs(mapped);
+    }catch(e){ setErr(e.detail||e.message||'Errore caricamento documenti'); }
+  };
+  useEffect(()=>{ carica(); },[collabId]);
+  const upload=async e=>{
+    const f=e.target.files&&e.target.files[0];
+    if(!f||!collabId) return;
+    setBusy(true);
+    try{
+      await ensurePayAuth();
+      const fd=new FormData(); fd.append('file',f);
+      await payApi('/collaboratori/'+collabId+'/documenti',{method:'POST',body:fd});
+      toast&&toast('Documento caricato');
+      await carica();
+    }catch(x){ toast&&toast(x.detail||x.message||'Errore caricamento',1); }
+    setBusy(false); e.target.value='';
+  };
+  const togVis=async (doc,i)=>{
+    if(!PAY_USE_API||!doc.id){ onUpdateDocs&&onUpdateDocs(null,i); return; }
+    try{
+      await ensurePayAuth();
+      await payApi('/collaboratori/'+collabId+'/documenti/'+doc.id,{method:'PATCH',body:JSON.stringify({visibile_portale:!doc.vis})});
+      await carica();
+    }catch(x){ toast&&toast(x.detail||'Errore aggiornamento',1); }
+  };
+  const elimina=async doc=>{
+    if(!doc.id||!confirm('Eliminare «'+doc.n+'»?')) return;
+    try{
+      await ensurePayAuth();
+      await payApi('/collaboratori/'+collabId+'/documenti/'+doc.id,{method:'DELETE'});
+      toast&&toast('Documento eliminato');
+      await carica();
+    }catch(x){ toast&&toast(x.detail||'Errore eliminazione',1); }
+  };
+  const scarica=async doc=>{
+    if(!doc.id) return;
+    try{
+      await payDownload('/collaboratori/'+collabId+'/documenti/'+doc.id+'/download', doc.n);
+    }catch(x){ toast&&toast(x.detail||'Download non disponibile',1); }
+  };
+  const generaConvenzione=async()=>{
+    if(!collabId||!PAY_USE_API){ toast&&toast('Convenzione PDF disponibile con API attiva',1); return; }
+    setBusyConv(true);
+    try{
+      const safe=String(nome||'collaboratore').replace(/[^A-Za-z0-9_\-]+/g,'_').slice(0,60);
+      await payDownload('/collaboratori/'+collabId+'/convenzione.pdf', 'Convenzione_'+safe+'.pdf');
+      toast&&toast('Convenzione PDF generata');
+    }catch(x){ toast&&toast(x.detail||x.message||'Errore generazione convenzione',1); }
+    setBusyConv(false);
+  };
+  return <React.Fragment>
+    <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+      <button type="button" className="btn btn-p btn-sm" disabled={busyConv||!collabId} onClick={generaConvenzione}>
+        {busyConv?'Generazione…':'📄 Genera convenzione PDF'}
+      </button>
+      <button className="btn btn-g btn-sm" onClick={()=>printHTML('Documenti '+(nome||''), '<h2>Documenti</h2><table border="1" cellpadding="6"><tr><th>Nome</th><th>Categoria</th><th>Data</th><th>Visibilità</th></tr>'+docs.map(d=>'<tr><td>'+d.n+'</td><td>'+d.c+'</td><td>'+d.d+'</td><td>'+(d.vis?'Portale':'Solo interno')+'</td></tr>').join('')+'</table>')}>🖨 Stampa / Esporta elenco</button>
+      <label className="btn btn-g btn-sm" style={{cursor:busy?'wait':'pointer',margin:0}}>
+        {busy?'Caricamento…':'+ Carica documento'}
+        <input type="file" style={{display:'none'}} disabled={busy||!collabId} onChange={upload}/>
+      </label>
+    </div>
+    {err && <div className="infobox" style={{marginBottom:12}}>{err}</div>}
+    {docs.length===0 && !err && <div className="empty"><div className="big">📂</div>Nessun documento caricato.</div>}
+    {docs.map((d,i)=>
+      <div className={'docrow'+(d.vis?'':' hidden-doc')} key={d.id||i}>
+        <div className="fi">📄</div>
+        <div style={{minWidth:0,flex:1}}>
+          <div className="dn" style={{cursor:d.id?'pointer':'default'}} onClick={()=>d.id&&scarica(d)} title={d.id?'Scarica':''}>{d.n}</div>
+          <div className="dm">{d.c} · {d.d}</div>
+        </div>
+        <VTog vis={d.vis} onClick={()=>togVis(d,i)}/>
+        {d.id && <button type="button" className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>elimina(d)}>Elimina</button>}
+      </div>)}
   </React.Fragment>;
 }
 
@@ -6297,7 +6703,8 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
       const anni=(x.anni&&x.anni.length)?x.anni:[2026,2025,2024,2023,2022,2021];
       setAnniDisp(anni);
       if(y==null){
-        setAnno(anni[0]||new Date().getFullYear());
+        const prio=x.anno_prioritario!=null?+x.anno_prioritario:null;
+        setAnno(prio||anni[anni.length-1]||anni[0]||new Date().getFullYear());
         return;
       }
       if(!(x.righe||[]).length && anni.length && +anni[0]!==+y){
@@ -6324,6 +6731,7 @@ function PayCostiDipendenti({toast, navHint, onNavConsumed}){
     if(!navHint) return;
     if(navHint.anno) setAnno(+navHint.anno);
     if(navHint.tab) setCostiTab(navHint.tab==='regole'?'gestione':navHint.tab);
+    if(navHint.q){ setFiltroQ(String(navHint.q)); setFiltroStato('da_attribuire'); }
     onNavConsumed&&onNavConsumed();
     setTimeout(()=>document.getElementById('costi')?.scrollIntoView({behavior:'smooth',block:'start'}),200);
   },[navHint]);
@@ -6971,14 +7379,54 @@ function PayCode({toast}){
   const [draftA,setDraftA]=useState({});
   const [filtro,setFiltro]=useState('');
   const [filtAnno,setFiltAnno]=useState('');
-  const [filtAnomTipo,setFiltAnomTipo]=useState('pagamenti');
+  const [filtAnomTipo,setFiltAnomTipo]=useState('');
   const [codeTab,setCodeTab]=useState('anom');
   const codeTabAutoDone=React.useRef(false);
   const [showCodeDett,setShowCodeDett]=useState(false);
   const [quarIns,setQuarIns]=useState({anno:'',codice:'',nome:'',quantita:''});
   const [showQuarIns,setShowQuarIns]=useState(false);
   const [errLoad,setErrLoad]=useState('');
+  const [fr730,setFr730]=useState([]);
+  const [frCid,setFrCid]=useState('');
+  const [frAnno,setFrAnno]=useState('');
+  const [frImp,setFrImp]=useState('');
+  const [frNote,setFrNote]=useState('');
+  const [frMov,setFrMov]=useState([]);
   useEffect(()=>{ setShowCodeDett(false); },[codeTab]);
+  const caricaFr730=()=>{
+    if(!PAY_USE_API) return Promise.resolve();
+    const qs=[];
+    if(frCid) qs.push('collaboratore_id='+encodeURIComponent(frCid));
+    if(frAnno) qs.push('anno='+encodeURIComponent(frAnno));
+    return ensurePayAuth().then(()=>payApi('/franchigia-730'+(qs.length?'?'+qs.join('&'):'')))
+      .then(r=>setFr730(r.righe||[])).catch(()=>setFr730([]));
+  };
+  useEffect(()=>{ if(codeTab==='fr730') caricaFr730(); },[codeTab,frCid,frAnno]);
+  useEffect(()=>{
+    if(codeTab!=='fr730'||!frCid||!frAnno){ setFrMov([]); return; }
+    ensurePayAuth().then(()=>payApi('/franchigia-730/movimenti?collaboratore_id='+frCid+'&anno='+frAnno))
+      .then(r=>setFrMov(r.movimenti||[])).catch(()=>setFrMov([]));
+  },[codeTab,frCid,frAnno,fr730]);
+  const frAnni=[...new Set(fr730.map(x=>x.anno))].sort((a,b)=>b-a);
+  const restituisciFr=async(tutto)=>{
+    if(!frCid||!frAnno){ toast('Seleziona collaboratore e anno',1); return; }
+    const body={collaboratore_id:+frCid, anno:+frAnno, note:frNote||null};
+    try{
+      if(tutto){
+        if(!confirm('Azzerare tutta la franchigia 730 residua per questo anno?')) return;
+        await payApi('/franchigia-730/azzera',{method:'POST',body:JSON.stringify(body)});
+        toast('Franchigia 730 azzerata');
+      }else{
+        const imp=Number(String(frImp).replace(',','.'));
+        if(!(imp>0)){ toast('Inserisci un importo da restituire',1); return; }
+        body.importo=imp;
+        await payApi('/franchigia-730/restituisci',{method:'POST',body:JSON.stringify(body)});
+        toast('Restituiti '+eur(imp)+' di franchigia 730');
+      }
+      setFrImp(''); setFrNote('');
+      await caricaFr730();
+    }catch(e){ toast(e.detail||'Errore restituzione franchigia',1); }
+  };
   const carica=()=>ensurePayAuth().then(()=>Promise.all([
     payApi('/code'),
     payApi('/pagamenti/da-abbinare').catch(()=>({pagamenti:[]})),
@@ -7049,6 +7497,15 @@ function PayCode({toast}){
       toast('Sanzione attribuita'); carica();
     }catch(e){ toast(e.detail||'Errore attribuzione',1); }
   };
+  const eliminaSanz=async sid=>{
+    const s=d.sanzioni.find(x=>x.id===sid);
+    const lbl=s?((s.cognome||'')+' '+(s.nome||'')+' · '+eur(s.importo_trattenuto)):('#'+sid);
+    if(!confirm('ELIMINARE definitivamente la sanzione «'+lbl.trim()+'»?\nUscirà da Da gestire e dai saldi. Non verrà riproposta se il file di origine è già stato cancellato.')) return;
+    try{
+      await payApi('/sanzioni/'+sid,{method:'DELETE'});
+      toast('Sanzione eliminata'); carica();
+    }catch(e){ toast(e.detail||'Errore eliminazione',1); }
+  };
   const attribuisci=async (sid,cidv)=>{ if(!cidv)return;
     setDraftSanz(d=>({...d,[sid]:{cid:String(cidv)}}));
   };
@@ -7087,6 +7544,8 @@ function PayCode({toast}){
     const row=(d.anomalie_import||[]).find(a=>a.id===aid);
     const msg=row&&row.tipo==='listino_scostamento'
       ? 'Segnare come visto questo scostamento %? Il listino non cambia.'
+      : row&&row.tipo==='produzione_nominativo'
+      ? 'Ignorare il mismatch nominativo? La produzione resta sul collaboratore attualmente agganciato al codice.'
       : 'Ignorare questa anomalia? I dati non verranno conteggiati.';
     if(!confirm(msg)) return;
     try{
@@ -7155,8 +7614,10 @@ function PayCode({toast}){
   const nAnomTot=(d.anomalie_import||[]).length;
   const nAnomPag=(d.anomalie_import||[]).filter(a=>a.tipo==='pagamenti').length;
   const nAnomScost=(d.anomalie_import||[]).filter(a=>a.tipo==='listino_scostamento').length;
-  const lblAnomTipo={pagamenti:'Pagamenti',patronato:'Patronato',fatture_nazionale:'Fatture Naz.',provvisori:'Provvisori',listino_scostamento:'% Listino'};
+  const nAnomNom=(d.anomalie_import||[]).filter(a=>a.tipo==='produzione_nominativo').length;
+  const lblAnomTipo={pagamenti:'Pagamenti',patronato:'Patronato',fatture_nazionale:'Fatture Naz.',provvisori:'Provvisori',listino_scostamento:'% Listino',produzione_nominativo:'Prod. nominativo'};
   const isScost=t=>t==='listino_scostamento';
+  const isNomMismatch=t=>t==='produzione_nominativo';
   const righePopolate=()=>{
     const sanzioni=sanzFiltrate.filter(s=>getSanzCid(s)).map(s=>({
       id:s.id, collaboratore_id:+getSanzCid(s),
@@ -7185,14 +7646,15 @@ function PayCode({toast}){
     ['pagabb','Pagamenti da abbinare'+(pagDaAbb.length?' ('+pagDaAbb.length+')':'')],
     ['sanz','Sanzioni ('+d.sanzioni.length+')'],
     ['quar','Quarantena'+(d.quarantena.length?' ('+d.quarantena.length+')':'')],
+    ['fr730','Franchigia 730'],
   ];
   return <React.Fragment>
     <div className="top"><div><h1>Da gestire</h1>
-      <div className="sub">Anomalie import, pagamenti sganciati, sanzioni e quarantena. I costi dipendenti si gestiscono in «Costi dipendenti».</div></div>
+      <div className="sub">Anomalie import, pagamenti sganciati, sanzioni, quarantena e restituzione franchigia 730. I costi dipendenti si gestiscono in «Costi dipendenti».</div></div>
       <div className="toolbar-actions">
         <button className="btn btn-g" onClick={()=>payStampa('pay-code-print')}>🖨 Stampa</button>
-        {PAY_USE_API && codeTab!=='anom' && <button className="btn btn-g" onClick={ripristina}>↺ Ripristina</button>}
-        {nPopolate>0 && codeTab!=='anom' &&
+        {PAY_USE_API && codeTab!=='anom' && codeTab!=='fr730' && <button className="btn btn-g" onClick={ripristina}>↺ Ripristina</button>}
+        {nPopolate>0 && codeTab!=='anom' && codeTab!=='fr730' &&
           <button className="btn btn-t" onClick={confermaAttribuzioniPopolate}>✓ Conferma suggerite ({nPopolate})</button>}
       </div>
     </div>
@@ -7213,6 +7675,7 @@ function PayCode({toast}){
           <option value="fatture_nazionale">Fatture Naz.</option>
           <option value="provvisori">Provvisori</option>
           <option value="listino_scostamento">% Listino ({nAnomScost})</option>
+          <option value="produzione_nominativo">Prod. nominativo ({nAnomNom})</option>
         </select></div>}
       {(filtro||filtAnno||filtAnomTipo)&&<button type="button" className="btn btn-g btn-sm reset" onClick={()=>{setFiltro('');setFiltAnno('');setFiltAnomTipo('');}}>Azzera filtri</button>}
     </div>
@@ -7232,7 +7695,7 @@ function PayCode({toast}){
     {codeTab==='pagabb' && <React.Fragment>
       <h3 className="disp" style={{marginTop:0}}>Pagamenti da abbinare ({pagDaAbb.length})</h3>
       <p className="muted noprint" style={{marginBottom:10}}>
-        Pagamenti tolti da una scheda con <b>Annulla</b>. Qui puoi <b>Abbina</b>ri a un collaboratore oppure <b>Ignora</b>ri (escono dalla coda, non tornano in scheda).
+        Pagamenti tolti da una scheda con <b>Annulla</b>. Qui puoi <b>Abbina</b>ri, <b>Ignora</b>ri (nasconde dalla coda) oppure <b>Elimina</b>ri in modo definitivo (non riproposti dopo aggiornamenti).
       </p>
       <PayPagDaAbbinareBox rows={pagDaAbb} collab={collab} onRefresh={carica} toast={toast} alwaysShow/>
     </React.Fragment>}
@@ -7251,6 +7714,7 @@ function PayCode({toast}){
         Assegna il collaboratore oppure <b>Ignora</b> se non vanno conteggiate.
         {nAnomPag>0 && <span> · <b style={{color:'var(--red)'}}>{nAnomPag} da pagamenti storici</b></span>}
         {nAnomScost>0 && <span> · <b style={{color:'#a65c00'}}>{nAnomScost} scostamenti %</b></span>}
+        {nAnomNom>0 && <span> · <b style={{color:'var(--red)'}}>{nAnomNom} nominativo ≠ codice</b></span>}
       </p>
       {anomFiltrati.length===0
         ? <p className="muted">{nAnomTot? 'Nessuna anomalia con i filtri attuali.':'Nessuna anomalia import aperta.'}</p>
@@ -7282,11 +7746,16 @@ function PayCode({toast}){
           {x.suggerito_nome && <div className="muted small">suggerito: {x.suggerito_nome}</div>}
           {isScost(x.tipo) && x.dettaglio_json && <div className="muted small">
             listino {x.dettaglio_json.listino_pct}% · file {x.dettaglio_json.file_pct}%
-          </div>}</td>
+          </div>}
+          {isNomMismatch(x.tipo) && <div className="muted small" style={{color:'var(--red)'}}>
+            produzione attribuita a {x.sede||x.dettaglio_json?.collaboratore_nome||'—'}
+            {x.dettaglio_json?.nominativo_in_anagrafica===false?' · assente in anagrafica':''}
+          </div>}
+        </td>
         <td className="mono small">{x.ref_excel||(x.foglio&&x.riga_excel?x.foglio+'!'+x.riga_excel:'—')}</td>
-        <td className="small">{x.sede||'—'}{x.codice&&<div className="muted mono">{x.codice}</div>}</td>
+        <td className="small">{isNomMismatch(x.tipo)?(x.codice||'—'):(x.sede||'—')}{x.codice&&!isNomMismatch(x.tipo)&&<div className="muted mono">{x.codice}</div>}</td>
         <td className="mono">{x.anno||'—'}</td>
-        <td className="r mono neg">{x.importo!=null?eur(x.importo):'—'}</td>
+        <td className="r mono neg">{x.importo!=null?(isNomMismatch(x.tipo)?num(x.importo):eur(x.importo)):'—'}</td>
         <td className="small muted">{x.motivo}</td>
         <td className="noprint">
           {isScost(x.tipo)
@@ -7342,9 +7811,11 @@ function PayCode({toast}){
       </td>
       <td style={{padding:'6px 10px',whiteSpace:'nowrap'}} className="noprint">
         {canConfirmSanz(s) &&
-          <button className="btn btn-t btn-sm" onClick={()=>confermaSuggerita(s)} title="Conferma attribuzione suggerita">✓ Conferma attribuzione suggerita</button>}
+          <button className="btn btn-t btn-sm" style={{marginRight:6}} onClick={()=>confermaSuggerita(s)} title="Conferma attribuzione suggerita">✓ Conferma attribuzione suggerita</button>}
         {s.stato!=='attribuita' && drS.cid && !canConfirmSanz(s) &&
-          <button className="btn btn-p btn-sm" style={{marginLeft:canConfirmSanz(s)?6:0}} onClick={()=>salvaSanz(s.id)}>Salva</button>}
+          <button className="btn btn-p btn-sm" style={{marginRight:6}} onClick={()=>salvaSanz(s.id)}>Salva</button>}
+        {(s.stato==='proposta'||s.stato==='da_attribuire') &&
+          <button className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>eliminaSanz(s.id)}>Elimina</button>}
       </td></tr>;})}</tbody></table>
     </div>
     </React.Fragment>}
@@ -7407,6 +7878,86 @@ function PayCode({toast}){
         <td className="noprint"><button className="btn btn-p btn-sm" onClick={()=>risolviQuar(x.id)}>Assegna</button></td>
       </tr>;})}</tbody></table></div>
       </React.Fragment>}
+    </React.Fragment>}
+    {codeTab==='fr730' && <React.Fragment>
+      <h3 className="disp" style={{marginTop:0}}>Franchigia 730</h3>
+      <p className="muted noprint" style={{marginBottom:10}}>
+        La franchigia (25% della somma IMP dei 4 MOD 730) è calcolata in automatico e non compare nell&apos;import.
+        Qui puoi <b>restituirla in tutto o in parte</b> sullo stesso anno (es. dopo ~4 anni, al netto di eventuali sanzioni da trattenere).
+      </p>
+      <div className="panel noprint" style={{padding:'12px 14px',marginBottom:12,display:'grid',gap:10,gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',alignItems:'end'}}>
+        <div className="f" style={{margin:0}}><label>Collaboratore</label>
+          <PayCollabPick value={frCid} options={collab} inclInterni={false} placeholder="Seleziona…"
+            onChange={v=>{ setFrCid(v); setFrAnno(''); }}/></div>
+        <div className="f" style={{margin:0}}><label>Anno franchigia</label>
+          <select value={frAnno} onChange={e=>setFrAnno(e.target.value)}>
+            <option value="">Seleziona…</option>
+            {(frCid?fr730.filter(x=>String(x.collaboratore_id)===String(frCid)):fr730)
+              .map(x=>x.anno).filter((a,i,arr)=>arr.indexOf(a)===i).sort((a,b)=>b-a)
+              .map(a=><option key={a} value={a}>{a}</option>)}
+            {!frCid && frAnni.map(a=><option key={a} value={a}>{a}</option>)}
+          </select></div>
+        <div className="f" style={{margin:0}}><label>Importo da restituire (€)</label>
+          <input value={frImp} onChange={e=>setFrImp(e.target.value)} placeholder="es. 608,09"
+            disabled={!frCid||!frAnno}/></div>
+        <div className="f" style={{margin:0,gridColumn:'1/-1'}}><label>Nota (opzionale)</label>
+          <input value={frNote} onChange={e=>setFrNote(e.target.value)} placeholder="es. sanzione AE 500€ trattenuta"/>
+        </div>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button className="btn btn-p" disabled={!frCid||!frAnno} onClick={()=>restituisciFr(false)}>Restituisci importo</button>
+          <button className="btn btn-g" disabled={!frCid||!frAnno} onClick={()=>restituisciFr(true)}>Azzera tutta</button>
+        </div>
+      </div>
+      {frCid&&frAnno&&(()=>{
+        const s=fr730.find(x=>String(x.collaboratore_id)===String(frCid)&&+x.anno===+frAnno);
+        if(!s) return <div className="infobox">Nessuna franchigia calcolata per questa selezione (verifica produzione 730 e ricalcolo).</div>;
+        return <div className="panel" style={{padding:'12px 14px',marginBottom:12}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+            <div><div className="muted small">IMP (Σ compensi 730)</div><div className="mono" style={{fontWeight:700}}>{eur(s.imponibile)}</div></div>
+            <div><div className="muted small">Teorica 25%</div><div className="mono" style={{fontWeight:700}}>{eur(s.teorica)}</div></div>
+            <div><div className="muted small">Già restituita</div><div className="mono" style={{fontWeight:700}}>{eur(s.restituito)}</div></div>
+            <div><div className="muted small">Ancora trattenuta</div><div className="mono" style={{fontWeight:700,color:'var(--red)'}}>{eur(s.trattenuto)}</div></div>
+            <div><div className="muted small">In scheda (compenso)</div><div className="mono" style={{fontWeight:700,color:Number(s.compenso)<0?'var(--red)':'inherit'}}>{eur(s.compenso)}</div></div>
+          </div>
+        </div>;
+      })()}
+      {frMov.length>0 && <div className="panel" style={{padding:0,overflow:'auto',marginBottom:12}}>
+        <table className="tbl" style={{margin:0,fontSize:12.5}}>
+          <thead><tr><th style={thS}>Data</th><th className="r" style={thS}>Importo</th><th style={thS}>Nota</th><th style={thS}>Utente</th></tr></thead>
+          <tbody>{frMov.map(m=><tr key={m.id}>
+            <td className="small">{m.creato_il?String(m.creato_il).slice(0,19).replace('T',' '):'—'}</td>
+            <td className="r mono">{eur(m.importo)}</td>
+            <td className="small">{m.note||'—'}</td>
+            <td className="small muted">{m.utente||'—'}</td>
+          </tr>)}</tbody>
+        </table>
+      </div>}
+      <h3 className="disp">Elenco franchigie</h3>
+      <div className="panel" style={{padding:0,overflow:'auto',maxHeight:'48vh',borderRadius:12}}>
+        <table className="tbl" style={{margin:0,fontSize:12.5}}>
+          <thead><tr>
+            <th style={thS}>Anno</th><th style={thS}>Collaboratore</th>
+            <th className="r" style={thS}>IMP</th><th className="r" style={thS}>Teorica</th>
+            <th className="r" style={thS}>Restituita</th><th className="r" style={thS}>Trattenuta</th>
+            <th style={thS} className="noprint"></th>
+          </tr></thead>
+          <tbody>{(fr730||[]).filter(x=>{
+            if(frCid&&String(x.collaboratore_id)!==String(frCid)) return false;
+            if(frAnno&&+x.anno!==+frAnno) return false;
+            if(filtro){ const q=filtro.toLowerCase(); if(!(x.nome||'').toLowerCase().includes(q)) return false; }
+            if(filtAnno&&+x.anno!==+filtAnno) return false;
+            return true;
+          }).map(x=><tr key={x.collaboratore_id+'-'+x.anno} style={{cursor:'pointer'}}
+            onClick={()=>{ setFrCid(String(x.collaboratore_id)); setFrAnno(String(x.anno)); }}>
+            <td>{x.anno}</td><td>{x.nome}</td>
+            <td className="r mono">{eur(x.imponibile)}</td>
+            <td className="r mono">{eur(x.teorica)}</td>
+            <td className="r mono">{eur(x.restituito)}</td>
+            <td className="r mono" style={{color:x.trattenuto>0?'var(--red)':'inherit'}}>{eur(x.trattenuto)}</td>
+            <td className="noprint"><button type="button" className="btn btn-g btn-sm" onClick={e=>{e.stopPropagation(); setFrCid(String(x.collaboratore_id)); setFrAnno(String(x.anno));}}>Seleziona</button></td>
+          </tr>)}</tbody>
+        </table>
+      </div>
     </React.Fragment>}
     </div>
   </React.Fragment>;
@@ -7680,6 +8231,7 @@ function PayRomaNuovo({toast, collab}){
   const [prev,setPrev]=useState(null);
   const [stdFile,setStdFile]=useState(null);
   const [storico,setStorico]=useState(null);
+  const [showStorico,setShowStorico]=useState(true);
   const [ultimo,setUltimo]=useState(null);
   const [annullaTxt,setAnnullaTxt]=useState('');
   const [draft,setDraft]=useState({});
@@ -7855,6 +8407,22 @@ function PayRomaNuovo({toast, collab}){
             <b>Avvisi</b>
             <ul style={{margin:'6px 0 0',paddingLeft:18}}>{(prev.avvisi||[]).map((a,i)=><li key={i}>{a}</li>)}</ul>
           </div>}
+          {(prev.mismatch_nominativo||[]).length>0 && <div className="notebox" style={{marginBottom:12,fontSize:12.5,borderColor:'var(--red)',color:'var(--red)'}}>
+            <b>{prev.mismatch_nominativo.length} nominativo file ≠ collaboratore agganciato</b>
+            {' '}— la produzione andrebbe a un altro soggetto. Correggi l&apos;aggancio codice prima di confermare (o gestisci dopo in Da gestire).
+            <div style={{overflow:'auto',maxHeight:220,marginTop:8}}>
+              <table className="tbl" style={{margin:0,fontSize:11}}>
+                <thead><tr><th>Nominativo file</th><th>Codice</th><th>Agganciato a</th><th>Qta</th><th>Anni</th></tr></thead>
+                <tbody>{prev.mismatch_nominativo.map((m,i)=><tr key={i}>
+                  <td><b>{m.nominativo_file}</b>{m.nominativo_in_anagrafica===false&&<div className="muted">assente in anagrafica</div>}</td>
+                  <td className="mono">{m.codice_roma}</td>
+                  <td>{m.collaboratore_nome}</td>
+                  <td className="mono">{m.quantita}</td>
+                  <td className="mono">{(m.anni||[]).join(', ')}</td>
+                </tr>)}</tbody>
+              </table>
+            </div>
+          </div>}
           {prev.struttura_ok!==false && (prev.struttura_colonne||[]).length>0 &&
             <p className="muted small" style={{margin:'0 0 10px',color:'var(--ok,#0a7)'}}>
               ✓ Struttura file valida — {(prev.struttura_colonne||[]).filter(c=>c.presente).length} colonne riconosciute (schema foglio VERIFICA)
@@ -7923,6 +8491,64 @@ function PayRomaNuovo({toast, collab}){
         {barraConferma()}
       </div>
     </div>}
+    <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
+      <h3 className="disp" style={{margin:0}}>Storico import produzione nazionale ({(storico||[]).length})</h3>
+      {(storico&&storico.length>0) && <button type="button" className="btn btn-g btn-sm" onClick={()=>setShowStorico(v=>!v)}>
+        {showStorico?'Nascondi dettaglio':'Visualizza dettaglio'}
+      </button>}
+    </div>
+    {!storico ? <p className="muted">Caricamento storico…</p> :
+    !(storico||[]).length ? <p className="muted">Nessun file ancora in storico. Dopo la prima conferma compare qui, con Scarica / Sostituisci / Elimina.</p> :
+    !showStorico ? <p className="muted">Storico nascosto ({storico.length} import). Premi <b>Visualizza dettaglio</b>.</p> :
+    <div className="panel" style={{padding:0,overflow:'auto',marginBottom:12}}>
+      <table className="tbl" style={{margin:0,fontSize:12.5}}>
+        <thead><tr><th>Data</th><th>File</th><th>Anni</th><th>Stato</th><th className="n">Righe</th><th></th></tr></thead>
+        <tbody>{(storico||[]).map(r=><tr key={r.id}>
+          <td className="mono small">{(r.eseguito_il||'').slice(0,16)}</td>
+          <td><b>{r.file_nome}</b></td>
+          <td className="mono">{(r.anni&&r.anni.length)?r.anni.join(', '):'—'}</td>
+          <td>{r.stato==='attivo'?<span className="pos">attivo</span>:(r.stato||'—')}</td>
+          <td className="n mono">{r.righe!=null?r.righe:'—'}</td>
+          <td style={{whiteSpace:'nowrap'}}>
+            {r.scaricabile!==false && <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={async()=>{
+              try{ await payDownload('/import-roma/'+r.id+'/download', r.file_nome); toast('Download avviato'); }
+              catch(x){ toast(payFmtErr(x.detail)||'Download non disponibile — reimporta il file',1); }
+            }}>Scarica file</button>}
+            <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={()=>{
+              if(confirm('Seleziona il file Roma aggiornato (sostituisce la produzione degli stessi anni dopo conferma).')){
+                const el=document.getElementById('pay-roma-file'); if(el){ el.value=''; el.click(); }
+              }
+            }}>Sostituisci</button>
+            <button className="btn btn-g btn-sm" disabled={busy} onClick={async()=>{
+              const msg=r.stato==='attivo'
+                ? ('Eliminare import Roma #'+r.id+' «'+r.file_nome+'»? Verrà ripristinata la produzione precedente (se presente) e il file sarà rimosso dallo storico.')
+                : ('Eliminare dallo storico import Roma #'+r.id+' «'+r.file_nome+'»? La produzione attiva non cambia.');
+              if(!confirm(msg)) return;
+              setBusy(true);
+              try{
+                await payApi('/import-roma/'+r.id,{method:'DELETE'});
+                toast(r.stato==='attivo'?'Import annullato e rimosso':'Import rimosso dallo storico');
+                setAnnullaTxt(''); carica();
+              }catch(x){ toast(payFmtErr(x.detail)||'Errore eliminazione',1); }
+              setBusy(false);
+            }}>Elimina</button>
+          </td>
+        </tr>)}</tbody>
+      </table>
+    </div>}
+    <div className="panel" style={{marginBottom:14}}>
+      <div className="ph"><h3>Annulla ultimo import</h3></div>
+      <div className="pad">
+        {!ultimo ? <p className="muted">Nessun import Roma attivo.</p> :
+        <React.Fragment>
+          <p>Ultimo: <b>{ultimo.file_nome}</b> · {(ultimo.eseguito_il||'').slice(0,16)} · anni {(ultimo.anni||[]).join(', ')} · {ultimo.righe} righe</p>
+          {(ultimo.pagamenti_da_sganciare||[]).length>0 &&
+            <p className="muted small">Attenzione: {(ultimo.pagamenti_da_sganciare||[]).length} pagamenti successivi all&apos;import finiranno in «Da abbinare».</p>}
+          <input value={annullaTxt} onChange={e=>setAnnullaTxt(e.target.value)} placeholder="Digita ANNULLA" style={{marginRight:8}}/>
+          <button className="btn btn-g" disabled={busy||annullaTxt.trim().toUpperCase()!=='ANNULLA'} onClick={doAnnulla}>Annulla import</button>
+        </React.Fragment>}
+      </div>
+    </div>
     <div className="panel" style={{marginBottom:14,border:'1px solid #c44'}}>
       <div className="ph"><h3 style={{color:'#a22'}}>Zona pericolosa — azzera produzione e compensi</h3></div>
       <div className="pad">
@@ -7945,61 +8571,12 @@ function PayRomaNuovo({toast, collab}){
         </React.Fragment>}
       </div>
     </div>
-    <div className="panel" style={{marginBottom:14}}>
-      <div className="ph"><h3>4 · Annulla ultimo import</h3></div>
-      <div className="pad">
-        {!ultimo ? <p className="muted">Nessun import Roma attivo.</p> :
-        <React.Fragment>
-          <p>Ultimo: <b>{ultimo.file_nome}</b> · {(ultimo.eseguito_il||'').slice(0,16)} · anni {(ultimo.anni||[]).join(', ')} · {ultimo.righe} righe</p>
-          {(ultimo.pagamenti_da_sganciare||[]).length>0 &&
-            <p className="muted small">Attenzione: {(ultimo.pagamenti_da_sganciare||[]).length} pagamenti successivi all&apos;import finiranno in «Da abbinare».</p>}
-          <input value={annullaTxt} onChange={e=>setAnnullaTxt(e.target.value)} placeholder="Digita ANNULLA" style={{marginRight:8}}/>
-          <button className="btn btn-g" disabled={busy||annullaTxt.trim().toUpperCase()!=='ANNULLA'} onClick={doAnnulla}>Annulla import</button>
-        </React.Fragment>}
-        <h4 className="disp" style={{marginTop:16}}>Storico</h4>
-        {!storico ? <p className="muted">Caricamento…</p> :
-        !(storico||[]).length ? <p className="muted">Nessun import Roma ancora confermato.</p> :
-        <table className="tbl" style={{margin:0,fontSize:12}}>
-          <thead><tr><th>Data</th><th>File</th><th>Anni</th><th>Stato</th><th></th></tr></thead>
-          <tbody>{(storico||[]).map(r=><tr key={r.id}>
-            <td className="mono small">{(r.eseguito_il||'').slice(0,16)}</td>
-            <td><b>{r.file_nome}</b></td>
-            <td className="mono">{(r.anni||[]).join(', ')}</td>
-            <td>{r.stato}</td>
-            <td style={{whiteSpace:'nowrap'}}>
-              {r.scaricabile && <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={async()=>{
-                try{ await payDownload('/import-roma/'+r.id+'/download', r.file_nome); toast('Download avviato'); }
-                catch(x){ toast(payFmtErr(x.detail)||'Download non disponibile — reimporta il file',1); }
-              }}>Scarica file</button>}
-              <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={()=>{
-                if(confirm('Seleziona il file Roma aggiornato (sostituisce la produzione degli stessi anni dopo conferma).')){
-                  const el=document.getElementById('pay-roma-file'); if(el){ el.value=''; el.click(); }
-                }
-              }}>Sostituisci</button>
-              <button className="btn btn-g btn-sm" disabled={busy} onClick={async()=>{
-                const msg=r.stato==='attivo'
-                  ? ('Eliminare import Roma #'+r.id+' «'+r.file_nome+'»? Verrà ripristinata la produzione precedente (se presente) e il file sarà rimosso dallo storico.')
-                  : ('Eliminare dallo storico import Roma #'+r.id+' «'+r.file_nome+'»? La produzione attiva non cambia.');
-                if(!confirm(msg)) return;
-                setBusy(true);
-                try{
-                  await payApi('/import-roma/'+r.id,{method:'DELETE'});
-                  toast(r.stato==='attivo'?'Import annullato e rimosso':'Import rimosso dallo storico');
-                  setAnnullaTxt(''); carica();
-                }catch(x){ toast(payFmtErr(x.detail)||'Errore eliminazione',1); }
-                setBusy(false);
-              }}>Elimina</button>
-            </td>
-          </tr>)}</tbody>
-        </table>}
-      </div>
-    </div>
   </React.Fragment>;
 }
 
-function PayImport({toast}){
+function PayImport({toast,onNav}){
   const [tab,setTab]=useState('roma');
-  const [showImpDett,setShowImpDett]=useState(false);
+  const [showImpDett,setShowImpDett]=useState(true);
   const [esito,setEsito]=useState(null); const [busy,setBusy]=useState(false);
   const [storico,setStorico]=useState(null);
   const [patPrev,setPatPrev]=useState(null); const [patRec,setPatRec]=useState(null); const [patBusy,setPatBusy]=useState(false);
@@ -8093,7 +8670,7 @@ function PayImport({toast}){
     }).catch(()=>setCostiStorico([]));
   const caricaConfronto=()=>ensurePayAuth().then(()=>payApi('/import/confronto')).then(setConfronto).catch(()=>setConfronto(null));
   useEffect(()=>{ caricaStorico(); caricaPatUltimo(); caricaPatStorico(); caricaPagStorico(); caricaFatStorico(); caricaProvStorico(); caricaCostiStorico(); caricaProvVoci(); caricaImportAlert(); caricaConfronto(); payApi('/collaboratori').then(setPagCollab).catch(()=>{}); },[]);
-  useEffect(()=>{ setShowImpDett(false); setPagDettOpen(null); setFatErrOpen(null); setProvErrOpen(null); setCostiDettOpen(null); },[tab]);
+  useEffect(()=>{ setPagDettOpen(null); setFatErrOpen(null); setProvErrOpen(null); setCostiDettOpen(null); },[tab]);
   const clickFile=(id)=>{ const el=document.getElementById(id); if(el){ el.value=''; el.click(); } };
   const btnAzioniImport=(opts)=>{
     const o=opts||{};
@@ -8256,7 +8833,7 @@ function PayImport({toast}){
       const d=(typeof x.detail==='object'&&x.detail)?x.detail:((x.payload&&x.payload.detail)||{});
       const msg=payFmtErr(x.detail);
       if((d.serve_forza||x.status===409) && !forza){
-        if(confirm(msg+'\n\nConfermare comunque? Le righe senza match restano in quarantena; le altre vengono importate e il file precedente viene sostituito.')){
+        if(confirm(msg+'\n\nConfermare comunque? Le righe senza match restano in quarantena; le altre vengono importate. Solo gli anni presenti nel file vengono aggiornati.')){
           setPatBusy(false);
           return confermaPatronato(true);
         }
@@ -8445,7 +9022,9 @@ function PayImport({toast}){
         </div>
       </div>
       <div className="pad" style={{paddingTop:0,fontSize:12.5,color:'var(--mut)',lineHeight:1.5}}>
-        Prima viene mostrato il <b>confronto con il file precedente</b>. Il <b>dettaglio Patronato di sede</b> (pratiche portate in studio) non viene mai cancellato dal file Roma.
+        Prima viene mostrato il <b>confronto con il file precedente</b>. Ogni anno è a comparti stagni:
+        se il file non ha dati per un anno, quello resta invariato; se ha solo alcune sedi/codici,
+        sovrascrive solo quelle e mantiene il resto. Il <b>dettaglio Patronato di sede</b> non viene mai cancellato dal file Roma.
         Sulle altre rimosse scegli voce per voce cosa tenere e cosa importare. L&apos;import parte solo dopo Conferma.
         Flusso legacy disabilitato — usa il <b>modello Excel produzione</b> nella sezione Import Roma.
         Se l&apos;ultimo file è sbagliato, <b>Annulla ultimo import</b> ripristina lo snapshot precedente.
@@ -8513,8 +9092,9 @@ function PayImport({toast}){
       const rie=a&&a.riepilogo;
       const nS=rie?rie.senza_produzione:0;
       const nY=rie?rie.scostamento_yoy:0;
+      const nM=rie?rie.mismatch_nominativo:0;
       const nQ=rie?rie.quarantena:0;
-      const has=(nS+nY)>0;
+      const has=(nS+nY+nM)>0;
       const fmtPct=v=>v==null?'—':((v>0?'+':'')+v+'%');
       const fmtCod=c=>{
         const o=c||{};
@@ -8534,7 +9114,8 @@ function PayImport({toast}){
             <div className="muted small" style={{marginTop:4}}>
               Confronto produzione: anno <b>{a?a.anno:'—'}</b> vs <b>{a?a.anno_precedente:'—'}</b>
               {a?<> (soglia scostamento {a.soglia_pct}%)</>:null}.
-              Segnala sedi aperte con codice in scheda ma <b>zero pratiche agganciate</b> nell&apos;anno.
+              Segnala sedi aperte senza pratiche, scostamenti forti e{' '}
+              <b>nominativo file ≠ collaboratore agganciato al codice</b> (produzione a rischio).
               {a&&a.nota_anno? <div style={{marginTop:4}}>{a.nota_anno}</div>:null}
             </div>
           </div>
@@ -8543,6 +9124,10 @@ function PayImport({toast}){
         {!a && !alertBusy && <p className="muted small">Alert non disponibili (API non raggiungibile).</p>}
         {alertBusy && !a && <p className="muted small">Caricamento alert…</p>}
         {a && <div style={{display:'flex',gap:10,flexWrap:'wrap',marginBottom:has?12:0,fontSize:12.5}}>
+          <span style={{padding:'4px 10px',borderRadius:6,background:nM?'rgba(180,40,40,.18)':'rgba(0,0,0,.04)',fontWeight:nM?700:400}}>
+            Nominativo ≠ codice: <b>{nM}</b>
+            {nM>0 && <span className="muted"> → Da gestire</span>}
+          </span>
           <span style={{padding:'4px 10px',borderRadius:6,background:nS?'rgba(180,40,40,.15)':'rgba(0,0,0,.04)',fontWeight:nS?700:400}}>
             Senza produzione: <b>{nS}</b>
           </span>
@@ -8554,6 +9139,31 @@ function PayImport({toast}){
             {nQ>0 && <span className="muted"> → Da gestire</span>}
           </span>
         </div>}
+        {a && nM>0 && <React.Fragment>
+          <h4 style={{margin:'10px 0 6px',fontSize:13,color:'var(--red)'}}>Nominativo file diverso dal collaboratore agganciato ({nM})</h4>
+          <p className="muted small" style={{margin:'0 0 8px'}}>
+            Il codice Roma è agganciato a un collaboratore, ma nel file CAF/addebiti compare un altro nominativo.
+            La produzione è stata (o verrà) attribuita al soggetto agganciato — correggi il codice in Import Roma o in Da gestire, poi reimporta.
+          </p>
+          <div style={{overflow:'auto',marginBottom:8}}>
+            <table className="tbl" style={{margin:0,fontSize:12}}>
+              <thead><tr>
+                <th>Nominativo nel file</th><th>Codice</th><th>Agganciato a</th><th>Qta</th><th>Anni</th><th>Dettaglio</th>
+              </tr></thead>
+              <tbody>{(a.mismatch_nominativo||[]).map(r=><tr key={'mm'+(r.anomalia_id||r.codice_roma)}>
+                <td><b>{r.nominativo_file}</b>
+                  {r.nominativo_in_anagrafica===false && <div className="muted small" style={{color:'var(--red)'}}>Assente in anagrafica</div>}
+                  {(r.suggeriti||[]).length>0 && <div className="muted small">Suggerito: {r.suggeriti.map(s=>s.nome||s).join(', ')}</div>}
+                </td>
+                <td className="mono">{r.codice_roma}<div className="muted small">{r.tipologia||''}</div></td>
+                <td><b style={{color:'var(--red)'}}>{r.collaboratore_nome||'—'}</b></td>
+                <td className="mono">{r.quantita}</td>
+                <td className="mono small">{(r.anni||[]).join(', ')||'—'}</td>
+                <td className="small">{r.motivo||'—'}</td>
+              </tr>)}</tbody>
+            </table>
+          </div>
+        </React.Fragment>}
         {a && nS>0 && <React.Fragment>
           <h4 style={{margin:'10px 0 6px',fontSize:13,color:'var(--red)'}}>Sedi aperte senza produzione agganciata ({nS})</h4>
           <div style={{overflow:'auto',marginBottom:8}}>
@@ -8599,9 +9209,9 @@ function PayImport({toast}){
     </React.Fragment>}
     {tab==='pat' && <React.Fragment>
     <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
-      Carica <b>Patronato YYYY-YYYY</b> (.xlsx/.xls/.csv): tutti i fogli annuali (2021, 2022, …) vengono applicati
-      ciascuno sull&apos;anno di competenza. Il dettaglio per collaboratore sovrascrive Roma per sede
-      e <b>non viene cancellato</b> quando re-importi la produzione Roma.
+      Carica <b>Patronato YYYY-YYYY</b> (.xlsx/.xls/.csv): ogni foglio annuale aggiorna <b>solo quell&apos;anno</b>
+      (comparti stagni). Se carichi un file solo 2021, il 2022 già confermato resta.
+      Il dettaglio per collaboratore <b>non viene cancellato</b> quando re-importi la produzione Roma.
       Dopo la conferma i compensi (IMP/COMP) vengono ricalcolati automaticamente.
     </div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
@@ -8657,18 +9267,19 @@ function PayImport({toast}){
     {patStorico&&patStorico.length>0 && !showImpDett && <p className="muted">Storico nascosto ({patStorico.length} import). Premi <b>Visualizza dettaglio</b>.</p>}
     {patStorico&&patStorico.length>0 && showImpDett && <div className="panel" style={{padding:0,overflow:'auto',marginBottom:12}}>
     <table className="tbl" style={{margin:0,fontSize:12.5}}>
-      <thead><tr><th>Data</th><th>File</th><th>Stato</th><th className="n">Quarantena</th><th></th></tr></thead>
+      <thead><tr><th>Data</th><th>File</th><th>Anni</th><th>Stato</th><th className="n">Quarantena</th><th></th></tr></thead>
       <tbody>{patStorico.map(row=><tr key={row.id}>
         <td className="mono small">{(row.caricato_il||'').slice(0,16)}</td>
         <td><b>{row.nome_file}</b></td>
-        <td>{row.stato||'—'}</td>
+        <td className="mono">{(row.anni&&row.anni.length)?row.anni.join(', '):'—'}</td>
+        <td>{row.stato==='confermato'?<span className="pos">confermato</span>:(row.stato||'—')}</td>
         <td className="n mono neg">{num(row.quarantena_n)}</td>
         <td>{btnAzioniImport({
           download: row.scaricabile!==false ? '/import/patronato-dettaglio/'+row.id+'/download' : null,
           nome: row.nome_file,
-          onSostituisci: ()=>{ if(confirm('Seleziona il file Patronato aggiornato.')) clickFile('pay-pat-file'); },
+          onSostituisci: ()=>{ if(confirm('Seleziona il file Patronato: aggiorna solo gli anni presenti nel file; gli altri restano.')) clickFile('pay-pat-file'); },
           onElimina: async()=>{
-            if(!confirm('Eliminare import patronato #'+row.id+'? Le schede resteranno senza Patronato finché non carichi il file nuovo.')) return;
+            if(!confirm('Eliminare import patronato #'+row.id+'? Solo gli anni di questo file verranno tolti dalle schede (se non coperti da un altro import).')) return;
             try{ await payApi('/import/patronato-dettaglio/'+row.id,{method:'DELETE'}); toast('Import eliminato'); caricaPatStorico(); caricaPatUltimo(); }
             catch(x){ toast(payFmtErr(x.detail)||'Errore eliminazione',1); }
           },
@@ -8955,7 +9566,16 @@ function PayImport({toast}){
         {(costiConf.anni||[]).length>0 && <div className="row"><span className="l">Anni</span><span className="r mono">{costiConf.anni.join(', ')}</span></div>}
         {Number(costiConf.da_attribuire||0)>0
           ? <div className="infobox" style={{marginTop:10,fontSize:12.5,borderColor:'var(--red)'}}>
-              Le righe senza collaboratore vanno in <b>Costi dipendenti → Gestione</b>. Dopo aver impostato regola e abbinamento (o i codici DIPENDENTI), torna qui: i contatori si aggiornano da soli. Oppure usa <b>Ricalcola import</b> sotto.
+              Le righe senza collaboratore (o senza regola struttura) sono in <b>Costi dipendenti → Gestione</b>
+              {(costiConf.anni||[]).length?<> — seleziona l&apos;anno <b>{(costiConf.anni||[]).join(', ')}</b></>:null}.
+              <div style={{marginTop:8}}>
+                <button type="button" className="btn btn-p btn-sm" onClick={()=>{
+                  const y=(costiConf.anni&&costiConf.anni[0])||null;
+                  const q=((costiConf.dettaglio_da_attribuire||[])[0]||{}).nome||'';
+                  if(onNav) onNav({view:'costi', anno:y, tab:'gestione', q:q});
+                  else toast('Apri Costi dipendenti → Gestione, anno '+(y||'…')+(q?' · cerca «'+q+'»':''),1);
+                }}>Apri in Costi dipendenti → Gestione</button>
+              </div>
             </div>
           : <div className="infobox" style={{marginTop:10,fontSize:12.5}}>
               Tutte le righe di questo import hanno un collaboratore: niente da attribuire. Lo storico Import riflette lo stato attuale di Gestione.
@@ -8983,7 +9603,9 @@ function PayImport({toast}){
               <td className="n mono neg">{eur(e.costo_totale)}</td>
             </tr>)}</tbody>
           </table></div>
-          <p className="muted small" style={{marginTop:8}}>Per abbinarle usa <b>Costi dipendenti → Gestione</b> (qui non si assegna il collaboratore).</p>
+          <p className="muted small" style={{marginTop:8}}>
+            Per abbinarle: bottone sopra oppure <b>Costi dipendenti → Gestione</b>, anno {(costiConf.anni||[]).join(', ')||'del file'}.
+          </p>
         </details>}
       </div>}
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
@@ -9238,7 +9860,10 @@ function payFmtPct(v){
   return (Number(v)*100).toFixed(0)+'%';
 }
 function payFmtDelta(r){
-  if(r.delta_conv!=null) return (r.delta_conv>0?'+':'')+r.delta_conv+'%';
+  if(r.delta_conv!=null){
+    if(r.tipo_conv==='fisso') return (r.delta_conv>0?'+':'')+Number(r.delta_conv).toFixed(2).replace('.',',')+' €';
+    return (r.delta_conv>0?'+':'')+r.delta_conv+'%';
+  }
   if(r.tipo_conv==='fisso') return 'fisso';
   return '—';
 }
@@ -9285,8 +9910,8 @@ function PaySchedaPrintBlock({c, viewNome, viewCf, viewAssoc, clsView, lbView, n
       setProf(c.cfg?[{macro:'Schema compenso',righe:(c.cfg||[]).map(([categoria,tipo,val])=>({categoria,tipo,valore:val,_lbl:categoria}))}]:[]);
       return;
     }
-    ensurePayAuth().then(()=>payApi('/listini')).then(rows=>{
-      const row=(rows||[]).find(r=>r.listino===c.listino);
+    ensurePayAuth().then(()=>payApi('/listini')).then(resp=>{
+      const row=payParseListiniResp(resp).listini.find(r=>r.listino===c.listino);
       setProf(payListinoPerMacro(payListinoCompleta(row?.profilo||[])));
     }).catch(()=>setProf([]));
   },[c.listino,c.cfg]);
@@ -9337,8 +9962,8 @@ function PaySchemaListino({listino}){
   const [prof,setProf]=useState(null);
   useEffect(()=>{
     if(!PAY_USE_API||!listino){ setProf(null); return; }
-    ensurePayAuth().then(()=>payApi('/listini')).then(rows=>{
-      const row=(rows||[]).find(r=>r.listino===listino);
+    ensurePayAuth().then(()=>payApi('/listini')).then(resp=>{
+      const row=payParseListiniResp(resp).listini.find(r=>r.listino===listino);
       setProf(payListinoCompleta(row?.profilo||[]));
     }).catch(()=>setProf([]));
   },[listino]);
@@ -9507,7 +10132,7 @@ function payFixTxt(s){
   return String(s).replace(/\u00a0/g,' ').replace(/MensilitÃ[^\w]*/gi,"Mensilita' ").replace(/Mensilità/gi,"Mensilita'");
 }
 
-function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canStampa, onOpenCollab, adminScheda}){
+function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canStampa, onOpenCollab, adminScheda, toast}){
   const [data,setData]=useState(null);
   const [grafici,setGrafici]=useState(null);
   const [margini,setMargini]=useState(null);
@@ -9626,7 +10251,7 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
     : (soloCollab ? 'La tua produzione pratiche — nessun dato importato' : 'Andamento pratiche per intercettare cali e rischio abbandono');
   const prodTabs=soloCollab
     ? (adminScheda?[['grafici','Grafici'],['margini','Margini']]:[['grafici','Grafici']])
-    : [['elenco','Elenco collaboratori'],['grafici','Grafici'],['margini','Margini']];
+    : [['elenco','Elenco collaboratori'],['grafici','Grafici'],['margini','Margini'],['struttura','Struttura']];
   return <React.Fragment>
     <div className="top"><div><h1>{soloCollab?'La mia produzione':'Monitoraggio produzione'} {!soloCollab && <span className="lockpill">🔒 Solo titolare</span>}</h1>
       <div className="sub">{sub}</div>
@@ -9634,7 +10259,7 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
       {soloCollab && filterNome && <div className="muted small" style={{marginTop:4}}>Collaboratore: <b>{filterNome}</b></div>}
     </div></div>
     <PayTabs tabs={prodTabs} active={tab} onChange={setTab}/>
-    <div className="selrow" style={{marginBottom:12,flexWrap:'wrap'}}>
+    {tab!=='struttura' && <div className="selrow" style={{marginBottom:12,flexWrap:'wrap'}}>
       {periodi && <select value={annoSel||''} onChange={e=>setAnnoTrend(e.target.value===''?null:+e.target.value)}>
         <option value="">Tutti gli anni</option>
         {periodi.map(y=><option key={y} value={y}>Anno: {y}</option>)}
@@ -9668,7 +10293,7 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
           {collabMargOpts.map(c=><option key={c.id} value={c.id}>{c.nome}</option>)}
         </select>}
       </React.Fragment>}
-    </div>
+    </div>}
     {tab==='elenco' && <React.Fragment>
       <div className="kpis">
         <div className={"kpi"+(nRisk>0?" alert":"")}><div className="kv">{nRisk}</div><div className="kl">Collaboratori a rischio</div></div>
@@ -9718,11 +10343,15 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
       {!margini ? <p className="muted">Caricamento margini…</p> : <React.Fragment>
         <div className="infobox" style={{marginBottom:12,fontSize:12.5,lineHeight:1.45}}>
           I numeri derivano dall&apos;<b>import produzione Roma</b> (quantità per codice collaboratore), non dall&apos;Excel grezzo non elaborato.
-          Il <b>margine</b> = quota Roma (conv. file) − compenso collaboratore (conv. listino).
-          Esempio: Roma 70% e collaboratore 60% → delta <b>10%</b> sulla base = margine struttura.
+          Il <b>margine</b> = quota Listino BASE − compenso collaboratore (listino applicato).
+          Esempio: BASE 70% e collaboratore 60% → delta <b>10%</b> sulla base = margine struttura.
         </div>
-        {margini.nota && <div className="infobox" style={{marginBottom:12,borderColor:'var(--amber)',background:'#fffbeb',fontSize:12.5}}>
+        {margini.nota && <div className="infobox" style={{marginBottom:12,borderColor:'var(--amber)',background:'#fffbeb',fontSize:12.5,lineHeight:1.45}}>
+          <b style={{display:'block',marginBottom:4}}>Nota produzione {annoSel||''}</b>
           {margini.nota}
+        </div>}
+        {(margini.categorie_mancanti||[]).length>0 && <div className="muted small" style={{marginBottom:10}}>
+          Categorie segnalate: {(margini.categorie_mancanti||[]).join(' · ')}
         </div>}
         {(margini.produzione_categorie||[]).length>0 && <div className="panel" style={{padding:'12px 14px',marginBottom:12}}>
           <div className="muted small" style={{fontWeight:700,marginBottom:10}}>Produzione importata{annoSel?' '+annoSel:''} per categoria</div>
@@ -9741,7 +10370,7 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
           <div className="kpi good"><div className="kv">{eur(margAnno?.margine??margini.totale_margine??0)}</div>
             <div className="kl">Margine totale{annoSel?' '+annoSel:' (tutti gli anni)'}</div></div>
           <div className="kpi navy"><div className="kv">{eur(margAnno?.quota_struttura??0)}</div>
-            <div className="kl">Quota struttura (Roma)</div></div>
+            <div className="kl">Quota struttura (Listino BASE)</div></div>
           <div className="kpi"><div className="kv">{eur(margAnno?.compenso??0)}</div>
             <div className="kl">Compensi collaboratori</div></div>
           <div className="kpi"><div className="kv">{righeMarg.length}</div>
@@ -9833,6 +10462,7 @@ function ProduzioneMonitor({collabDemo, filterNome, collabId, soloCollab, canSta
         </div>}
       </React.Fragment>}
     </React.Fragment>}
+    {tab==='struttura' && !soloCollab && <PayStruttura toast={toast} embedded initialAnno={annoSel}/>}
   </React.Fragment>;
 }
 
@@ -10063,16 +10693,28 @@ function PayListini({toast, navHint, onNavConsumed}){
   const [tarAnno,setTarAnno]=useState(null);
   const [tarVoci,setTarVoci]=useState([]);
   const [navFlash,setNavFlash]=useState('');
+  const [lisAnno,setLisAnno]=useState(null);
+  const [lisAnni,setLisAnni]=useState([]);
   const resetDraft=lst=>{ const d={}; lst.forEach(x=>d[x.listino]=payListinoCompleta(payClona(x.profilo||[]))); setDraft(d); };
-  useEffect(()=>{ ensurePayAuth().then(()=>Promise.all([payApi('/listini'),payApi('/collaboratori')]))
-    .then(([l,c])=>{
-      const sorted=paySortListini(l);
-      setRows(sorted);setCollab(c); resetDraft(sorted); setErr('');
-    }).catch(e=>setErr(e.detail||'Impossibile caricare i listini — verifica che l\'API sia avviata')); },[]);
+  const caricaListini=async (annoWant)=>{
+    const qs=annoWant!=null?('?anno='+annoWant):'';
+    const [resp,c]=await Promise.all([payApi('/listini'+qs),payApi('/collaboratori')]);
+    const parsed=payParseListiniResp(resp);
+    const sorted=paySortListini(parsed.listini);
+    setLisAnni(parsed.anni||[]);
+    setLisAnno(parsed.anno!=null?+parsed.anno:(annoWant!=null?+annoWant:null));
+    setRows(sorted); setCollab(c); resetDraft(sorted); setErr('');
+    return parsed;
+  };
+  useEffect(()=>{ ensurePayAuth().then(()=>caricaListini(null))
+    .catch(e=>setErr(e.detail||'Impossibile caricare i listini — verifica che l\'API sia avviata')); },[]);
   useEffect(()=>{
     if(!navHint) return;
-    if(navHint.anno) setTarAnno(+navHint.anno);
-    if(navHint.tab==='listini'){ setEditMode(true); setNavFlash('Imposta i parametri evidenziati (valore 0 = da configurare).'); }
+    if(navHint.anno){
+      setTarAnno(+navHint.anno);
+      ensurePayAuth().then(()=>caricaListini(+navHint.anno)).catch(()=>{});
+    }
+    if(navHint.tab==='listini'){ setEditMode(true); setNavFlash('Imposta i parametri evidenziati (valore 0 = da configurare). Ogni anno ha il proprio listino.'); }
     if(navHint.tab==='tariffe'&&navHint.gap?.voci) setTarVoci((navHint.gap.voci||[]).map(v=>v.codice).filter(Boolean));
     if(navHint.tab==='tariffe') setNavFlash('Tariffe mancanti per l\'anno '+ (navHint.anno||'') + ' — evidenziate sotto.');
     onNavConsumed&&onNavConsumed();
@@ -10081,21 +10723,26 @@ function PayListini({toast, navHint, onNavConsumed}){
   if(err) return <div className="infobox">⚠ Listini: {err}</div>;
   if(!rows) return <p className="muted">Caricamento listini…</p>;
   const blocca=()=>{ resetDraft(rows); setEditMode(false); setShowVoce(false); };
+  const cambiaAnno=async a=>{
+    try{
+      await caricaListini(+a);
+      setEditMode(false);
+    }catch(e){ toast(e.detail||'Errore cambio anno',1); }
+  };
   const applica=async (listino,cidv)=>{
     if(!cidv) return;
     const c=collab.find(x=>String(x.id)===String(cidv));
     const nomeColl=c?.nome||('ID '+cidv);
-    if(!confirm('Applicare il listino "'+listino+'" a '+nomeColl+'?\n\nVerranno sovrascritte tutte le convenzioni del collaboratore e ricalcolati i compensi.')) return;
-    await payApi('/listini/applica',{method:'POST',body:JSON.stringify({listino,collaboratore_id:+cidv})});
-    toast('Listino applicato a '+nomeColl+(PAY_USE_API?' — compensi ricalcolati':''));
+    if(!confirm('Applicare il listino "'+listino+'" a '+nomeColl+' per l\'anno '+lisAnno+'?\n\nVerranno sovrascritte le convenzioni di quell\'anno e ricalcolati i compensi.')) return;
+    await payApi('/listini/applica',{method:'POST',body:JSON.stringify({listino,collaboratore_id:+cidv,anno:lisAnno})});
+    toast('Listino applicato a '+nomeColl+' · '+lisAnno+(PAY_USE_API?' — compensi ricalcolati':''));
     if(!PAY_USE_API){
-      const upd = await payApi('/listini');
-      setRows(upd);
+      await caricaListini(lisAnno);
     }
   };
   const salvaProfilo=async nome=>{
     const profilo=payListinoCompleta((draft[nome]||[]).map(p=>({...p,valore:Number(p.valore||0)})));
-    await payApi('/listini/salva',{method:'POST',body:JSON.stringify({listino:nome,profilo})});
+    await payApi('/listini/salva',{method:'POST',body:JSON.stringify({listino:nome,profilo,anno:lisAnno})});
   };
   const applicaVoceListini=async (listiniSel, voce)=>{
     if(voce._lbl && voce.categoria) paySaveCatLblExtra(voce.categoria, voce._lbl);
@@ -10110,10 +10757,9 @@ function PayListini({toast, navHint, onNavConsumed}){
         listino_sorgente:voce._listinoSorgente||payFindListinoBase(rows),
         listini:listiniSel,
         propaga_altri:voce._propaga!==false,
+        anno:lisAnno,
       })});
-      const upd=await payApi('/listini');
-      const sorted=paySortListini(upd);
-      setRows(sorted); resetDraft(sorted);
+      await caricaListini(lisAnno);
       const msg=r.propagato
         ? 'Voce "'+(voce._lbl||voce.categoria)+'" creata nel listino base e replicata su '+((r.listini_aggiornati||[]).length)+' listini (altri a 0 — da impostare)'
         : 'Voce "'+(voce._lbl||voce.categoria)+'" applicata a '+listiniSel.length+' listin'+(listiniSel.length===1?'o':'i');
@@ -10133,10 +10779,19 @@ function PayListini({toast, navHint, onNavConsumed}){
   const salva=async nome=>{
     try{
       await salvaProfilo(nome);
-      const upd = await payApi('/listini');
-      setRows(paySortListini(upd)); resetDraft(paySortListini(upd));
-      toast('Listino aggiornato');
+      await caricaListini(lisAnno);
+      toast('Listino aggiornato per il '+lisAnno+' (gli altri anni restano invariati)');
     }catch(e){ toast(e.detail||'Errore salvataggio',1); }
+  };
+  const copiaDaPrec=async nome=>{
+    if(lisAnno==null) return;
+    const da=lisAnno-1;
+    if(!confirm('Copiare il profilo di "'+nome+'" da '+da+' a '+lisAnno+'?\nSovrascrive solo l\'anno '+lisAnno+'.')) return;
+    try{
+      await payApi('/listini/copia-anno',{method:'POST',body:JSON.stringify({listino:nome,da_anno:da,a_anno:lisAnno})});
+      await caricaListini(lisAnno);
+      toast('Profilo copiato da '+da+' → '+lisAnno);
+    }catch(e){ toast(e.detail||'Copia non riuscita',1); }
   };
   const nuovo=async ()=>{
     const nome = prompt('Nome nuovo listino');
@@ -10144,8 +10799,8 @@ function PayListini({toast, navHint, onNavConsumed}){
     const copia_da = rows[0]?.listino || null;
     try{
       await payApi('/listini/nuovo',{method:'POST',body:JSON.stringify({listino:nome,copia_da})});
-      const upd = await payApi('/listini');
-      setRows(upd); resetDraft(upd); setEditMode(true);
+      await caricaListini(lisAnno);
+      setEditMode(true);
       toast('Nuovo listino creato');
     }catch(e){ toast(e.detail||'Errore creazione listino',1); }
   };
@@ -10159,10 +10814,15 @@ function PayListini({toast, navHint, onNavConsumed}){
       onClose={()=>{setShowVoce(false);setVocePreselect(null);}}
       onApply={applicaVoceListini}/>}
     <div className="top"><div><h1>Listini collaboratore <span className="lockpill">{editMode?'✏️ Modifica attiva':'🔒 Sola lettura'}</span></h1>
-      <div className="sub">{editMode?'Modifica abilitata — salva ogni listino prima di bloccare':'Percentuali/fisso applicati sull\'importo netto delle tariffe di riferimento (o sulle quantità importate se presenti)'}</div>
+      <div className="sub">{editMode?'Modifica abilitata — salva ogni listino prima di bloccare. Le modifiche valgono solo per l\'anno selezionato.':'Percentuali/fisso per anno — puoi usare fisso fino al 2022 e % dal 2023 sullo stesso listino.'}</div>
       {baseName&&<div className="sub muted">Listino base: <b>{baseName}</b> — le nuove pratiche si creano da qui e si propagano automaticamente.</div>}
       </div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+        <label className="muted small" style={{display:'flex',alignItems:'center',gap:6}}>Anno listino
+          <select value={lisAnno||''} onChange={e=>cambiaAnno(e.target.value)} style={{minWidth:90}}>
+            {(lisAnni||[]).map(a=><option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
         {!editMode ? <button className="btn btn-p" onClick={()=>setEditMode(true)}>Modifica</button>
           : <button className="btn btn-g" onClick={blocca}>Blocca</button>}
         <button className="btn btn-g" onClick={()=>{setVocePreselect(baseName);setShowVoce(true);}}>+ Nuova pratica</button>
@@ -10172,7 +10832,7 @@ function PayListini({toast, navHint, onNavConsumed}){
     {rows.map(l=><div className="panel" key={l.listino} style={{padding:14,opacity:editMode?1:.98}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
         <div><b>{l.listino}</b>{payIsListinoBase(l.listino)&&<span className="pay-listini-base-tag" style={{marginLeft:8}}>BASE</span>}
-          <div className="muted small">{l.membri} collaboratori</div></div>
+          <div className="muted small">{l.membri} collaboratori · anno {lisAnno}</div></div>
         {editMode&&<button type="button" className="btn btn-g btn-sm" title="Aggiungi voce a questo listino"
           onClick={()=>{setVocePreselect(l.listino);setShowVoce(true);}}>+ Voce</button>}
       </div>
@@ -10197,12 +10857,13 @@ function PayListini({toast, navHint, onNavConsumed}){
         </React.Fragment>)}
         </tbody>
       </table>
-      <div style={{display:'flex',justifyContent:'flex-end',marginTop:8}}>
-        <button className="btn btn-g btn-sm" onClick={()=>salva(l.listino)}>Salva dettagli</button>
+      <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8,flexWrap:'wrap'}}>
+        <button className="btn btn-g btn-sm" onClick={()=>copiaDaPrec(l.listino)}>Copia da {lisAnno-1}</button>
+        <button className="btn btn-g btn-sm" onClick={()=>salva(l.listino)}>Salva {lisAnno}</button>
       </div>
       </React.Fragment>}
       <PayCollabPick value="" options={collab.filter(c=>!c.interno)} inclInterni={false}
-        placeholder="Applica a collaboratore…" labelSuffix={c=>c.listino?'· '+c.listino:''}
+        placeholder={'Applica a collaboratore ('+lisAnno+')…'} labelSuffix={c=>c.listino?'· '+c.listino:''}
         onChange={v=>{ if(v) applica(l.listino,v); }} style={{marginTop:10,width:'100%'}}/>
     </div>)}
     </div>
@@ -10401,6 +11062,564 @@ function UtentiInterniView({toast}){
       </div>}
     </div>
   </React.Fragment>;
+}
+
+function PayStruttura({toast, embedded, initialAnno}){
+  const [data,setData]=useState(null);
+  const [anno,setAnno]=useState(initialAnno!=null?+initialAnno:null);
+  const [err,setErr]=useState('');
+  const [sezCPanel,setSezCPanel]=useState(false);
+  const [cRighe,setCRighe]=useState(null);
+  const [cBusy,setCBusy]=useState(false);
+  const [draftAddeb,setDraftAddeb]=useState({});
+  const [newMov,setNewMov]=useState({tipo:'BONIFICO',data:'',causale:'',importo:''});
+  const [editMov,setEditMov]=useState(null);
+  const load=async (a)=>{
+    try{
+      await ensurePayAuth();
+      const qs=a!=null?('?anno='+a):'';
+      const d=await payApi('/produzione/struttura'+qs);
+      setData(d); setAnno(d.anno); setErr('');
+    }catch(e){ setErr(e.detail||e.message||'Errore scheda struttura'); setData(null); }
+  };
+  const loadSezC=async (y)=>{
+    const a=y!=null?y:anno;
+    if(a==null) return;
+    try{
+      const d=await payApi('/produzione/struttura/sez-c/righe?anno='+a);
+      setCRighe(d);
+      const da={}; (d.righe||[]).forEach(r=>{ da[r.id]=String(r.importo_addebito??''); });
+      setDraftAddeb(da);
+    }catch(e){ toast&&toast(e.detail||e.message||'Errore costi Struttura'); }
+  };
+  useEffect(()=>{ load(initialAnno!=null?+initialAnno:null); },[initialAnno]);
+  useEffect(()=>{ if(sezCPanel&&anno) loadSezC(anno); },[sezCPanel,anno]);
+  if(err) return <div className="infobox">⚠ {err}</div>;
+  if(!data) return <p className="muted">Caricamento scheda struttura…</p>;
+  const numS=v=>v==null||v===''?'—':Number(v).toLocaleString('it-IT');
+  const rifS=v=>{
+    if(v==null) return '—';
+    const n=Number(v);
+    if(Math.abs(n)<=1.5) return (n*100).toLocaleString('it-IT',{maximumFractionDigits:4})+'%';
+    return eur(n);
+  };
+  const isPatr=v=>String(v||'').startsWith('PATR_');
+  const sezA=data.sezione_a||[];
+  const sezB=data.sezione_b||[];
+  const sezC=data.sezione_c||{totale:0,righe:[]};
+  const sezD=data.sezione_d||[];
+  const riep=data.riepilogo||{};
+  const fonteNote=data.fonte==='collaboratori'?'aggregato da produzione sedi'
+    :(data.fonte==='struttura'?'totali Roma (Sez. A/B)':'');
+  const cell=(v,cls)=> <td className={'r mono'+(cls?(' '+cls):'')+(v==null||v===''?' e':'')}>{v==null||v===''?'—':v}</td>;
+  const parseEuro=v=>{
+    if(v==null||v==='') return null;
+    if(typeof v==='number') return isNaN(v)?null:v;
+    let s=String(v).trim().replace(/€/g,'').replace(/\s/g,'').replace(/\u00a0/g,'');
+    if(!s) return null;
+    if(s.indexOf(',')>=0) s=s.replace(/\./g,'').replace(',','.');
+    const n=Number(s);
+    return isNaN(n)?null:n;
+  };
+  const notify=(m,err)=>{
+    if(typeof toast==='function') toast(m, err);
+    else if(m) console.warn('[Struttura]', m);
+  };
+  const copiaCosti=async ()=>{
+    setCBusy(true);
+    try{
+      const out=await payApi('/produzione/struttura/sez-c/copia?anno='+anno,{method:'POST'});
+      notify('Copiate '+out.inserite+' righe'+(out.saltate?' · '+out.saltate+' già presenti':''));
+      await loadSezC(anno); await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Copia fallita',1); }
+    finally{ setCBusy(false); }
+  };
+  const salvaModalita=async (r, mod)=>{
+    if(!mod) return;
+    try{
+      await payApi('/produzione/struttura/sez-c/righe/'+r.id+'?anno='+anno,{
+        method:'PATCH',body:JSON.stringify({modalita:mod, stato:'attiva'})});
+      notify(r.nome+': '+mod.replace(/_/g,' ').toLowerCase());
+      await loadSezC(anno); await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Modalità non salvata',1); }
+  };
+  const salvaAddebito=async (r)=>{
+    const n=parseEuro(draftAddeb[r.id]);
+    if(n==null){ notify('Importo non valido',1); return; }
+    try{
+      await payApi('/produzione/struttura/sez-c/righe/'+r.id+'?anno='+anno,{
+        method:'PATCH',body:JSON.stringify({importo_addebito:n, modalita:'IMPORTO_LIBERO', stato:'attiva'})});
+      notify(r.nome+': addebito '+eur(n)+' salvato');
+      await loadSezC(anno); await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Salvataggio fallito',1); }
+  };
+  const eliminaRigaC=async (r)=>{
+    if(!confirm('Eliminare '+r.nome+'?')) return;
+    try{
+      await payApi('/produzione/struttura/sez-c/righe/'+r.id,{method:'DELETE'});
+      await loadSezC(anno); await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Eliminazione fallita',1); }
+  };
+  const addMov=async ()=>{
+    const n=parseEuro(newMov.importo);
+    if(n==null){ notify('Importo obbligatorio',1); return; }
+    try{
+      await payApi('/produzione/struttura/movimenti?anno='+anno,{method:'POST',body:JSON.stringify({...newMov,importo:n})});
+      setNewMov({tipo:'BONIFICO',data:'',causale:'',importo:''});
+      notify('Acconto aggiunto');
+      await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Inserimento fallito',1); }
+  };
+  const saveMov=async ()=>{
+    if(!editMov) return;
+    const n=parseEuro(editMov.importo);
+    if(n==null){ notify('Importo non valido',1); return; }
+    try{
+      await payApi('/produzione/struttura/movimenti/'+editMov.id,{method:'PATCH',body:JSON.stringify({...editMov,importo:n})});
+      setEditMov(null);
+      notify('Movimento aggiornato');
+      await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Modifica fallita',1); }
+  };
+  const delMov=async (r)=>{
+    if(!confirm('Eliminare questo movimento?')) return;
+    try{
+      await payApi('/produzione/struttura/movimenti/'+r.id,{method:'DELETE'});
+      notify('Movimento eliminato');
+      await load(anno);
+    }catch(e){ notify(e.detail||e.message||'Eliminazione fallita',1); }
+  };
+  // Stessi formattatori KPI di Compensi (eur / payFmtDed); valori da snapshot/quadro invariati
+  const rip=Number(data.riporto||0);
+  const totA=Number(data.totale_sezione_a||0);
+  const totB=Number(data.totale_sezione_b||0);
+  const totC=Number(sezC.totale||0);
+  const totD=Number(data.totale_sezione_d||0);
+  const totProd=Number(riep.produzione!=null?riep.produzione:(rip+totA+totB-totC));
+  const totAcc=Number(riep.acconti!=null?riep.acconti:totD);
+  const totCarta=Number(riep.carta_servizi||0);
+  const saldoFin=Number(riep.credito_debito!=null?riep.credito_debito:(totProd-totAcc-totCarta));
+  const phTot=v=><span className="sp mono" style={{fontSize:13,fontWeight:700,color:'var(--navy)'}}>{eur(v)}</span>;
+  return <div className="pay-strutt">
+    <div className="top">
+      <div>
+        <h1>Struttura</h1>
+        <div className="sub">Produzione globale Roma · {data.anno}{fonteNote?' · '+fonteNote:''}</div>
+      </div>
+      <div className="selrow" style={{margin:0}}>
+        <select value={anno||''} onChange={e=>load(+e.target.value)}>
+          {(data.anni||[]).map(a=><option key={a} value={a}>Anno {a}</option>)}
+        </select>
+        <button className="btn btn-g btn-sm" onClick={()=>load(anno)}>Aggiorna</button>
+      </div>
+    </div>
+    {data.messaggio && <div className="sc-banner warn">⚠ {data.messaggio}</div>}
+
+    <div className="saldo saldo-kpi-row">
+      <div className={'sbox'+(rip<0?' neg':'')}><div className="l">Riporto anno prec.</div><div className="v">{eur(rip)}</div></div>
+      <div className="sbox pos"><div className="l">Produzione pratiche</div><div className="v">{eur(totA)}</div></div>
+      <div className="sbox pos"><div className="l">Mensilità</div><div className="v">{eur(totB)}</div></div>
+      <div className={'sbox'+(totC>0?' neg':'')}><div className="l">Costi struttura</div><div className="v">{payFmtDed(totC)}</div></div>
+      <div className="sbox"><div className="l">Acconti / saldi</div><div className="v">{payFmtDed(totD)}</div></div>
+      <div className="sbox final"><div className="l">Credito / Debito</div><div className={'v'+(saldoFin<0?' neg':'')}>{eur(saldoFin)}</div></div>
+    </div>
+
+    <div className="pay-layout">
+      <div className="panel">
+        <div className="ph">
+          <h3>Riporti anno precedente</h3>
+          {phTot(rip)}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="tbl">
+            <thead><tr><th>Voce</th><th className="r">Importo</th></tr></thead>
+            <tbody>
+              <tr className="pay-comp-row">
+                <td>Riporto anno precedente</td>
+                <td className={'r mono'+(rip<0?' neg':'')} style={{fontWeight:700}}>{eur(rip)}</td>
+              </tr>
+              <tr className="tot">
+                <td className="r">Totale Riporti anno precedente</td>
+                <td className={'r mono'+(rip<0?' neg':'')}>{eur(rip)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="ph">
+          <h3>Produzione pratiche</h3>
+          {phTot(totA)}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="tbl">
+            <thead><tr>
+              <th>Voce</th>
+              <th className="r">Presentate</th>
+              <th className="r">Accolte</th>
+              <th className="r">Franchigia</th>
+              <th className="r">Riscosso</th>
+              <th className="r">Conv.</th>
+              <th className="r">Dovuto</th>
+            </tr></thead>
+            <tbody>
+              {sezA.map((r,i)=><tr key={i} className="pay-comp-row">
+                <td>{r.label}</td>
+                {cell(r.presentate==null?null:numS(r.presentate), isPatr(r.voce)&&r.presentate?'neg':'')}
+                {cell(r.accolte==null?null:numS(r.accolte))}
+                <td className={'r'+(r.nota?'':' e')} style={{fontSize:11.5,fontWeight:500}}>{r.nota||'—'}</td>
+                {cell(r.riscosso==null?null:eur(r.riscosso))}
+                {cell(r.rif_conv==null?null:rifS(r.rif_conv))}
+                {cell(r.dovuto==null?null:eur(r.dovuto))}
+              </tr>)}
+              {!sezA.length&&<tr><td colSpan={7} className="e" style={{textAlign:'left'}}>Nessuna voce per l&apos;anno</td></tr>}
+              {!!sezA.length&&<tr className="tot">
+                <td colSpan={6} className="r">Totale Produzione pratiche</td>
+                <td className="r mono">{eur(totA)}</td>
+              </tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="ph">
+          <h3>Mensilità pensionati</h3>
+          {phTot(totB)}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="tbl">
+            <thead><tr>
+              <th>Voce</th>
+              <th className="r">Tot anno</th>
+              <th className="r">Conv.</th>
+              <th className="r">Comp.</th>
+            </tr></thead>
+            <tbody>
+              {sezB.map((r,i)=><tr key={i} className="pay-comp-row">
+                <td>Pensionati {r.ente}</td>
+                {cell(r.tot_anno==null?null:eur(r.tot_anno))}
+                {cell(r.rif_conv==null?null:rifS(r.rif_conv))}
+                {cell(r.dovuto==null?null:eur(r.dovuto))}
+              </tr>)}
+              {!sezB.length&&<tr><td colSpan={4} className="e" style={{textAlign:'left'}}>Nessuna mensilità</td></tr>}
+              {!!sezB.length&&<tr className="tot">
+                <td colSpan={3} className="r">Totale Mensilità pensionati</td>
+                <td className="r mono">{eur(totB)}</td>
+              </tr>}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="ph">
+          <h3>Costi struttura</h3>
+          {phTot(totC)}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="tbl">
+            <thead><tr>
+              <th>Voce</th>
+              <th className="r">N° dip.</th>
+              <th className="r">Costo</th>
+              <th className="r">Addebito</th>
+            </tr></thead>
+            <tbody>
+              {(sezC.righe||[]).map((r,i)=><tr key={i} className="pay-comp-row">
+                <td>{r.ditta}{r.struttura&&r.struttura!=='—'?<div className="muted small" style={{fontSize:10,marginTop:2}}>{r.struttura}</div>:null}</td>
+                {cell(numS(r.n_dipendenti))}
+                {cell(eur(r.costo_totale))}
+                {cell(eur(r.importo_addebito!=null?r.importo_addebito:r.quota_ribaltata),'neg')}
+              </tr>)}
+              {!(sezC.righe||[]).length&&<tr><td colSpan={4} className="e" style={{textAlign:'left'}}>Nessun costo Struttura — usa «Gestisci costi»</td></tr>}
+              {(sezC.righe||[]).length>0&&<tr className="tot">
+                <td colSpan={3} className="r">Totale Costi struttura</td>
+                <td className="r mono neg">{eur(totC)}</td>
+              </tr>}
+            </tbody>
+          </table>
+        </div>
+        <div className="pad" style={{paddingTop:12,paddingBottom:14,borderTop:'1px solid var(--line)',background:'#F8FAFD'}}>
+          <button type="button" className="btn btn-g btn-sm" onClick={()=>setSezCPanel(v=>!v)}>
+            {sezCPanel?'Chiudi gestione':'Gestisci costi Struttura'}
+          </button>
+        </div>
+      </div>
+
+      {sezCPanel && <div className="panel">
+        <div className="ph">
+          <h3>Gestione costi Struttura</h3>
+        </div>
+        <div className="pad">
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>
+            <button type="button" className="btn btn-g btn-sm" disabled={cBusy} onClick={copiaCosti}>
+              {cBusy?'Copia in corso…':'Copia da Costi dipendenti'}
+            </button>
+            <button type="button" className="btn btn-sm" onClick={()=>loadSezC(anno)}>Ricarica</button>
+          </div>
+          <div className="muted small" style={{fontWeight:700,marginBottom:8}}>Dipendenti ({(cRighe?.righe||[]).length})</div>
+          <div style={{overflowX:'auto'}}>
+            <table className="tbl">
+              <thead><tr>
+                <th>Nome</th><th>Struttura</th><th className="r">Costo</th><th className="r">Gestione</th>
+                <th className="r">Addebito</th><th>Modalità</th><th></th>
+              </tr></thead>
+              <tbody>
+                {(cRighe?.righe||[]).map(r=><tr key={r.id} style={r.stato==='esclusa'?{opacity:.55}:null}>
+                  <td>{r.nome}<div className="muted small" style={{fontSize:10,marginTop:2}}>{r.ditta||r.origine||''}</div></td>
+                  <td>{r.struttura_label||'—'}</td>
+                  {cell(eur(r.costo_totale))}
+                  {cell(r.importo_gestione==null?null:eur(r.importo_gestione))}
+                  <td className="r">
+                    <input className="mono" style={{width:100,textAlign:'right',padding:'6px 8px',border:'1.5px solid var(--line)',borderRadius:8}}
+                      value={draftAddeb[r.id]??''}
+                      onChange={e=>setDraftAddeb(d=>({...d,[r.id]:e.target.value}))}
+                      onKeyDown={e=>{ if(e.key==='Enter'){ e.preventDefault(); salvaAddebito(r); } }}/>
+                    <button type="button" className="btn btn-p btn-sm" style={{marginLeft:6}} onClick={()=>salvaAddebito(r)}>OK</button>
+                  </td>
+                  <td>
+                    <select value={r.modalita||'COSTO_PIENO'} onChange={e=>salvaModalita(r,e.target.value)}
+                      style={{minWidth:140,height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px',fontWeight:600}}>
+                      <option value="COSTO_PIENO">Costo pieno</option>
+                      <option value="SOLO_GESTIONE">Solo gestione</option>
+                      <option value="IMPORTO_LIBERO">Importo libero</option>
+                    </select>
+                  </td>
+                  <td style={{whiteSpace:'nowrap'}}>
+                    <button type="button" className="btn btn-g btn-sm" onClick={()=>eliminaRigaC(r)}>Elimina</button>
+                  </td>
+                </tr>)}
+                {!(cRighe?.righe||[]).length&&<tr><td colSpan={7} className="e" style={{textAlign:'left'}}>Nessuna riga</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>}
+
+      <div className="panel">
+        <div className="ph">
+          <h3>Acconti o saldi</h3>
+          {phTot(totD)}
+        </div>
+        <div className="pad">
+          <div className="pay-strutt-form">
+            <label>Tipo
+              <input value={newMov.tipo} onChange={e=>setNewMov(m=>({...m,tipo:e.target.value}))} style={{width:110}}/>
+            </label>
+            <label>Data
+              <input value={newMov.data} onChange={e=>setNewMov(m=>({...m,data:e.target.value}))} placeholder="GENNAIO" style={{width:110}}/>
+            </label>
+            <label style={{flex:1,minWidth:160}}>Causale
+              <input value={newMov.causale} onChange={e=>setNewMov(m=>({...m,causale:e.target.value}))} style={{width:'100%'}}/>
+            </label>
+            <label>Importo
+              <input className="mono" value={newMov.importo} onChange={e=>setNewMov(m=>({...m,importo:e.target.value}))} style={{width:110,textAlign:'right'}}/>
+            </label>
+            <button type="button" className="btn btn-p btn-sm" onClick={addMov}>Aggiungi</button>
+          </div>
+          <div style={{overflowX:'auto'}}>
+            <table className="tbl">
+              <thead><tr>
+                <th>Tipo</th><th>Data</th><th>Causale</th>
+                <th className="r">Importo</th><th>Origine</th><th></th>
+              </tr></thead>
+              <tbody>
+                {sezD.map((r)=>(
+                  editMov&&editMov.id===r.id
+                    ? <tr key={r.id}>
+                        <td><input value={editMov.tipo||''} onChange={e=>setEditMov(m=>({...m,tipo:e.target.value}))} style={{width:90,height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
+                        <td><input value={editMov.data||''} onChange={e=>setEditMov(m=>({...m,data:e.target.value}))} style={{width:90,height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
+                        <td><input value={editMov.causale||''} onChange={e=>setEditMov(m=>({...m,causale:e.target.value}))} style={{width:'100%',height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
+                        <td className="r"><input className="mono" value={editMov.importo??''} onChange={e=>setEditMov(m=>({...m,importo:e.target.value}))} style={{width:100,textAlign:'right',height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
+                        <td className="e">{r.origine||'—'}</td>
+                        <td style={{whiteSpace:'nowrap'}}>
+                          <button type="button" className="btn btn-p btn-sm" onClick={saveMov}>Salva</button>{' '}
+                          <button type="button" className="btn btn-g btn-sm" onClick={()=>setEditMov(null)}>Annulla</button>
+                        </td>
+                      </tr>
+                    : <tr key={r.id} className="pay-comp-row">
+                        <td className="mono">{r.tipo||'—'}</td>
+                        <td className="mono">{r.data||'—'}</td>
+                        <td>{r.causale||'—'}</td>
+                        {cell(eur(r.importo))}
+                        <td><span className={'sc-pill '+(r.origine==='MANUALE'?'ok':'')}>{r.origine||'RC33'}</span></td>
+                        <td style={{whiteSpace:'nowrap'}}>
+                          <button type="button" className="btn btn-g btn-sm" onClick={()=>setEditMov({id:r.id,tipo:r.tipo,data:r.data,causale:r.causale,importo:r.importo})}>Modifica</button>{' '}
+                          <button type="button" className="btn btn-g btn-sm" onClick={()=>delMov(r)}>Elimina</button>
+                        </td>
+                      </tr>
+                ))}
+                {!sezD.length&&<tr><td colSpan={6} className="e" style={{textAlign:'left'}}>Nessun movimento — aggiungine uno sopra</td></tr>}
+                {!!sezD.length&&<tr className="tot">
+                  <td colSpan={3} className="r">Totale Acconti o saldi</td>
+                  <td className="r mono">{eur(totD)}</td>
+                  <td colSpan={2}/>
+                </tr>}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="ph">
+          <h3>Riepilogo situazione generale</h3>
+          {phTot(saldoFin)}
+        </div>
+        <div style={{overflowX:'auto'}}>
+          <table className="tbl">
+            <thead><tr><th>Voce</th><th className="r">Importo</th></tr></thead>
+            <tbody>
+              <tr className="pay-comp-row"><td>Totale produzione {(riep.formula||'(R+A+B)−C')}</td>{cell(eur(totProd))}</tr>
+              <tr className="pay-comp-row"><td>Totale acconti o saldi versati</td>{cell(eur(totAcc))}</tr>
+              <tr className="pay-comp-row"><td>Carta servizi</td>{cell(eur(totCarta))}</tr>
+              <tr className="tot">
+                <td className="r">Credito / Debito</td>
+                <td className={'r mono'+(saldoFin<0?' neg':'')}>{eur(saldoFin)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>;
+}
+
+function PayControllo({toast, embedded, initialAnno}){
+  const [data,setData]=useState(null);
+  const [anno,setAnno]=useState(initialAnno!=null?+initialAnno:null);
+  const [q,setQ]=useState('');
+  const [soloAnom,setSoloAnom]=useState(false);
+  const [tabSedi,setTabSedi]=useState('attive');
+  const [err,setErr]=useState('');
+  const load=async (a)=>{
+    try{
+      await ensurePayAuth();
+      const qs=a!=null?('?anno='+a):'';
+      const d=await payApi('/controllo'+qs);
+      setData(d); setAnno(d.anno); setErr('');
+    }catch(e){ setErr(e.detail||e.message||'Errore controllo'); setData(null); }
+  };
+  useEffect(()=>{ load(initialAnno!=null?+initialAnno:null); },[initialAnno]);
+  if(err) return <div className="infobox">⚠ {err}</div>;
+  if(!data) return <p className="muted">Caricamento quadro di controllo…</p>;
+  const canali=data.canali||[];
+  const qq=q.trim().toUpperCase();
+  const nAperte=(data.totale_aperte!=null)?data.totale_aperte:(data.righe||[]).filter(r=>!r.sede_chiusa).length;
+  const nChiuse=(data.totale_chiuse!=null)?data.totale_chiuse:(data.righe||[]).filter(r=>r.sede_chiusa).length;
+  let righe=(data.righe||[]).filter(r=>{
+    const chiusa=!!r.sede_chiusa;
+    if(tabSedi==='attive' && chiusa) return false;
+    if(tabSedi==='chiuse' && !chiusa) return false;
+    if(!qq) return true;
+    return String(r.nome||'').toUpperCase().includes(qq)||String(r.codice||'').toUpperCase().includes(qq);
+  });
+  if(soloAnom){
+    righe=righe.filter(r=>Object.values(r.celle||{}).some(c=>c.cls==='calo'||c.cls==='assente'));
+  }
+  const lacune=(data.lacune||[]).filter(L=>{
+    const chiusa=!!L.sede_chiusa;
+    if(tabSedi==='attive' && chiusa) return false;
+    if(tabSedi==='chiuse' && !chiusa) return false;
+    return true;
+  });
+  const margNeg=(data.margini_negativi||[]).filter(M=>{
+    const chiusa=!!M.sede_chiusa;
+    if(tabSedi==='attive' && chiusa) return false;
+    if(tabSedi==='chiuse' && !chiusa) return false;
+    if(qq && !(String(M.nome||'').toUpperCase().includes(qq)||String(M.voce||'').toUpperCase().includes(qq)||String(M.listino||'').toUpperCase().includes(qq))) return false;
+    return true;
+  });
+  const eurCtrl=v=>{
+    const n=Number(v||0);
+    return (n<0?'-':'')+'€ '+Math.abs(n).toLocaleString('it-IT',{minimumFractionDigits:2,maximumFractionDigits:2});
+  };
+  return <div>
+    {!embedded && <div className="top"><div>
+      <h1>Controllo produzione</h1>
+      <div className="sub">Confronto {data.anno} vs anno precedente ({data.anno_prec}) per canale · calo oltre {data.soglia_calo_pct||25}% evidenziato</div>
+    </div></div>}
+    {embedded && <div className="sub" style={{marginBottom:10}}>
+      Quadro per canale · confronto {data.anno} vs {data.anno_prec} · calo oltre {data.soglia_calo_pct||25}% evidenziato
+    </div>}
+    <div className="pay-ctrl-tabs">
+      <button type="button" className={'btn btn-sm '+(tabSedi==='attive'?'btn-p':'btn-g')} onClick={()=>setTabSedi('attive')}>
+        Sedi aperte ({nAperte})
+      </button>
+      <button type="button" className={'btn btn-sm '+(tabSedi==='chiuse'?'btn-p':'btn-g')} onClick={()=>setTabSedi('chiuse')}>
+        Sedi chiuse ({nChiuse})
+      </button>
+    </div>
+    <div className="selrow" style={{marginBottom:12,flexWrap:'wrap',display:'flex',gap:8,alignItems:'center'}}>
+      <label className="muted small" style={{display:'flex',alignItems:'center',gap:6}}>Anno
+        <select value={anno||''} onChange={e=>load(+e.target.value)}>
+          {(data.anni||[]).map(a=><option key={a} value={a}>{a}</option>)}
+        </select>
+      </label>
+      <input placeholder="Cerca nome o codice…" value={q} onChange={e=>setQ(e.target.value)} style={{minWidth:200}}/>
+      <label className="muted small" style={{display:'flex',alignItems:'center',gap:6}}>
+        <input type="checkbox" checked={soloAnom} onChange={e=>setSoloAnom(e.target.checked)}/> Solo anomalie / assenti
+      </label>
+      <button className="btn btn-g btn-sm" onClick={()=>load(anno)}>Aggiorna</button>
+    </div>
+    {margNeg.length>0 && <div className="infobox" style={{borderColor:'#E57373',background:'#FDECEA',marginBottom:12}}>
+      <b style={{color:'#8B1E18'}}>{margNeg.length} margine/i negativo/i</b> nell&apos;anno {data.anno}:
+      compenso collaboratore superiore alla quota Listino BASE (non ammesso). Dettaglio sotto.
+    </div>}
+    <div className="pay-ctrl-legend">
+      <span><i style={{background:'#EEF8F0'}}/> in linea con A.P.</span>
+      <span><i style={{background:'#FDECEA'}}/> inferiore oltre 25% vs A.P.</span>
+      <span><i style={{background:'#FCE8E6',boxShadow:'inset 0 0 0 1px #E57373'}}/> valore assente</span>
+      <span className="muted">{righe.length} collaboratori · {lacune.length} lacune · {margNeg.length} margini negativi</span>
+    </div>
+    <div className="pay-ctrl-wrap">
+      <table className="pay-ctrl-tbl">
+        <thead><tr>
+          <th className="sticky-l">Collaboratore</th>
+          <th className="sticky-c">Codice</th>
+          {canali.map(c=><th key={c.key}>{c.label}</th>)}
+        </tr></thead>
+        <tbody>
+          {righe.map(r=><tr key={r.collaboratore_id}>
+            <td className="sticky-l">{r.nome}{r.data_chiusura_sede&&<div className="muted" style={{fontSize:10,fontWeight:500}}>chiusura {String(r.data_chiusura_sede).split('-').reverse().join('/')}</div>}</td>
+            <td className="sticky-c">{r.codice||'—'}</td>
+            {canali.map(c=>{
+              const cell=(r.celle&&r.celle[c.key])||{};
+              const tip='Attuale: '+num(cell.valore)+' · A.P.: '+num(cell.valore_prec);
+              return <td key={c.key} className={'pay-ctrl-cell '+(cell.cls||'')} title={tip}>{cell.stato||'—'}</td>;
+            })}
+          </tr>)}
+          {!righe.length&&<tr><td colSpan={2+canali.length} className="muted" style={{padding:16}}>Nessun collaboratore con i filtri selezionati</td></tr>}
+        </tbody>
+      </table>
+    </div>
+    <div className="pay-ctrl-marg-neg">
+      <h2 className="warn-title">Margini negativi (compenso &gt; Listino BASE) — {data.anno}</h2>
+      <p className="muted" style={{marginTop:0,fontSize:13}}>
+        Il Listino BASE deve restare sempre ≥ agli altri listini. Se il collaboratore è a fisso € e la BASE a %,
+        il fisso può superare la quota struttura: qui compare come anomalia da correggere sul listino.
+      </p>
+      {!margNeg.length&&<div className="infobox">Nessun margine negativo nell&apos;anno selezionato.</div>}
+      {margNeg.map((M,i)=><div className="item" key={i}>
+        <b>{M.nome}</b> · {M.voce_label||M.voce} · listino <b>{M.listino||'—'}</b><br/>
+        {M.messaggio}
+        <div className="nums">qtà {num(M.quantita)} · quota BASE {eurCtrl(M.quota_struttura)} · compenso {eurCtrl(M.compenso)} · margine <b style={{color:'#8B1E18'}}>{eurCtrl(M.margine)}</b></div>
+      </div>)}
+    </div>
+    <div className="pay-ctrl-lacune">
+      <h2 style={{fontSize:16,margin:'0 0 8px'}}>Report lacune anni</h2>
+      <p className="muted" style={{marginTop:0,fontSize:13}}>
+        Canali con produzione in alcuni anni ma non in altri (tra il primo e l&apos;ultimo anno con dato). Verifica import o codici.
+      </p>
+      {!lacune.length&&<div className="infobox">Nessuna lacuna rilevata sul periodo disponibile.</div>}
+      {lacune.map((L,i)=><div className="item" key={i}>
+        <b>{L.codice||'—'}</b> · {L.nome} · {L.canale_label}<br/>
+        {L.messaggio}
+      </div>)}
+    </div>
+  </div>;
 }
 
 
@@ -12243,9 +13462,9 @@ function App(){
   const [listiniNomi,setListiniNomi]=useState([]);
   useEffect(()=>{
     if(!PAY_USE_API||!auth||(auth.role!=="titolare"&&!(auth.role==="interno"&&auth.permessi&&auth.permessi.collaboratori_compensi))) return;
-    ensurePayAuth().then(()=>Promise.all([payApi("/collaboratori/cards"),payApi("/listini")])).then(([cards,rows])=>{
+    ensurePayAuth().then(()=>Promise.all([payApi("/collaboratori/cards"),payApi("/listini")])).then(([cards,resp])=>{
       if(cards&&cards.length) setCollab(paySortCollabCards(cards));
-      const names=paySortListiniNomi((rows||[]).map(r=>r.listino).filter(Boolean));
+      const names=paySortListiniNomi(payParseListiniResp(resp).listini.map(r=>r.listino).filter(Boolean));
       if(names.length){setListiniNomi(names);window._payListiniNomi=names;}
     }).catch(e=>console.warn("sync collab API",e));
   },[auth]);
@@ -12517,7 +13736,7 @@ function App(){
   const meName=auth.role==="titolare"?"Cosimo Spanò":(auth.role==="interno"?(auth.nome||auth.username):me.nome);
 
   /* ---- costruzione voci di navigazione ---- */
-  const NAV_T_GESTIONE=[["dash","📈","Dashboard"],["lista","👥","Collaboratori"],["imp","📥","Import dati"],["tar","🏷","Listini"],["prod","📊","Produzione"],["costi","💼","Costi dipendenti"],["ade","📋","Adempimenti collaboratori"],["cont","🧾","Da gestire"]];
+  const NAV_T_GESTIONE=[["dash","📈","Dashboard"],["lista","👥","Collaboratori"],["imp","📥","Import dati"],["tar","🏷","Listini"],["prod","📊","Produzione"],["ctrl","🔎","Controllo"],["costi","💼","Costi dipendenti"],["ade","📋","Adempimenti collaboratori"],["cont","🧾","Da gestire"]];
   const NAV_T_PRATICHE=[["office_pratiche","📁","Pratiche"],["prat_tipologie","🧩","Tipologie pratica"],["prat_verifica","🗂️","Lavorazione pratiche"],["office_impdocs","📌","Documenti importanti"]];
   const NAV_T_AREA_CLIENTI=[["ac_clienti","👥","Clienti"],["ac_caricamenti","📤","Caricamenti"],["ac_documenti","📄","Documenti"],["ac_chat","💬","Chat"],["ac_news","📰","News"],["ac_comunicazioni","✉","Comunicazioni"],["ac_richieste","📋","Richieste"],["ac_categorie","🗂","Categorie"]];
   const NAV_T_ALTRO_BASE=[["scad","⏰","Scadenze"],["comm","✉","Comunicazioni"]];
@@ -12551,9 +13770,10 @@ function App(){
     switch(v){
       case "lista": return <React.Fragment>{showNuovo&&<ModalNuovoCollab toast={flash} onClose={()=>setShowNuovo(false)} onSave={c=>setCollab(cs=>paySortCollabCards([...cs.filter(x=>x.id!==c.id),c]))}/>}<Lista collab={collab} onOpen={id=>{setOpenTab("scheda");setOpenId(id);}} onImportAnagrafica={onImportAnagrafica} importReport={importReport} onNuovoCollab={()=>setShowNuovo(true)}/></React.Fragment>;
       case "dash": return <PayDashboard onOpenCollab={n=>{const c=collab.find(x=>String(x.nome).toUpperCase()===String(n).toUpperCase());if(c){setOpenTab("scheda");setOpenId(c.id);}else flash("Collaboratore non in anagrafica CRM — cerca in Collaboratori");}} onNav={h=>{if(typeof h==="string"){setPayNavCtx(null);setV(h);return;}setPayNavCtx(h);setV(h.view||h.azione||"tar");}}/>;
-      case "imp": return <PayImport toast={flash}/>;
+      case "imp": return <PayImport toast={flash} onNav={h=>{setPayNavCtx(h);setV(h.view||h.azione||"costi");}}/>;
       case "tar": return <PayListini toast={flash} navHint={payNavCtx&&payNavCtx.view==="tar"?payNavCtx:null} onNavConsumed={()=>setPayNavCtx(c=>(c&&c.view==="tar"?null:c))}/>;
-      case "prod": return <ProduzioneMonitor collabDemo={collab} onOpenCollab={n=>{const c=collab.find(x=>String(x.nome).toUpperCase()===String(n).toUpperCase());if(c){setOpenTab("prod");setOpenId(c.id);}}} />;
+      case "prod": return <ProduzioneMonitor collabDemo={collab} toast={flash} onOpenCollab={n=>{const c=collab.find(x=>String(x.nome).toUpperCase()===String(n).toUpperCase());if(c){setOpenTab("prod");setOpenId(c.id);}}} />;
+      case "ctrl": return <PayControllo toast={flash}/>;
       case "costi": return <PayCostiDipendenti toast={flash} navHint={payNavCtx&&payNavCtx.view==="costi"?payNavCtx:null} onNavConsumed={()=>setPayNavCtx(c=>(c&&c.view==="costi"?null:c))}/>;
       case "ade": return <PayAdempimenti toast={flash}/>;
       case "cont": return <PayCode toast={flash}/>;
