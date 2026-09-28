@@ -11201,7 +11201,7 @@ function PayStruttura({toast, embedded, initialAnno}){
   const saldoFin=Number(riep.credito_debito!=null?riep.credito_debito:(totProd-totAcc-totCarta));
   const phTot=v=><span className="sp mono" style={{fontSize:13,fontWeight:700,color:'var(--navy)'}}>{eur(v)}</span>;
   return <div className="pay-strutt">
-    <div className="top">
+    <div className="top noprint">
       <div>
         <h1>Struttura</h1>
         <div className="sub">Produzione globale Roma · {data.anno}{fonteNote?' · '+fonteNote:''}</div>
@@ -11210,10 +11210,22 @@ function PayStruttura({toast, embedded, initialAnno}){
         <select value={anno||''} onChange={e=>load(+e.target.value)}>
           {(data.anni||[]).map(a=><option key={a} value={a}>Anno {a}</option>)}
         </select>
+        <button className="btn btn-g btn-sm" onClick={()=>payStampa('pay-strutt-print')}>🖨 Stampa riepilogo</button>
         <button className="btn btn-g btn-sm" onClick={()=>load(anno)}>Aggiorna</button>
       </div>
     </div>
-    {data.messaggio && <div className="sc-banner warn">⚠ {data.messaggio}</div>}
+    <div id="pay-strutt-print">
+    <div className="onlyprint" style={{display:'none',marginBottom:12}}>
+      <div className="pay-comp-hd">
+        <h2>RIEPILOGO STRUTTURA UNSIC</h2>
+        <div className="pay-comp-meta">
+          <div className="pay-meta-box"><div className="l">Sezione</div><div className="v">Produzione globale Roma</div></div>
+          <div className="pay-meta-box"><div className="l">Periodo</div><div className="v">{data.anno}</div></div>
+          <div className="pay-meta-box"><div className="l">Data stampa</div><div className="v">{new Date().toLocaleDateString('it-IT')}</div></div>
+        </div>
+      </div>
+    </div>
+    {data.messaggio && <div className="sc-banner warn noprint">⚠ {data.messaggio}</div>}
 
     <div className="saldo saldo-kpi-row">
       <div className={'sbox'+(rip<0?' neg':'')}><div className="l">Riporto anno prec.</div><div className="v">{eur(rip)}</div></div>
@@ -11341,14 +11353,14 @@ function PayStruttura({toast, embedded, initialAnno}){
             </tbody>
           </table>
         </div>
-        <div className="pad" style={{paddingTop:12,paddingBottom:14,borderTop:'1px solid var(--line)',background:'#F8FAFD'}}>
+        <div className="pad noprint" style={{paddingTop:12,paddingBottom:14,borderTop:'1px solid var(--line)',background:'#F8FAFD'}}>
           <button type="button" className="btn btn-g btn-sm" onClick={()=>setSezCPanel(v=>!v)}>
             {sezCPanel?'Chiudi gestione':'Gestisci costi Struttura'}
           </button>
         </div>
       </div>
 
-      {sezCPanel && <div className="panel">
+      {sezCPanel && <div className="panel noprint">
         <div className="ph">
           <h3>Gestione costi Struttura</h3>
         </div>
@@ -11404,7 +11416,7 @@ function PayStruttura({toast, embedded, initialAnno}){
           {phTot(totD)}
         </div>
         <div className="pad">
-          <div className="pay-strutt-form">
+          <div className="pay-strutt-form noprint">
             <label>Tipo
               <input value={newMov.tipo} onChange={e=>setNewMov(m=>({...m,tipo:e.target.value}))} style={{width:110}}/>
             </label>
@@ -11423,12 +11435,12 @@ function PayStruttura({toast, embedded, initialAnno}){
             <table className="tbl">
               <thead><tr>
                 <th>Tipo</th><th>Data</th><th>Causale</th>
-                <th className="r">Importo</th><th>Origine</th><th></th>
+                <th className="r">Importo</th><th>Origine</th><th className="noprint"></th>
               </tr></thead>
               <tbody>
                 {sezD.map((r)=>(
                   editMov&&editMov.id===r.id
-                    ? <tr key={r.id}>
+                    ? <tr key={r.id} className="noprint">
                         <td><input value={editMov.tipo||''} onChange={e=>setEditMov(m=>({...m,tipo:e.target.value}))} style={{width:90,height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
                         <td><input value={editMov.data||''} onChange={e=>setEditMov(m=>({...m,data:e.target.value}))} style={{width:90,height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
                         <td><input value={editMov.causale||''} onChange={e=>setEditMov(m=>({...m,causale:e.target.value}))} style={{width:'100%',height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 8px'}}/></td>
@@ -11445,7 +11457,7 @@ function PayStruttura({toast, embedded, initialAnno}){
                         <td>{r.causale||'—'}</td>
                         {cell(eur(r.importo))}
                         <td><span className={'sc-pill '+(r.origine==='MANUALE'?'ok':'')}>{r.origine||'RC33'}</span></td>
-                        <td style={{whiteSpace:'nowrap'}}>
+                        <td className="noprint" style={{whiteSpace:'nowrap'}}>
                           <button type="button" className="btn btn-g btn-sm" onClick={()=>setEditMov({id:r.id,tipo:r.tipo,data:r.data,causale:r.causale,importo:r.importo})}>Modifica</button>{' '}
                           <button type="button" className="btn btn-g btn-sm" onClick={()=>delMov(r)}>Elimina</button>
                         </td>
@@ -11483,6 +11495,7 @@ function PayStruttura({toast, embedded, initialAnno}){
           </table>
         </div>
       </div>
+    </div>
     </div>
   </div>;
 }
