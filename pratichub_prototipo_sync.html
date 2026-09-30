@@ -1762,7 +1762,7 @@ function Card({c,onOpen}){
 }
 
 function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,onSetListino,onUpdate,listini,listiniNomi,pagamenti,sanzioni,onAcconto,tabInit,toast,detMap}){
-  const [tab,setTab]=useState(tabInit||"scheda");
+  const [tab,setTab]=useState((tabInit==="cred"||tabInit==="port")?"perm":(tabInit||"scheda"));
   const [stab,setStab]=useState("contatti");
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(null);
@@ -1858,7 +1858,7 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
         {haAssociazione({assoc:viewAssoc,soci_associazione:c.soci_associazione})?" · ":""}
         <span className={"st "+clsView}>{lbView}</span> · CF <span className="mono">{viewCf||"—"}</span></div>
         <div className="dtabs">
-        {[["scheda","Scheda"],["compensi","Compensi"],["docs","Documenti"],["cred","Credenziali e portale"],["perm","Permessi"],["prest","Prestazioni a pagamento"]].map(([k,l])=>
+        {[["scheda","Scheda"],["compensi","Compensi"],["docs","Documenti"],["perm","Accesso e permessi"],["prest","Prestazioni a pagamento"]].map(([k,l])=>
           <button key={k} className={tab===k?"on":""} onClick={()=>{if(editing){setEditing(false);setDraft(null);}setTab(k);}}>{l}</button>)}
       </div>
     </div>
@@ -1941,26 +1941,39 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
               return <div key={k} className={"cbox "+cl}><div className="k">{l}</div><div className="v">{v.replace("*","")}</div></div>;})}
             {!nCod&&<div className="muted small">Nessun codice assegnato</div>}
           </div></div>}
-        {stab==="contratto"&&<div className="two-col">
-          <div className="cred">
-            <Info l="Stato occupazionale" r={c.stato_occupazionale}/>
-            <Info l="Comando ENASC" r={c.comando_enasc}/>
-            <Info l="Ore" r={c.ore}/>
-            <Info l="Scadenze contratti" r={c.scadenze_contratti}/>
+        {stab==="contratto"&&<React.Fragment>
+          <div className="two-col">
+            <div className="cred">
+              <Info l="Stato occupazionale" r={c.stato_occupazionale}/>
+              <Info l="Comando ENASC" r={c.comando_enasc}/>
+              <Info l="Ore" r={c.ore}/>
+              <Info l="Scadenze contratti" r={c.scadenze_contratti}/>
+              {!c.stato_occupazionale&&!c.comando_enasc&&!c.ore&&!c.scadenze_contratti&&typeof PayLinkedDocs==="function"&&
+                <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti incarico / convenzione"
+                  filterFn={typeof payDocInIncarico==="function"?payDocInIncarico:cat=>cat==="Incarico"||cat==="Convenzione"}/>}
+            </div>
+            <div className="cred">
+              <Info l="Incarico" r={c.incarico}/>
+              <Info l="CAF" r={c.tipo_sede}/>
+              <Info l="Data chiusura sede" r={c.data_chiusura_sede?c.data_chiusura_sede.split("-").reverse().join("/"):""}/>
+              <Info l="Patronato" r={c.stato_caf}/>
+              {haAssociazione(c)&&<Info l="Soci associazione" r={c.soci_associazione}/>}
+            </div>
           </div>
-          <div className="cred">
-            <Info l="Incarico" r={c.incarico}/>
-            <Info l="CAF" r={c.tipo_sede}/>
-            <Info l="Data chiusura sede" r={c.data_chiusura_sede?c.data_chiusura_sede.split("-").reverse().join("/"):""}/>
-            <Info l="Patronato" r={c.stato_caf}/>
-            {haAssociazione(c)&&<Info l="Soci associazione" r={c.soci_associazione}/>}
-          </div>
-        </div>}
+          {(c.stato_occupazionale||c.comando_enasc||c.ore||c.scadenze_contratti)&&typeof PayLinkedDocs==="function"&&
+            <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti incarico / convenzione"
+              filterFn={typeof payDocInIncarico==="function"?payDocInIncarico:cat=>cat==="Incarico"||cat==="Convenzione"}/>}
+        </React.Fragment>}
         {stab==="note"&&!c.note&&<div className="empty"><div className="big">📝</div>Nessuna nota interna.</div>}
-        {stab==="boll"&&bollDovuto(c.tipo_sede,c)&&<div className="sec"><h3>Bollettino annuale</h3>
-          {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
-            <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
-        </div>}
+        {stab==="boll"&&bollDovuto(c.tipo_sede,c)&&<React.Fragment>
+          <div className="sec"><h3>Bollettino annuale</h3>
+            {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
+              <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
+          </div>
+          {typeof PayLinkedDocs==="function"&&
+            <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti bollettino"
+              filterFn={typeof payDocInBollettini==="function"?payDocInBollettini:cat=>cat==="Bollettino"}/>}
+        </React.Fragment>}
         {stab==="listino"&&<div className="sec"><h3>Schema compenso e listino</h3>
           <ListinoBox/>
           {c.cfg.map(([voce,tipo,val],i)=>
@@ -2114,65 +2127,87 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
         </div>)}
     </React.Fragment>}
 
-    {tab==="cred"&&<React.Fragment>
-      <div className="sec"><h3>Credenziali di accesso</h3>
-        {c.utente?<div className="cred">
-          🔑 Utenza attiva — username <b className="mono">{c.utente.username}</b><br/>
-          {c.utente.mustChange?"⏳ In attesa del primo accesso (cambio password obbligatorio)":"✓ Password impostata dal collaboratore"}<br/><br/>
-          <button className="btn btn-g btn-sm" onClick={async()=>{
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{await ensurePayAuth(); const r=await payApi("/collaboratori/"+c.id+"/utente/reset",{method:"POST"});
-                onUpdate&&onUpdate(c.id,{utente:{...(c.utente||{}),mustChange:true}});
-                toast&&toast("Password resettata: "+(r.password_temporanea||""));
-              }catch(e){toast&&toast(e.detail||"Errore reset");}
-              return;
-            }
-            toast&&toast("Reset password (solo demo locale)");
-          }}>↺ Reset password</button>{" "}
-          <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={async()=>{
-            if(!confirm("Disattivare l'utenza di "+c.nome+"?")) return;
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{await ensurePayAuth(); await payApi("/collaboratori/"+c.id+"/utente",{method:"DELETE"});
-                onUpdate&&onUpdate(c.id,{utente:null});
-                toast&&toast("Utenza disattivata");
-              }catch(e){toast&&toast(e.detail||"Errore");}
-              return;
-            }
-            onUpdate&&onUpdate(c.id,{utente:null});
-          }}>Disattiva utenza</button>
-        </div>:<div className="cred">Nessuna utenza creata.<br/><br/>
-          <button className="btn btn-p btn-sm" onClick={async()=>{
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{
-                await ensurePayAuth();
-                const r=await payApi("/collaboratori/"+c.id+"/utente",{method:"POST"});
-                onUpdate&&onUpdate(c.id,{utente:{username:r.username,mustChange:true,email:""}});
-                toast&&toast("Credenziali create — utente "+r.username+" · password temporanea: "+r.password_temporanea);
-              }catch(e){toast&&toast(e.detail||e.message||"Errore creazione credenziali");}
-              return;
-            }
-            if(!c.cf){ toast&&toast("Serve il codice fiscale per creare l'utenza"); return; }
-            onUpdate&&onUpdate(c.id,{utente:{username:c.cf.toUpperCase(),mustChange:true,email:""}});
-            toast&&toast("Credenziali create (demo) — password: demo");
-          }}>+ Crea credenziali (username = codice fiscale)</button></div>}
-      </div>
-      <div className="sec"><h3>Sezioni base</h3>
-        <div className="swrow">
-          <div className="t"><b>Dashboard</b><span>Sempre attiva (home del collaboratore)</span></div>
-          <div className="sw on" style={{opacity:.45,cursor:"default"}}/>
-        </div>
-        <div style={{fontSize:12.5,color:"var(--mut)"}}>Nella scheda <b>Permessi</b> puoi abilitare le sezioni Contabilità e le sezioni Invio pratiche.</div>
-      </div>
-    </React.Fragment>}
-
     {tab==="perm"&&<React.Fragment>
-      <div className="infobox">ℹ️ Le sezioni <b>Contabilità (portale)</b> mostrano al collaboratore solo i propri dati. Le sezioni <b>Gestione contabile</b> danno accesso a funzioni avanzate, sempre <b>filtrate</b> ai soli dati di {c.nome.split(" ")[0]} — non vedrà mai i dati degli altri collaboratori.</div>
+      <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16,flexWrap:"wrap"}}>
+        <div className="ava" style={{width:52,height:52,fontSize:16,borderRadius:14}}>{ini(c.nome)}</div>
+        <div style={{minWidth:0,flex:1}}>
+          <h3 style={{margin:"0 0 4px",fontSize:18}}>{c.nome}</h3>
+          <div className="muted" style={{margin:0,fontSize:13}}>
+            {c.utente
+              ? <>Utenza <b className="mono">{c.utente.username}</b> · {c.utente.mustChange?"primo accesso in attesa":"password impostata"}</>
+              : <>Nessuna utenza portale · crea le credenziali qui sotto</>}
+          </div>
+        </div>
+      </div>
+
+      <div className="infobox" style={{marginBottom:16}}>
+        Abilita le <b>singole sezioni</b> del portale e della gestione contabile (filtrate ai soli dati di {c.nome.split(" ")[0]}).
+        Credenziali, portale e permessi sono unificati in questa scheda.
+      </div>
+
+      <div className="permgroup">
+        <div className="pgt">Credenziali di accesso</div>
+        {c.utente ? <React.Fragment>
+          <div className="swrow" style={{cursor:"default"}}>
+            <div className="t"><b>🔑 Utenza attiva</b>
+              <span>Username <b className="mono">{c.utente.username}</b> · {c.utente.mustChange?"⏳ cambio password obbligatorio al primo accesso":"✓ password impostata dal collaboratore"}</span>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4,marginBottom:4}}>
+            <button className="btn btn-g btn-sm" onClick={async()=>{
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{await ensurePayAuth(); const r=await payApi("/collaboratori/"+c.id+"/utente/reset",{method:"POST"});
+                  onUpdate&&onUpdate(c.id,{utente:{...(c.utente||{}),mustChange:true}});
+                  toast&&toast("Password resettata: "+(r.password_temporanea||""));
+                }catch(e){toast&&toast(e.detail||"Errore reset");}
+                return;
+              }
+              toast&&toast("Reset password (solo demo locale)");
+            }}>↺ Reset password</button>
+            <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={async()=>{
+              if(!confirm("Disattivare l'utenza di "+c.nome+"?")) return;
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{await ensurePayAuth(); await payApi("/collaboratori/"+c.id+"/utente",{method:"DELETE"});
+                  onUpdate&&onUpdate(c.id,{utente:null});
+                  toast&&toast("Utenza disattivata");
+                }catch(e){toast&&toast(e.detail||"Errore");}
+                return;
+              }
+              onUpdate&&onUpdate(c.id,{utente:null});
+            }}>Disattiva utenza</button>
+          </div>
+        </React.Fragment> : <React.Fragment>
+          <div className="swrow" style={{cursor:"default"}}>
+            <div className="t"><b>Nessuna utenza</b>
+              <span>Crea le credenziali: username = codice fiscale</span>
+            </div>
+          </div>
+          <div style={{marginTop:4,marginBottom:4}}>
+            <button className="btn btn-p btn-sm" onClick={async()=>{
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{
+                  await ensurePayAuth();
+                  const r=await payApi("/collaboratori/"+c.id+"/utente",{method:"POST"});
+                  onUpdate&&onUpdate(c.id,{utente:{username:r.username,mustChange:true,email:""}});
+                  toast&&toast("Credenziali create — utente "+r.username+" · password temporanea: "+r.password_temporanea);
+                }catch(e){toast&&toast(e.detail||e.message||"Errore creazione credenziali");}
+                return;
+              }
+              if(!c.cf){ toast&&toast("Serve il codice fiscale per creare l'utenza"); return; }
+              onUpdate&&onUpdate(c.id,{utente:{username:c.cf.toUpperCase(),mustChange:true,email:""}});
+              toast&&toast("Credenziali create (demo) — password: demo");
+            }}>+ Crea credenziali</button>
+          </div>
+        </React.Fragment>}
+      </div>
 
       <div className="permgroup">
         <div className="pgt">Contabilità (portale)</div>
         {PORTALE_KEYS.map(([k,ic,label])=>
           <div className="swrow" key={k}>
-            <div className="t"><b>{ic} {label}</b></div>
+            <div className="t"><b>{ic} {label}</b>
+              {k==="dashboard"?<span>Home del collaboratore</span>:null}
+            </div>
             <button className={"sw"+(c.portal[k]?" on":"")} onClick={()=>onTogPortal(c.id,k)}/>
           </div>)}
       </div>
@@ -2185,6 +2220,7 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
             <button className={"sw"+(c.gestione[k]?" on":"")} onClick={()=>onTogGestione(c.id,k)}/>
           </div>)}
       </div>
+
       <div className="permgroup">
         <div className="pgt">Invio pratiche (portale)</div>
         {PORTALE_PRATICHE_KEYS.map(([k,ic,label])=>
@@ -2193,7 +2229,8 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
             <button className={"sw"+(c.portal[k]?" on":"")} onClick={()=>onTogPortal(c.id,k)}/>
           </div>)}
       </div>
-      <div style={{fontSize:12.5,color:"var(--mut)"}}>Le modifiche hanno effetto immediato sul menu del collaboratore al prossimo accesso (o aggiornando la pagina, in questa demo).</div>
+
+      <div style={{fontSize:12.5,color:"var(--mut)",marginTop:8}}>Le modifiche hanno effetto immediato sul menu del collaboratore al prossimo accesso (o aggiornando la pagina).</div>
     </React.Fragment>}
 
     {tab==="prest"&&<div className="infobox">Prestazioni a pagamento: disponibili con API attiva (?api=1).</div>}

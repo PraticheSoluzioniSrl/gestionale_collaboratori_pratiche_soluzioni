@@ -2123,7 +2123,7 @@ function Card({c,onOpen}){
 }
 
 function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,onSetListino,onUpdate,listini,listiniNomi,pagamenti,sanzioni,onAcconto,tabInit,toast,detMap}){
-  const [tab,setTab]=useState(tabInit||"scheda");
+  const [tab,setTab]=useState((tabInit==="cred"||tabInit==="port")?"perm":(tabInit||"scheda"));
   const [stab,setStab]=useState("contatti");
   const [editing,setEditing]=useState(false);
   const [draft,setDraft]=useState(null);
@@ -2219,7 +2219,7 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
         {(typeof haAssociazione==="function"&&haAssociazione({assoc:viewAssoc,soci_associazione:c.soci_associazione}))?" · ":""}
         <span className={"st "+clsView}>{lbView}</span> · CF <b>{viewCf||"—"}</b></div>
         <div className="sc-htabs">
-        {[["scheda","Scheda"],["compensi","Compensi"],["prod","Produzione"],["docs","Documenti"],["cred","Credenziali e portale"],["perm","Permessi"],["prest","Prestazioni a pagamento"]].map(([k,l])=>
+        {[["scheda","Scheda"],["compensi","Compensi"],["prod","Produzione"],["docs","Documenti"],["perm","Accesso e permessi"],["prest","Prestazioni a pagamento"]].map(([k,l])=>
           <button key={k} className={tab===k?"on":""} onClick={()=>{if(editing){setEditing(false);setDraft(null);}setTab(k);}}>{l}</button>)}
       </div>
     </div>
@@ -2302,26 +2302,39 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
               return <div key={k} className={"cbox "+cl}><div className="k">{l}</div><div className="v">{v.replace("*","")}</div></div>;})}
             {!nCod&&<div className="muted small">Nessun codice assegnato</div>}
           </div></div>}
-        {stab==="contratto"&&<div className="two-col">
-          <div className="cred">
-            <Info l="Stato occupazionale" r={c.stato_occupazionale}/>
-            <Info l="Comando ENASC" r={c.comando_enasc}/>
-            <Info l="Ore" r={c.ore}/>
-            <Info l="Scadenze contratti" r={c.scadenze_contratti}/>
+        {stab==="contratto"&&<React.Fragment>
+          <div className="two-col">
+            <div className="cred">
+              <Info l="Stato occupazionale" r={c.stato_occupazionale}/>
+              <Info l="Comando ENASC" r={c.comando_enasc}/>
+              <Info l="Ore" r={c.ore}/>
+              <Info l="Scadenze contratti" r={c.scadenze_contratti}/>
+              {!c.stato_occupazionale&&!c.comando_enasc&&!c.ore&&!c.scadenze_contratti&&typeof PayLinkedDocs==="function"&&
+                <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti incarico / convenzione"
+                  filterFn={typeof payDocInIncarico==="function"?payDocInIncarico:cat=>cat==="Incarico"||cat==="Convenzione"}/>}
+            </div>
+            <div className="cred">
+              <Info l="Incarico" r={c.incarico}/>
+              <Info l="CAF" r={c.tipo_sede}/>
+              <Info l="Data chiusura sede" r={c.data_chiusura_sede?c.data_chiusura_sede.split("-").reverse().join("/"):""}/>
+              <Info l="Patronato" r={c.stato_caf}/>
+              {haAssociazione(c)&&<Info l="Soci associazione" r={c.soci_associazione}/>}
+            </div>
           </div>
-          <div className="cred">
-            <Info l="Incarico" r={c.incarico}/>
-            <Info l="CAF" r={c.tipo_sede}/>
-            <Info l="Data chiusura sede" r={c.data_chiusura_sede?c.data_chiusura_sede.split("-").reverse().join("/"):""}/>
-            <Info l="Patronato" r={c.stato_caf}/>
-            {haAssociazione(c)&&<Info l="Soci associazione" r={c.soci_associazione}/>}
-          </div>
-        </div>}
+          {(c.stato_occupazionale||c.comando_enasc||c.ore||c.scadenze_contratti)&&typeof PayLinkedDocs==="function"&&
+            <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti incarico / convenzione"
+              filterFn={typeof payDocInIncarico==="function"?payDocInIncarico:cat=>cat==="Incarico"||cat==="Convenzione"}/>}
+        </React.Fragment>}
         {stab==="note"&&!c.note&&<div className="empty"><div className="big">📝</div>Nessuna nota interna.</div>}
-        {stab==="boll"&&bollDovuto(c.tipo_sede,c)&&<div className="sec"><h3>Bollettino annuale</h3>
-          {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
-            <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
-        </div>}
+        {stab==="boll"&&bollDovuto(c.tipo_sede,c)&&<React.Fragment>
+          <div className="sec"><h3>Bollettino annuale</h3>
+            {[2026,2025,2024].map(y=><div className="bolrow" key={y}><span className="y">{y}</span>
+              <span className={"boll "+bollCls(c.boll[y])}>{bollLbl(c.boll[y])}</span></div>)}
+          </div>
+          {typeof PayLinkedDocs==="function"&&
+            <PayLinkedDocs collabId={c.id} seedDocs={c.docs} toast={toast} title="Documenti bollettino"
+              filterFn={typeof payDocInBollettini==="function"?payDocInBollettini:cat=>cat==="Bollettino"}/>}
+        </React.Fragment>}
         {stab==="listino"&&<div className="sec"><h3>Schema compenso e listino</h3>
           <ListinoBox/>
           {PAY_USE_API?<PaySchemaListino listino={c.listino}/>:c.cfg.map(([voce,tipo,val],i)=>
@@ -2466,65 +2479,87 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
 
     {tab==="docs"&&<PayDocumentiTab collabId={c.id} nome={c.nome} toast={toast} onUpdateDocs={mapped=>{if(Array.isArray(mapped)) onUpdate&&onUpdate(c.id,{docs:mapped}); else if(typeof mapped==="number") onTogDoc(c.id,mapped);}}/>}
 
-    {tab==="cred"&&<React.Fragment>
-      <div className="sec"><h3>Credenziali di accesso</h3>
-        {c.utente?<div className="cred">
-          🔑 Utenza attiva — username <b className="mono">{c.utente.username}</b><br/>
-          {c.utente.mustChange?"⏳ In attesa del primo accesso (cambio password obbligatorio)":"✓ Password impostata dal collaboratore"}<br/><br/>
-          <button className="btn btn-g btn-sm" onClick={async()=>{
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{await ensurePayAuth(); const r=await payApi("/collaboratori/"+c.id+"/utente/reset",{method:"POST"});
-                onUpdate&&onUpdate(c.id,{utente:{...(c.utente||{}),mustChange:true}});
-                toast&&toast("Password resettata: "+(r.password_temporanea||""));
-              }catch(e){toast&&toast(e.detail||"Errore reset");}
-              return;
-            }
-            toast&&toast("Reset password (solo demo locale)");
-          }}>↺ Reset password</button>{" "}
-          <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={async()=>{
-            if(!confirm("Disattivare l'utenza di "+c.nome+"?")) return;
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{await ensurePayAuth(); await payApi("/collaboratori/"+c.id+"/utente",{method:"DELETE"});
-                onUpdate&&onUpdate(c.id,{utente:null});
-                toast&&toast("Utenza disattivata");
-              }catch(e){toast&&toast(e.detail||"Errore");}
-              return;
-            }
-            onUpdate&&onUpdate(c.id,{utente:null});
-          }}>Disattiva utenza</button>
-        </div>:<div className="cred">Nessuna utenza creata.<br/><br/>
-          <button className="btn btn-p btn-sm" onClick={async()=>{
-            if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
-              try{
-                await ensurePayAuth();
-                const r=await payApi("/collaboratori/"+c.id+"/utente",{method:"POST"});
-                onUpdate&&onUpdate(c.id,{utente:{username:r.username,mustChange:true,email:""}});
-                toast&&toast("Credenziali create — utente "+r.username+" · password temporanea: "+r.password_temporanea);
-              }catch(e){toast&&toast(e.detail||e.message||"Errore creazione credenziali");}
-              return;
-            }
-            if(!c.cf){ toast&&toast("Serve il codice fiscale per creare l'utenza"); return; }
-            onUpdate&&onUpdate(c.id,{utente:{username:c.cf.toUpperCase(),mustChange:true,email:""}});
-            toast&&toast("Credenziali create (demo) — password: demo");
-          }}>+ Crea credenziali (username = codice fiscale)</button></div>}
-      </div>
-      <div className="sec"><h3>Sezioni base</h3>
-        <div className="swrow">
-          <div className="t"><b>Dashboard</b><span>Sempre attiva (home del collaboratore)</span></div>
-          <div className="sw on" style={{opacity:.45,cursor:"default"}}/>
-        </div>
-        <div style={{fontSize:12.5,color:"var(--mut)"}}>Nella scheda <b>Permessi</b> puoi abilitare le sezioni Contabilità e le sezioni Invio pratiche.</div>
-      </div>
-    </React.Fragment>}
-
     {tab==="perm"&&<React.Fragment>
-      <div className="infobox">ℹ️ Le sezioni <b>Contabilità (portale)</b> mostrano al collaboratore solo i propri dati. Le sezioni <b>Gestione contabile</b> danno accesso a funzioni avanzate, sempre <b>filtrate</b> ai soli dati di {c.nome.split(" ")[0]} — non vedrà mai i dati degli altri collaboratori.</div>
+      <div style={{display:"flex",gap:14,alignItems:"flex-start",marginBottom:16,flexWrap:"wrap"}}>
+        <div className="ava" style={{width:52,height:52,fontSize:16,borderRadius:14}}>{ini(c.nome)}</div>
+        <div style={{minWidth:0,flex:1}}>
+          <h3 style={{margin:"0 0 4px",fontSize:18}}>{c.nome}</h3>
+          <div className="muted" style={{margin:0,fontSize:13}}>
+            {c.utente
+              ? <>Utenza <b className="mono">{c.utente.username}</b> · {c.utente.mustChange?"primo accesso in attesa":"password impostata"}</>
+              : <>Nessuna utenza portale · crea le credenziali qui sotto</>}
+          </div>
+        </div>
+      </div>
+
+      <div className="infobox" style={{marginBottom:16}}>
+        Abilita le <b>singole sezioni</b> del portale e della gestione contabile (filtrate ai soli dati di {c.nome.split(" ")[0]}).
+        Credenziali, portale e permessi sono unificati in questa scheda.
+      </div>
+
+      <div className="permgroup">
+        <div className="pgt">Credenziali di accesso</div>
+        {c.utente ? <React.Fragment>
+          <div className="swrow" style={{cursor:"default"}}>
+            <div className="t"><b>🔑 Utenza attiva</b>
+              <span>Username <b className="mono">{c.utente.username}</b> · {c.utente.mustChange?"⏳ cambio password obbligatorio al primo accesso":"✓ password impostata dal collaboratore"}</span>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",marginTop:4,marginBottom:4}}>
+            <button className="btn btn-g btn-sm" onClick={async()=>{
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{await ensurePayAuth(); const r=await payApi("/collaboratori/"+c.id+"/utente/reset",{method:"POST"});
+                  onUpdate&&onUpdate(c.id,{utente:{...(c.utente||{}),mustChange:true}});
+                  toast&&toast("Password resettata: "+(r.password_temporanea||""));
+                }catch(e){toast&&toast(e.detail||"Errore reset");}
+                return;
+              }
+              toast&&toast("Reset password (solo demo locale)");
+            }}>↺ Reset password</button>
+            <button className="btn btn-g btn-sm" style={{color:"var(--red)"}} onClick={async()=>{
+              if(!confirm("Disattivare l'utenza di "+c.nome+"?")) return;
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{await ensurePayAuth(); await payApi("/collaboratori/"+c.id+"/utente",{method:"DELETE"});
+                  onUpdate&&onUpdate(c.id,{utente:null});
+                  toast&&toast("Utenza disattivata");
+                }catch(e){toast&&toast(e.detail||"Errore");}
+                return;
+              }
+              onUpdate&&onUpdate(c.id,{utente:null});
+            }}>Disattiva utenza</button>
+          </div>
+        </React.Fragment> : <React.Fragment>
+          <div className="swrow" style={{cursor:"default"}}>
+            <div className="t"><b>Nessuna utenza</b>
+              <span>Crea le credenziali: username = codice fiscale</span>
+            </div>
+          </div>
+          <div style={{marginTop:4,marginBottom:4}}>
+            <button className="btn btn-p btn-sm" onClick={async()=>{
+              if(typeof PAY_USE_API!=="undefined"&&PAY_USE_API){
+                try{
+                  await ensurePayAuth();
+                  const r=await payApi("/collaboratori/"+c.id+"/utente",{method:"POST"});
+                  onUpdate&&onUpdate(c.id,{utente:{username:r.username,mustChange:true,email:""}});
+                  toast&&toast("Credenziali create — utente "+r.username+" · password temporanea: "+r.password_temporanea);
+                }catch(e){toast&&toast(e.detail||e.message||"Errore creazione credenziali");}
+                return;
+              }
+              if(!c.cf){ toast&&toast("Serve il codice fiscale per creare l'utenza"); return; }
+              onUpdate&&onUpdate(c.id,{utente:{username:c.cf.toUpperCase(),mustChange:true,email:""}});
+              toast&&toast("Credenziali create (demo) — password: demo");
+            }}>+ Crea credenziali</button>
+          </div>
+        </React.Fragment>}
+      </div>
 
       <div className="permgroup">
         <div className="pgt">Contabilità (portale)</div>
         {PORTALE_KEYS.map(([k,ic,label])=>
           <div className="swrow" key={k}>
-            <div className="t"><b>{ic} {label}</b></div>
+            <div className="t"><b>{ic} {label}</b>
+              {k==="dashboard"?<span>Home del collaboratore</span>:null}
+            </div>
             <button className={"sw"+(c.portal[k]?" on":"")} onClick={()=>onTogPortal(c.id,k)}/>
           </div>)}
       </div>
@@ -2537,6 +2572,7 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
             <button className={"sw"+(c.gestione[k]?" on":"")} onClick={()=>onTogGestione(c.id,k)}/>
           </div>)}
       </div>
+
       <div className="permgroup">
         <div className="pgt">Invio pratiche (portale)</div>
         {PORTALE_PRATICHE_KEYS.map(([k,ic,label])=>
@@ -2545,7 +2581,8 @@ function DettaglioCollab({c,onBack,onDelete,onTogDoc,onTogPortal,onTogGestione,o
             <button className={"sw"+(c.portal[k]?" on":"")} onClick={()=>onTogPortal(c.id,k)}/>
           </div>)}
       </div>
-      <div style={{fontSize:12.5,color:"var(--mut)"}}>Le modifiche hanno effetto immediato sul menu del collaboratore al prossimo accesso (o aggiornando la pagina, in questa demo).</div>
+
+      <div style={{fontSize:12.5,color:"var(--mut)",marginTop:8}}>Le modifiche hanno effetto immediato sul menu del collaboratore al prossimo accesso (o aggiornando la pagina).</div>
     </React.Fragment>}
 
     
@@ -4317,7 +4354,7 @@ const payStampa = id=>{
 const PAY_ANNO_MIN=2021;
 const payFilterAnni=arr=>[...new Set(arr)].filter(y=>+y>=PAY_ANNO_MIN).sort((a,b)=>b-a);
 const payFmtDed=v=>{const n=Number(v)||0;return n===0?eur(0):'− '+eur(Math.abs(n));};
-function PaySaldoKpiRow({saldoAnno,fattAnno,fattTotAnno,className,extraMargine,extraSediChiuse}){
+function PaySaldoKpiRow({saldoAnno,fattAnno,fattTotAnno,className,extraMargine,extraSediChiuse,figurativo}){
   const riporto=Number(saldoAnno?.riporto_iniziale||0);
   const totComp=Number(saldoAnno?.compensi||0);
   const totSanz=Number(saldoAnno?.sanzioni||0);
@@ -4328,16 +4365,16 @@ function PaySaldoKpiRow({saldoAnno,fattAnno,fattTotAnno,className,extraMargine,e
   const saldoFin=saldoBase+Number(extraMargine||0)+Number(extraSediChiuse||0);
   const fattTot=fattTotAnno!=null?fattTotAnno:(fattAnno||[]).reduce((s,f)=>s+Number(f.importo||0),0);
   return <div className={'saldo saldo-kpi-row'+(className?' '+className:'')}>
-    <div className={'sbox'+(riporto<0?' neg':'')}><div className="l">Riporto anno prec.</div><div className="v">{eur(riporto)}</div></div>
-    <div className="sbox pos"><div className="l">Compensi maturati</div><div className="v">{eur(totComp)}</div></div>
+    {!figurativo && <div className={'sbox'+(riporto<0?' neg':'')}><div className="l">Riporto anno prec.</div><div className="v">{eur(riporto)}</div></div>}
+    <div className="sbox pos"><div className="l">{figurativo?'Compensi sede (figurativo)':'Compensi maturati'}</div><div className="v">{eur(totComp)}</div></div>
     {totProv>0 && <div className="sbox warn"><div className="l">Provvisori</div><div className="v">{eur(totProv)}</div></div>}
     <div className={'sbox'+(totSanz>0?' neg':'')}><div className="l">Sanzioni</div><div className="v">{payFmtDed(totSanz)}</div></div>
     <div className={'sbox'+(totCosti>0?' neg':'')}><div className="l">Costi dipendenti</div><div className="v">{payFmtDed(totCosti)}</div></div>
-    <div className="sbox"><div className="l">Pagamenti</div><div className="v">{payFmtDed(totPag)}</div></div>
+    {!figurativo && <div className="sbox"><div className="l">Pagamenti</div><div className="v">{payFmtDed(totPag)}</div></div>}
     <div className="sbox"><div className="l">Fattura Nazionale</div><div className="v">{(fattAnno&&fattAnno.length)?eur(fattTot):'—'}</div></div>
     {Number(extraMargine||0)!==0 && <div className="sbox pos"><div className="l">Margini struttura</div><div className="v">{eur(extraMargine)}</div></div>}
     {Number(extraSediChiuse||0)!==0 && <div className="sbox pos"><div className="l">Sedi chiuse</div><div className="v">{eur(extraSediChiuse)}</div></div>}
-    <div className="sbox final"><div className="l">Saldo netto</div><div className={'v'+(saldoFin<0?' neg':'')}>{eur(saldoFin)}</div></div>
+    <div className="sbox final"><div className="l">{figurativo?'Totale economico (non liquidabile)':'Saldo netto'}</div><div className={'v'+(saldoFin<0?' neg':'')}>{eur(saldoFin)}</div></div>
   </div>;
 }
 (function(){
@@ -5686,9 +5723,9 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
         .then(setSediChiuse).catch(()=>setSediChiuse(null));
     } else setSediChiuse(null);
   },[showMarginiAdmin,isCapo,anno,cid]);
-  const sanzPerAnno=useMemo(()=>{const g={}; (d?.sanzioni||[]).forEach(s=>{(g[s.anno_competenza]=g[s.anno_competenza]||[]).push(s)}); return g;},[d]);
-  const costiPerAnno=useMemo(()=>{const g={}; (d?.costi||[]).forEach(c=>{(g[c.anno]=g[c.anno]||[]).push(c)}); return g;},[d]);
   const pagamentiAnno=useMemo(()=>(d?.pagamenti||[]).filter(p=>+p.anno_competenza===+anno),[d,anno]);
+  const costiAnno=useMemo(()=>(d?.costi||[]).filter(c=>+c.anno===+anno),[d,anno]);
+  const sanzAnno=useMemo(()=>(d?.sanzioni||[]).filter(s=>+s.anno_competenza===+anno),[d,anno]);
   const sezioni=useMemo(
     ()=>payCompRowsForAnno(
       d?.compensi||[],
@@ -5703,7 +5740,25 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
   if(!d) return <p className="muted">Caricamento compensi…</p>;
   if(anno==null||!anniDisponibili.length) return <div className="infobox">Nessun anno con produzione importata per <b>{nome}</b>. Verifica che l&apos;import produzione Roma sia attivo e che i codici identificativi siano corretti.</div>;
   const a=d.anagrafica;
-  const saldoAnno=(d.saldi||[]).find(s=>+s.anno===+anno)||{};
+  // Membro di gruppo pagamento: totale economico solo figurativo (no saldo/debito/da liquidare)
+  const isMembroGruppo=!!(d.scheda_figurativa || (a.gruppo && !d.produzione_aggregata));
+  const totCompVoci=sezioni.reduce((s,sez)=>s+Number(sez.tot||0),0);
+  const totSanzAnno=sanzAnno.reduce((s,x)=>s+Number(x.quota_collaboratore!=null?x.quota_collaboratore:x.importo_trattenuto||0),0);
+  const totCostiAnno=costiAnno.reduce((s,x)=>s+Number(x.quota_ribaltata||0),0);
+  const totPagAnno=pagamentiAnno.reduce((s,x)=>s+Number(x.importo||0),0);
+  const saldoReale=(d.saldi||[]).find(s=>+s.anno===+anno)||{};
+  const saldoFigurativo=isMembroGruppo?{
+    riporto_iniziale:0,
+    compensi:totCompVoci,
+    sanzioni:totSanzAnno,
+    costi_dipendenti:totCostiAnno,
+    pagamenti:0,
+    fatture_nazionale:0,
+    compensi_provvisori:Number(saldoReale.compensi_provvisori||0),
+    saldo_finale:Math.round((totCompVoci-totSanzAnno-totCostiAnno)*100)/100,
+    congelato:false,
+  }:null;
+  const saldoAnno=isMembroGruppo?saldoFigurativo:saldoReale;
   const listino=a.listino||'—';
   const totComp=Number(saldoAnno.compensi||0);
   const totSanz=Number(saldoAnno.sanzioni||0);
@@ -5845,11 +5900,14 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
       </div>
     </div>}
     {a.gruppo && <div className="infobox noprint" style={{marginBottom:12,fontSize:12.5}}>
-      Questa sede fa parte del <b>gruppo di pagamento</b> di <b>{a.gruppo}</b>: in scheda vedi produzione e compensi della sede;
-      saldi e bonifici restano aggregati sul titolare del gruppo.
+      Questa sede fa parte del <b>gruppo di pagamento</b> di <b>{a.gruppo}</b>:
+      produzione e totale economico sono <b>figurativi</b> (solo visualizzazione / stampa scheda),
+      senza riporto da anno precedente e <b>senza</b> entrare nel «da liquidare» della dashboard.
+      Saldi, bonifici e liquidazione restano aggregati sul titolare del gruppo.
     </div>}
 
     <PaySaldoKpiRow className="noprint" saldoAnno={saldoAnno} fattAnno={fattAnno} fattTotAnno={fattTotAnno}
+      figurativo={isMembroGruppo}
       extraMargine={isCapo?totMargCapo:0} extraSediChiuse={isCapo?totSediChiuse:0} />
 
     {alertFatture && <div className={'sc-banner noprint '+(alertFattureCritico?'bad':'warn')} style={{marginTop:4}}>
@@ -5898,11 +5956,54 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
         </div>
       </div>
       <div className="pay-comp-kpi-wrap">
-        <h3 className="pay-comp-kpi-title">Situazione finanziaria — {anno}</h3>
+        <h3 className="pay-comp-kpi-title">{isMembroGruppo?('Totale economico figurativo — '+anno):('Situazione finanziaria — '+anno)}</h3>
         <PaySaldoKpiRow saldoAnno={saldoAnno} fattAnno={fattAnno} fattTotAnno={fattTotAnno}
+          figurativo={isMembroGruppo}
           extraMargine={isCapo?totMargCapo:0} extraSediChiuse={isCapo?totSediChiuse:0} />
       </div>
       {panelsSezioni}
+      <div className="panel" style={{marginTop:14}}>
+        <div className="ph"><h3>Riepilogo accessori — {anno}</h3></div>
+        <div className="pad">
+          <table className="tbl"><thead><tr><th>Voce</th><th className="r">Totale</th><th className="r">Dettaglio</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Pagamenti registrati</td>
+              <td className="r mono">{eur(totPagAnno)}</td>
+              <td className="r muted small">{pagamentiAnno.length} mov.</td>
+            </tr>
+            <tr>
+              <td>Costi dipendenti</td>
+              <td className="r mono">{eur(totCostiAnno)}</td>
+              <td className="r muted small">{costiAnno.length} voci (solo totale)</td>
+            </tr>
+            <tr>
+              <td>Sanzioni</td>
+              <td className="r mono">{eur(totSanzAnno)}</td>
+              <td className="r muted small">{sanzAnno.length} voci (solo totale)</td>
+            </tr>
+            <tr>
+              <td>Fatture Nazionale</td>
+              <td className="r mono">{fattAnno.length?eur(fattTotAnno):'—'}</td>
+              <td className="r muted small">{fattAnno.length? (fattAnno.length+' doc.'):'—'}</td>
+            </tr>
+            {isCapo && <tr>
+              <td>Margini struttura</td>
+              <td className="r mono">{eur(totMargCapo)}</td>
+              <td className="r muted small">solo totale</td>
+            </tr>}
+            {isCapo && <tr>
+              <td>Sedi chiuse</td>
+              <td className="r mono">{eur(totSediChiuse)}</td>
+              <td className="r muted small">solo totale</td>
+            </tr>}
+          </tbody></table>
+          <p className="muted small" style={{margin:'10px 0 0'}}>
+            In stampa i nominativi di dipendenti, movimenti e sanzioni non sono elencati: solo i totali dell&apos;anno di riferimento.
+            {isMembroGruppo?' Il totale economico è figurativo e non costituisce saldo da liquidare.':''}
+          </p>
+        </div>
+      </div>
     </div>
 
     {!readOnlyCollab && !a.interno && <div className="panel noprint">
@@ -5937,36 +6038,41 @@ function PayCompensiTab({nome,collabId,toast,readOnlyCollab,hideListino,canStamp
     </details>}
     {pagamentiAnno.length===0 && (d.pagamenti||[]).length>0 && <p className="muted noprint small">Nessun pagamento per l&apos;anno {anno}.</p>}
 
-    {!readOnlyCollab && (d.sanzioni||[]).length>0 && <details className="details-panel noprint">
-      <summary>Gestione sanzioni</summary>
-      <div className="pad">{Object.keys(sanzPerAnno).sort().map(y=><div key={'s'+y} style={{marginTop:y===Object.keys(sanzPerAnno).sort()[0]?0:14}}>
-        <div className="muted small" style={{fontWeight:700,marginBottom:8}}>Anno {y}</div>
+    {!readOnlyCollab && sanzAnno.length>0 && <details className="details-panel noprint">
+      <summary>Gestione sanzioni — {anno} <span className="muted" style={{fontWeight:600}}>({sanzAnno.length})</span></summary>
+      <div className="pad">
         <div style={{overflowX:'auto'}}><table className="tbl"><thead><tr><th>Campagna / soggetto</th><th className="r">Trattenuto</th><th>Collaboratore</th><th className="r">Quota</th><th></th></tr></thead>
-        <tbody>{sanzPerAnno[y].map(s=>{ const dr=draftS[s.id]||{cid:s.collaboratore_id||'',quota:s.quota_collaboratore??''};
+        <tbody>{sanzAnno.map(s=>{ const dr=draftS[s.id]||{cid:s.collaboratore_id||'',quota:s.quota_collaboratore??''};
           return <tr key={s.id}><td>{[s.campagna,s.cognome,s.nome].filter(Boolean).join(' · ')}</td>
           <td className="r mono">{eur(s.importo_trattenuto)}</td>
           <td><PayCollabPick value={dr.cid} options={collab} inclInterni
             onChange={v=>setDraftS(d=>({...d,[s.id]:{...dr,cid:v}}))}/></td>
           <td className="r"><input type="number" step="0.01" className="mono" style={{width:96,textAlign:'right',padding:'6px 8px',border:'1.5px solid var(--line)',borderRadius:8}} value={dr.quota}
             onChange={e=>setDraftS(d=>({...d,[s.id]:{...dr,quota:e.target.value}}))}/></td>
-          <td><button className="btn btn-p btn-sm" onClick={()=>salvaSanz(s.id)}>Salva</button></td></tr>;})}</tbody></table></div>
-      </div>)}</div>
+          <td><button className="btn btn-p btn-sm" onClick={()=>salvaSanz(s.id)}>Salva</button></td></tr>;})}</tbody>
+        <tfoot><tr className="tot"><td colSpan={3} className="r">Totale quote {anno}</td>
+          <td className="r mono" colSpan={2}>{eur(totSanzAnno)}</td></tr></tfoot>
+        </table></div>
+      </div>
     </details>}
+    {!readOnlyCollab && sanzAnno.length===0 && (d.sanzioni||[]).length>0 && <p className="muted noprint small">Nessuna sanzione per l&apos;anno {anno}.</p>}
 
-    {!readOnlyCollab && (d.costi||[]).length>0 && <details className="details-panel noprint">
-      <summary>Costi dipendenti — {Object.keys(costiPerAnno).length?Object.keys(costiPerAnno).join(', '):'—'} (sola lettura)</summary>
+    {!readOnlyCollab && costiAnno.length>0 && <details className="details-panel noprint" open>
+      <summary>Costi dipendenti — {anno} <span className="muted" style={{fontWeight:600}}>({costiAnno.length})</span> (sola lettura)</summary>
       <div className="pad">
         <p className="muted small" style={{marginTop:0}}>Per modificare, eliminare o sbloccare le quote usa <b>Costi dipendenti → Gestione</b> (menu laterale), non questa scheda.</p>
-        {Object.keys(costiPerAnno).sort().map(y=><div key={'c'+y} style={{marginTop:y===Object.keys(costiPerAnno).sort()[0]?0:14}}>
-        <div className="muted small" style={{fontWeight:700,marginBottom:8}}>Anno {y}</div>
         <div style={{overflowX:'auto'}}><table className="tbl"><thead><tr><th>Dipendente</th><th className="r">Costo</th><th>Collaboratore</th><th className="r">Quota</th></tr></thead>
-        <tbody>{costiPerAnno[y].map(c=><tr key={c.id}>
+        <tbody>{costiAnno.map(c=><tr key={c.id}>
           <td>{c.nome}</td><td className="r mono">{eur(c.costo_totale)}</td>
-          <td>{c.collaboratore||'—'}</td>
+          <td>{c.titolare||c.collaboratore||'—'}</td>
           <td className="r mono">{eur(c.quota_ribaltata)}</td>
-        </tr>)}</tbody></table></div>
-      </div>)}</div>
+        </tr>)}</tbody>
+        <tfoot><tr className="tot"><td colSpan={3} className="r">Totale quote {anno}</td>
+          <td className="r mono">{eur(totCostiAnno)}</td></tr></tfoot>
+        </table></div>
+      </div>
     </details>}
+    {!readOnlyCollab && costiAnno.length===0 && (d.costi||[]).length>0 && <p className="muted noprint small">Nessun costo dipendente per l&apos;anno {anno}.</p>}
 
     {showMarginiAdmin && <div className="panel noprint">
       <div className="ph"><h3>Margini struttura{isCapo?' — capo struttura':''} · {nome} · {anno}</h3>
@@ -6152,13 +6258,77 @@ function PayPrestazioniTab({nome,collabId,toast,onVaiCompensi}){
   </React.Fragment>;
 }
 
+const DOC_CATEGORIE=[
+  ['Generale','Documento generico'],
+  ['Incarico','Incarico / contratto'],
+  ['Bollettino','Bollettino annuale'],
+  ['Convenzione','Convenzione firmata'],
+  ['Identita','Documento di identità'],
+  ['Altro','Altro'],
+];
+const DOC_CAT_ORDER=DOC_CATEGORIE.map(x=>x[0]);
+const DOC_CAT_LABEL=Object.fromEntries(DOC_CATEGORIE);
+function payNormDocCat(c){
+  const s=String(c||'Generale').trim();
+  if(!s) return 'Generale';
+  const hit=DOC_CAT_ORDER.find(k=>k.toLowerCase()===s.toLowerCase());
+  return hit||s;
+}
+function payDocCatLabel(c){ const n=payNormDocCat(c); return DOC_CAT_LABEL[n]||n; }
+/** Tipologie visibili anche nel tab Scheda → Incarico */
+function payDocInIncarico(c){ const n=payNormDocCat(c); return n==='Incarico'||n==='Convenzione'; }
+/** Tipologie visibili anche nel tab Scheda → Bollettini */
+function payDocInBollettini(c){ return payNormDocCat(c)==='Bollettino'; }
+
+function PayLinkedDocs({collabId, filterFn, title, toast, seedDocs}){
+  const [docs,setDocs]=useState([]);
+  const [err,setErr]=useState('');
+  const mapDoc=r=>({
+    id:r.id, n:r.nome||r.n||'—', c:payNormDocCat(r.categoria||r.c||'Generale'),
+    d:(r.data_caricamento||r.d||'').slice(0,10), vis:!!(r.visibile_portale??r.vis),
+  });
+  const carica=async()=>{
+    if(!collabId){ setDocs([]); return; }
+    if(!PAY_USE_API){
+      const mapped=(seedDocs||[]).map(mapDoc).filter(d=>!filterFn||filterFn(d.c));
+      setDocs(mapped); setErr(''); return;
+    }
+    try{
+      await ensurePayAuth();
+      const rows=await payApi('/collaboratori/'+collabId+'/documenti');
+      const mapped=(rows||[]).map(mapDoc).filter(d=>!filterFn||filterFn(d.c));
+      setDocs(mapped); setErr('');
+    }catch(e){ setErr(e.detail||e.message||'Errore documenti'); }
+  };
+  useEffect(()=>{ carica(); },[collabId, seedDocs&&seedDocs.length]);
+  const scarica=async doc=>{
+    if(!doc.id||!PAY_USE_API) return;
+    try{ await payDownload('/collaboratori/'+collabId+'/documenti/'+doc.id+'/download', doc.n); }
+    catch(x){ toast&&toast(x.detail||'Download non disponibile',1); }
+  };
+  return <div className="sec" style={{marginTop:14}}>
+    <h3 style={{marginBottom:8}}>{title||'Documenti collegati'}</h3>
+    {err&&<div className="infobox" style={{marginBottom:8}}>{err}</div>}
+    {!docs.length&&!err&&<div className="muted small">Nessun documento di questo tipo. Caricali dal tab Documenti scegliendo la tipologia.</div>}
+    {docs.map((d,i)=>
+      <div className="docrow" key={d.id||i} style={{marginBottom:6}}>
+        <div className="fi">📄</div>
+        <div style={{minWidth:0,flex:1}}>
+          <div className="dn" style={{cursor:d.id?'pointer':'default'}} onClick={()=>d.id&&scarica(d)} title={d.id?'Scarica':''}>{d.n}</div>
+          <div className="dm">{payDocCatLabel(d.c)} · {d.d}</div>
+        </div>
+      </div>)}
+  </div>;
+}
+
 function PayDocumentiTab({collabId,nome,toast,onUpdateDocs}){
   const [docs,setDocs]=useState([]);
   const [busy,setBusy]=useState(false);
   const [busyConv,setBusyConv]=useState(false);
   const [err,setErr]=useState('');
+  const [catUpload,setCatUpload]=useState('Generale');
   const mapDoc=r=>({
-    id:r.id, n:r.nome||r.n||'—', c:r.categoria||r.c||'Generale',
+    id:r.id, n:r.nome||r.n||'—', c:payNormDocCat(r.categoria||r.c||'Generale'),
     d:(r.data_caricamento||r.d||'').slice(0,10), vis:!!(r.visibile_portale??r.vis),
   });
   const carica=async()=>{
@@ -6178,12 +6348,24 @@ function PayDocumentiTab({collabId,nome,toast,onUpdateDocs}){
     setBusy(true);
     try{
       await ensurePayAuth();
-      const fd=new FormData(); fd.append('file',f);
+      const fd=new FormData(); fd.append('file',f); fd.append('categoria', catUpload||'Generale');
       await payApi('/collaboratori/'+collabId+'/documenti',{method:'POST',body:fd});
-      toast&&toast('Documento caricato');
+      const where=payDocInIncarico(catUpload)?' (visibile anche in Scheda → Incarico)'
+        :payDocInBollettini(catUpload)?' (visibile anche in Scheda → Bollettini)':'';
+      toast&&toast('Documento caricato come «'+payDocCatLabel(catUpload)+'»'+where);
       await carica();
     }catch(x){ toast&&toast(x.detail||x.message||'Errore caricamento',1); }
     setBusy(false); e.target.value='';
+  };
+  const setCat=async (doc, nuova)=>{
+    const cat=payNormDocCat(nuova);
+    if(!doc.id||cat===doc.c) return;
+    try{
+      await ensurePayAuth();
+      await payApi('/collaboratori/'+collabId+'/documenti/'+doc.id,{method:'PATCH',body:JSON.stringify({categoria:cat})});
+      toast&&toast('Tipologia aggiornata: '+payDocCatLabel(cat));
+      await carica();
+    }catch(x){ toast&&toast(x.detail||'Errore aggiornamento tipologia',1); }
   };
   const togVis=async (doc,i)=>{
     if(!PAY_USE_API||!doc.id){ onUpdateDocs&&onUpdateDocs(null,i); return; }
@@ -6218,12 +6400,49 @@ function PayDocumentiTab({collabId,nome,toast,onUpdateDocs}){
     }catch(x){ toast&&toast(x.detail||x.message||'Errore generazione convenzione',1); }
     setBusyConv(false);
   };
+  const gruppi=(()=>{
+    const m=new Map();
+    docs.forEach(d=>{ const k=d.c||'Generale'; if(!m.has(k)) m.set(k,[]); m.get(k).push(d); });
+    const keys=[...DOC_CAT_ORDER.filter(k=>m.has(k)), ...[...m.keys()].filter(k=>!DOC_CAT_ORDER.includes(k))];
+    return keys.map(k=>({cat:k, items:m.get(k)}));
+  })();
+  const DocRow=({d,i})=>(
+    <div className={'docrow'+(d.vis?'':' hidden-doc')}>
+      <div className="fi">📄</div>
+      <div style={{minWidth:0,flex:1}}>
+        <div className="dn" style={{cursor:d.id?'pointer':'default'}} onClick={()=>d.id&&scarica(d)} title={d.id?'Scarica':''}>{d.n}</div>
+        <div className="dm" style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginTop:4}}>
+          <select value={d.c} onChange={e=>setCat(d,e.target.value)}
+            style={{fontSize:12,padding:'3px 8px',borderRadius:7,border:'1px solid var(--line)',maxWidth:220}}
+            title="Tipologia documento" onClick={e=>e.stopPropagation()}>
+            {DOC_CATEGORIE.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+            {!DOC_CAT_ORDER.includes(d.c)&&<option value={d.c}>{d.c}</option>}
+          </select>
+          <span>{d.d}</span>
+          {payDocInIncarico(d.c)&&<span className="st" style={{background:'#EEF4FC',color:'var(--navy)',fontSize:10}}>Scheda → Incarico</span>}
+          {payDocInBollettini(d.c)&&<span className="st" style={{background:'#FFF8E6',color:'#8A5A00',fontSize:10}}>Scheda → Bollettini</span>}
+        </div>
+      </div>
+      <VTog vis={d.vis} onClick={()=>togVis(d,i)}/>
+      {d.id && <button type="button" className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>elimina(d)}>Elimina</button>}
+    </div>
+  );
   return <React.Fragment>
-    <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12,flexWrap:'wrap'}}>
+    <div className="infobox" style={{marginBottom:12}}>
+      Scegli la <b>tipologia</b> prima di caricare: Incarico e Convenzione compaiono anche in Scheda → Incarico; Bollettino anche in Scheda → Bollettini. «Documento generico» resta solo qui.
+    </div>
+    <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginBottom:12,flexWrap:'wrap',alignItems:'center'}}>
+      <label style={{display:'flex',alignItems:'center',gap:8,fontSize:13,margin:0}}>
+        <span style={{fontWeight:600,color:'var(--mut)'}}>Tipologia</span>
+        <select value={catUpload} onChange={e=>setCatUpload(e.target.value)}
+          style={{padding:'7px 10px',borderRadius:9,border:'1.5px solid var(--line)',fontWeight:600,minWidth:200}}>
+          {DOC_CATEGORIE.map(([v,l])=><option key={v} value={v}>{l}</option>)}
+        </select>
+      </label>
       <button type="button" className="btn btn-p btn-sm" disabled={busyConv||!collabId} onClick={generaConvenzione}>
         {busyConv?'Generazione…':'📄 Genera convenzione PDF'}
       </button>
-      <button className="btn btn-g btn-sm" onClick={()=>printHTML('Documenti '+(nome||''), '<h2>Documenti</h2><table border="1" cellpadding="6"><tr><th>Nome</th><th>Categoria</th><th>Data</th><th>Visibilità</th></tr>'+docs.map(d=>'<tr><td>'+d.n+'</td><td>'+d.c+'</td><td>'+d.d+'</td><td>'+(d.vis?'Portale':'Solo interno')+'</td></tr>').join('')+'</table>')}>🖨 Stampa / Esporta elenco</button>
+      <button className="btn btn-g btn-sm" onClick={()=>printHTML('Documenti '+(nome||''), '<h2>Documenti</h2><table border="1" cellpadding="6"><tr><th>Nome</th><th>Categoria</th><th>Data</th><th>Visibilità</th></tr>'+docs.map(d=>'<tr><td>'+d.n+'</td><td>'+payDocCatLabel(d.c)+'</td><td>'+d.d+'</td><td>'+(d.vis?'Portale':'Solo interno')+'</td></tr>').join('')+'</table>')}>🖨 Stampa / Esporta elenco</button>
       <label className="btn btn-g btn-sm" style={{cursor:busy?'wait':'pointer',margin:0}}>
         {busy?'Caricamento…':'+ Carica documento'}
         <input type="file" style={{display:'none'}} disabled={busy||!collabId} onChange={upload}/>
@@ -6231,16 +6450,14 @@ function PayDocumentiTab({collabId,nome,toast,onUpdateDocs}){
     </div>
     {err && <div className="infobox" style={{marginBottom:12}}>{err}</div>}
     {docs.length===0 && !err && <div className="empty"><div className="big">📂</div>Nessun documento caricato.</div>}
-    {docs.map((d,i)=>
-      <div className={'docrow'+(d.vis?'':' hidden-doc')} key={d.id||i}>
-        <div className="fi">📄</div>
-        <div style={{minWidth:0,flex:1}}>
-          <div className="dn" style={{cursor:d.id?'pointer':'default'}} onClick={()=>d.id&&scarica(d)} title={d.id?'Scarica':''}>{d.n}</div>
-          <div className="dm">{d.c} · {d.d}</div>
+    {gruppi.map(g=>(
+      <div key={g.cat} style={{marginBottom:16}}>
+        <div style={{fontSize:12,fontWeight:800,letterSpacing:'.06em',textTransform:'uppercase',color:'var(--mut)',marginBottom:8}}>
+          {payDocCatLabel(g.cat)} · {g.items.length}
         </div>
-        <VTog vis={d.vis} onClick={()=>togVis(d,i)}/>
-        {d.id && <button type="button" className="btn btn-g btn-sm" style={{color:'var(--red)'}} onClick={()=>elimina(d)}>Elimina</button>}
-      </div>)}
+        {g.items.map((d,i)=><DocRow key={d.id||i} d={d} i={i}/>)}
+      </div>
+    ))}
   </React.Fragment>;
 }
 
@@ -10870,11 +11087,40 @@ function PayListini({toast, navHint, onNavConsumed}){
   </React.Fragment>;
 }
 
-const INTERNI_MODULI=[
-  ["collaboratori_compensi","👥","Collaboratori & compensi"],
-  ["pratiche","📁","Pratiche"],
-  ["area_clienti","🏢","Area clienti"],
+const INTERNI_MODULI_GRUPPI=[
+  ["collaboratori_compensi","Collaboratori & compensi",[
+    ["dash","📈","Dashboard"],
+    ["lista","👥","Collaboratori"],
+    ["imp","📥","Import dati"],
+    ["tar","🏷","Listini"],
+    ["prod","📊","Produzione"],
+    ["ctrl","🔎","Controllo"],
+    ["costi","💼","Costi dipendenti"],
+    ["ade","📋","Adempimenti collaboratori"],
+    ["cont","🧾","Da gestire"],
+  ]],
+  ["pratiche","Pratiche",[
+    ["office_pratiche","📁","Pratiche"],
+    ["prat_tipologie","🧩","Tipologie pratica"],
+    ["prat_verifica","🗂️","Lavorazione pratiche"],
+    ["office_impdocs","📌","Documenti importanti"],
+  ]],
+  ["area_clienti","Area clienti",[
+    ["ac_clienti","👥","Clienti"],
+    ["ac_caricamenti","📤","Caricamenti"],
+    ["ac_documenti","📄","Documenti"],
+    ["ac_chat","💬","Chat"],
+    ["ac_news","📰","News"],
+    ["ac_comunicazioni","✉","Comunicazioni area"],
+    ["ac_richieste","📋","Richieste"],
+    ["ac_categorie","🗂","Categorie"],
+  ]],
+  ["altro","Altro",[
+    ["scad","⏰","Scadenze"],
+    ["comm","✉","Comunicazioni"],
+  ]],
 ];
+const INTERNI_MODULI=INTERNI_MODULI_GRUPPI.flatMap(([, , items])=>items);
 
 function UtentiInterniView({toast}){
   const [rows,setRows]=useState([]);
@@ -10902,7 +11148,10 @@ function UtentiInterniView({toast}){
     return ((p[0]||'?')[0]+(p[1]?p[1][0]:'')).toUpperCase();
   };
   const display=u=>u.display||((u.nome||'')+' '+(u.cognome||'')).trim()||u.username;
-  const nModuli=u=>u.ruolo==='admin'?3:INTERNI_MODULI.filter(([k])=>u.permessi&&u.permessi[k]).length;
+  const nModuli=u=>{
+    if(u.ruolo==='admin') return INTERNI_MODULI.length;
+    return INTERNI_MODULI.filter(([k])=>u.permessi&&u.permessi[k]).length;
+  };
   const list=useMemo(()=>{
     const t=q.trim().toLowerCase();
     return (rows||[]).filter(u=>{
@@ -10961,10 +11210,11 @@ function UtentiInterniView({toast}){
   const isAdminLocked=sel&&(sel.ruolo==="admin"||sel.username==="cosimo.spano");
   const hasFiltri=!!(q.trim()||fRuolo||fStato);
   const showSide=!!(sel||showNew);
+  const totModuli=INTERNI_MODULI.length;
   return <React.Fragment>
     <div className="top">
       <div><h1>Utenti interni</h1>
-        <div className="sub">{rows.length} utenti · accesso gestionale e moduli Pratiche / Area clienti / Collaboratori&amp;compensi</div>
+        <div className="sub">{rows.length} utenti · permessi granulari per sezione (come i collaboratori)</div>
       </div>
       <div className="toolbar-actions">
         <button className="btn btn-g" onClick={load} disabled={busy}>↺ Aggiorna</button>
@@ -11008,10 +11258,8 @@ function UtentiInterniView({toast}){
               <div className="codes">
                 <span className="code"><span className="k">RUOLO</span><span className="v">{u.ruolo}</span></span>
                 <span className="code" style={{background:n?'#EAF8F5':'#F0F5FC',borderColor:n?'#B8E4DA':'#DCE7F5'}}>
-                  <span className="k">MODULI</span><span className="v">{u.ruolo==='admin'?'tutti':n+'/3'}</span>
+                  <span className="k">PERMESSI</span><span className="v">{u.ruolo==='admin'?'tutti':n+'/'+totModuli}</span>
                 </span>
-                {INTERNI_MODULI.filter(([k])=>u.permessi&&u.permessi[k]).map(([k,ic,label])=>
-                  <span key={k} className="code"><span className="k">{ic}</span><span className="v">{label.split(' ')[0]}</span></span>)}
               </div>
             </div>
             <div className="meta">
@@ -11043,16 +11291,19 @@ function UtentiInterniView({toast}){
               <div className="muted" style={{margin:0}}>{sel.username} · {sel.ruolo}{sel.email?' · '+sel.email:''}</div>
             </div>
           </div>
-          <div className="permgroup">
-            <div className="pgt">Moduli abilitati</div>
-            {INTERNI_MODULI.map(([k,ic,label])=>
-              <div className="swrow" key={k}>
-                <div className="t"><b>{ic} {label}</b>
-                  <span>Visibilità sezione nel menu gestionale</span>
-                </div>
-                <button className={"sw"+(sel.permessi&&sel.permessi[k]?" on":"")} onClick={()=>togPerm(k)} disabled={isAdminLocked}/>
-              </div>)}
+          <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
+            Stessa logica dei permessi collaboratore: abilita le <b>singole sezioni</b> del menu gestionale.
+            L&apos;utente interno vedrà solo le voci attive.
           </div>
+          {INTERNI_MODULI_GRUPPI.map(([macro, titolo, items])=>
+            <div className="permgroup" key={macro}>
+              <div className="pgt">{titolo}</div>
+              {items.map(([k,ic,label])=>
+                <div className="swrow" key={k}>
+                  <div className="t"><b>{ic} {label}</b></div>
+                  <button className={"sw"+(sel.permessi&&sel.permessi[k]?" on":"")} onClick={()=>togPerm(k)} disabled={isAdminLocked}/>
+                </div>)}
+            </div>)}
           <div style={{display:"flex",flexDirection:"column",gap:8,marginTop:16}}>
             {!isAdminLocked&&<button className="btn btn-g" onClick={()=>setAttivo(!sel.attivo)}>{sel.attivo?"Disattiva utente":"Riattiva utente"}</button>}
             <button className="btn btn-g" onClick={resetPwd}>Reimposta password</button>
@@ -13474,7 +13725,10 @@ function App(){
   const [showNuovo,setShowNuovo]=useState(false);
   const [listiniNomi,setListiniNomi]=useState([]);
   useEffect(()=>{
-    if(!PAY_USE_API||!auth||(auth.role!=="titolare"&&!(auth.role==="interno"&&auth.permessi&&auth.permessi.collaboratori_compensi))) return;
+    if(!PAY_USE_API||!auth) return;
+    const p=auth.permessi||{};
+    const canCollab=auth.role==="titolare"||(auth.role==="interno"&&(p.lista||p.dash||p.imp||p.tar||p.prod||p.collaboratori_compensi));
+    if(!canCollab) return;
     ensurePayAuth().then(()=>Promise.all([payApi("/collaboratori/cards"),payApi("/listini")])).then(([cards,resp])=>{
       if(cards&&cards.length) setCollab(paySortCollabCards(cards));
       const names=paySortListiniNomi(payParseListiniResp(resp).listini.map(r=>r.listino).filter(Boolean));
@@ -13753,10 +14007,10 @@ function App(){
   const NAV_T_PRATICHE=[["office_pratiche","📁","Pratiche"],["prat_tipologie","🧩","Tipologie pratica"],["prat_verifica","🗂️","Lavorazione pratiche"],["office_impdocs","📌","Documenti importanti"]];
   const NAV_T_AREA_CLIENTI=[["ac_clienti","👥","Clienti"],["ac_caricamenti","📤","Caricamenti"],["ac_documenti","📄","Documenti"],["ac_chat","💬","Chat"],["ac_news","📰","News"],["ac_comunicazioni","✉","Comunicazioni"],["ac_richieste","📋","Richieste"],["ac_categorie","🗂","Categorie"]];
   const NAV_T_ALTRO_BASE=[["scad","⏰","Scadenze"],["comm","✉","Comunicazioni"]];
-  const NAV_T_ALTRO=auth.role==="titolare"?[...NAV_T_ALTRO_BASE,["utenti_int","👤","Utenti interni"]]:NAV_T_ALTRO_BASE;
-  const NAV_T_GESTIONE_SHOW=auth.role==="titolare"||permsInt.collaboratori_compensi?NAV_T_GESTIONE:[];
-  const NAV_T_PRATICHE_SHOW=auth.role==="titolare"||permsInt.pratiche?NAV_T_PRATICHE:[];
-  const NAV_T_AREA_SHOW=auth.role==="titolare"||permsInt.area_clienti?NAV_T_AREA_CLIENTI:[];
+  const NAV_T_ALTRO=auth.role==="titolare"?[...NAV_T_ALTRO_BASE,["utenti_int","👤","Utenti interni"]]:NAV_T_ALTRO_BASE.filter(([k])=>!!permsInt[k]);
+  const NAV_T_GESTIONE_SHOW=auth.role==="titolare"?NAV_T_GESTIONE:NAV_T_GESTIONE.filter(([k])=>!!permsInt[k]);
+  const NAV_T_PRATICHE_SHOW=auth.role==="titolare"?NAV_T_PRATICHE:NAV_T_PRATICHE.filter(([k])=>!!permsInt[k]);
+  const NAV_T_AREA_SHOW=auth.role==="titolare"?NAV_T_AREA_CLIENTI:NAV_T_AREA_CLIENTI.filter(([k])=>!!permsInt[k]);
 
   let NAV_C_CONTABILITA=[];
   let NAV_C_INVIO=[];
