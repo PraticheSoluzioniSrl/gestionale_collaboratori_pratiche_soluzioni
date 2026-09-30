@@ -30,8 +30,62 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--bg);color:var(--in
 h1,h2,h3,.disp{font-family:'Bricolage Grotesque',sans-serif}
 .mono{font-family:'JetBrains Mono',monospace}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
-input,select,textarea{font-family:inherit;font-size:14px}
-::placeholder{color:#93A4BC}
+/* Controlli form — stile unico progetto */
+input:not([type]),
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="search"],
+input[type="date"],
+input[type="tel"],
+input[type="url"],
+input[type="month"],
+input[type="time"],
+select,
+textarea{
+  font-family:inherit;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--ink);
+  border:1.5px solid var(--line);
+  border-radius:9px;
+  padding:9px 11px;
+  background:#FBFDFF;
+  outline:none;
+  box-sizing:border-box;
+  max-width:100%;
+  transition:border-color .15s,box-shadow .15s;
+}
+select{cursor:pointer;height:38px;padding-top:0;padding-bottom:0}
+input:not([type]):focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus,
+input[type="date"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="month"]:focus,
+input[type="time"]:focus,
+select:focus,
+textarea:focus{
+  border-color:var(--sky);
+  box-shadow:0 0 0 3px rgba(66,168,240,.15);
+}
+input:disabled,select:disabled,textarea:disabled{opacity:.55;cursor:not-allowed;background:#F4F6FB}
+.tbl input:not([type]),
+.tbl input[type="text"],
+.tbl input[type="number"],
+.tbl input[type="date"],
+.tbl select{
+  height:34px;
+  padding:0 10px;
+  font-size:13px;
+  border-radius:8px;
+}
+::placeholder{color:#93A4BC;font-weight:500}
 
 /* LOGIN */
 .lwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,var(--navy) 0%,#243660 55%,#4a9fd4 100%);padding:20px}
@@ -111,9 +165,36 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .lockpill{font-size:11px;font-weight:700;background:var(--navy2);color:#fff;border-radius:99px;padding:4px 11px}
 
 .searchwrap{position:relative;margin-bottom:14px}
-.search{width:100%;padding:14px 16px 14px 46px;border:1.5px solid var(--line);border-radius:13px;background:#fff;font-size:15px;outline:none}
-.search:focus{border-color:var(--sky)}
-.searchwrap .lens{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#93A4BC;font-size:17px}
+.searchwrap .lens{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#93A4BC;font-size:17px;pointer-events:none;z-index:1;line-height:1}
+/* Campo cerca con lente: lascia spazio a sinistra (specificità > input[type=text]) */
+.searchwrap input.search,
+.searchwrap .search{
+  width:100%;
+  padding:14px 16px 14px 46px !important;
+  border:1.5px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  font-size:15px;
+  font-weight:600;
+  outline:none;
+  box-sizing:border-box;
+}
+.searchwrap input.search:focus,
+.searchwrap .search:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(66,168,240,.15)}
+input.search,
+.search{
+  width:100%;
+  border:1.5px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  font-size:15px;
+  font-weight:600;
+  outline:none;
+  box-sizing:border-box;
+}
+input.search:focus,
+.search:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(66,168,240,.15)}
+select.search{height:42px;padding-top:0;padding-bottom:0;cursor:pointer}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .chip{padding:7px 13px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--mut)}
 .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -491,8 +572,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 #costi .dn{color:var(--red);font-weight:700}
 #costi .up{color:var(--green);font-weight:700}
 #costi .mono.bad{color:var(--red);font-weight:700}
-#costi select,#costi input[type=text],#costi input[type=number]{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
-#costi .pay-collab-pick input{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;height:auto}
+#costi select,#costi input[type=text],#costi input[type=number]{font:inherit;font-size:13px;font-weight:600;padding:0 10px;height:34px;border:1.5px solid var(--line);border-radius:8px;background:#FBFDFF}
+#costi .pay-collab-pick input{font:inherit;font-size:13px;font-weight:600;padding:0 10px;border:1.5px solid var(--line);border-radius:8px;background:#FBFDFF;height:34px}
 </style>
 </head>
 <body>

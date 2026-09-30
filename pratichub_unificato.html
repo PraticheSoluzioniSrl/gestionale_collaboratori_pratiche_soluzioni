@@ -30,8 +30,62 @@ body{font-family:'Hanken Grotesk',sans-serif;background:var(--bg);color:var(--in
 h1,h2,h3,.disp{font-family:'Bricolage Grotesque',sans-serif}
 .mono{font-family:'JetBrains Mono',monospace}
 button{font-family:inherit;cursor:pointer;border:none;background:none}
-input,select,textarea{font-family:inherit;font-size:14px}
-::placeholder{color:#93A4BC}
+/* Controlli form — stile unico progetto */
+input:not([type]),
+input[type="text"],
+input[type="password"],
+input[type="number"],
+input[type="email"],
+input[type="search"],
+input[type="date"],
+input[type="tel"],
+input[type="url"],
+input[type="month"],
+input[type="time"],
+select,
+textarea{
+  font-family:inherit;
+  font-size:13.5px;
+  font-weight:600;
+  color:var(--ink);
+  border:1.5px solid var(--line);
+  border-radius:9px;
+  padding:9px 11px;
+  background:#FBFDFF;
+  outline:none;
+  box-sizing:border-box;
+  max-width:100%;
+  transition:border-color .15s,box-shadow .15s;
+}
+select{cursor:pointer;height:38px;padding-top:0;padding-bottom:0}
+input:not([type]):focus,
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+input[type="email"]:focus,
+input[type="search"]:focus,
+input[type="date"]:focus,
+input[type="tel"]:focus,
+input[type="url"]:focus,
+input[type="month"]:focus,
+input[type="time"]:focus,
+select:focus,
+textarea:focus{
+  border-color:var(--sky);
+  box-shadow:0 0 0 3px rgba(66,168,240,.15);
+}
+input:disabled,select:disabled,textarea:disabled{opacity:.55;cursor:not-allowed;background:#F4F6FB}
+.tbl input:not([type]),
+.tbl input[type="text"],
+.tbl input[type="number"],
+.tbl input[type="date"],
+.tbl select{
+  height:34px;
+  padding:0 10px;
+  font-size:13px;
+  border-radius:8px;
+}
+::placeholder{color:#93A4BC;font-weight:500}
 
 /* LOGIN */
 .lwrap{min-height:100vh;display:flex;align-items:center;justify-content:center;background:linear-gradient(150deg,var(--navy) 0%,#243660 55%,#4a9fd4 100%);padding:20px}
@@ -111,9 +165,36 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .lockpill{font-size:11px;font-weight:700;background:var(--navy2);color:#fff;border-radius:99px;padding:4px 11px}
 
 .searchwrap{position:relative;margin-bottom:14px}
-.search{width:100%;padding:14px 16px 14px 46px;border:1.5px solid var(--line);border-radius:13px;background:#fff;font-size:15px;outline:none}
-.search:focus{border-color:var(--sky)}
-.searchwrap .lens{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#93A4BC;font-size:17px}
+.searchwrap .lens{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#93A4BC;font-size:17px;pointer-events:none;z-index:1;line-height:1}
+/* Campo cerca con lente: lascia spazio a sinistra (specificità > input[type=text]) */
+.searchwrap input.search,
+.searchwrap .search{
+  width:100%;
+  padding:14px 16px 14px 46px !important;
+  border:1.5px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  font-size:15px;
+  font-weight:600;
+  outline:none;
+  box-sizing:border-box;
+}
+.searchwrap input.search:focus,
+.searchwrap .search:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(66,168,240,.15)}
+input.search,
+.search{
+  width:100%;
+  border:1.5px solid var(--line);
+  border-radius:13px;
+  background:#fff;
+  font-size:15px;
+  font-weight:600;
+  outline:none;
+  box-sizing:border-box;
+}
+input.search:focus,
+.search:focus{border-color:var(--sky);box-shadow:0 0 0 3px rgba(66,168,240,.15)}
+select.search{height:42px;padding-top:0;padding-bottom:0;cursor:pointer}
 .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px}
 .chip{padding:7px 13px;border-radius:99px;border:1.5px solid var(--line);background:#fff;font-size:13px;font-weight:600;color:var(--mut)}
 .chip.on{background:var(--navy);border-color:var(--navy);color:#fff}
@@ -491,8 +572,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 #costi .dn{color:var(--red);font-weight:700}
 #costi .up{color:var(--green);font-weight:700}
 #costi .mono.bad{color:var(--red);font-weight:700}
-#costi select,#costi input[type=text],#costi input[type=number]{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff}
-#costi .pay-collab-pick input{font:inherit;font-size:12.5px;padding:6px 10px;border:1px solid var(--line);border-radius:7px;background:#fff;height:auto}
+#costi select,#costi input[type=text],#costi input[type=number]{font:inherit;font-size:13px;font-weight:600;padding:0 10px;height:34px;border:1.5px solid var(--line);border-radius:8px;background:#FBFDFF}
+#costi .pay-collab-pick input{font:inherit;font-size:13px;font-weight:600;padding:0 10px;border:1.5px solid var(--line);border-radius:8px;background:#FBFDFF;height:34px}
 </style>
 <style id="ar-prototype-css">
 /* Stili dal prototipo area-cliente.html */
@@ -832,7 +913,8 @@ input,select,textarea{font-family:inherit;font-size:14px}
 .ar-app{display:flex;flex-direction:column;min-height:100%}
 .area-main .ar-app{min-height:calc(100vh - 0px)}
 /* Pratiche guidate: campi form senza padding lente ricerca */
-.panel textarea.search,.panel select.search,.panel input.search:not(.searchwrap input.search){padding-left:14px!important;padding-right:14px!important;line-height:1.5;box-sizing:border-box;}
+.panel textarea.search,.panel select.search,.panel input.search{padding-left:14px!important;padding-right:14px!important;line-height:1.5;box-sizing:border-box;}
+.panel .searchwrap input.search,.panel .searchwrap .search{padding:14px 16px 14px 46px!important;}
 .tbl th{font-size:12px;letter-spacing:.02em;}
 </style>
 </head>
@@ -4312,6 +4394,15 @@ async function saveSharedBlob(id, data){
 .pay-strutt .pay-strutt-form label{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--mut)}
 .pay-strutt .pay-strutt-form input,.pay-strutt .pay-strutt-form select{height:34px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#fff;font-weight:600;text-transform:none}
 .pay-strutt .ph h3{flex:1;min-width:0}
+.pay-field{display:flex;flex-direction:column;gap:4px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--mut);margin:0}
+.pay-field .pay-sel,.pay-sel{height:34px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;font-size:13px;background:#FBFDFF;font-weight:600;color:var(--ink,#1A2333);font-family:inherit;min-width:90px;max-width:100%;outline:none;cursor:pointer;text-transform:none;letter-spacing:0}
+.pay-sel:focus{border-color:var(--navy,#123D97);box-shadow:0 0 0 3px rgba(18,61,151,.12)}
+.pay-sel-wide{min-width:260px;max-width:420px}
+.pay-listini-toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.pay-listini-panel{padding:16px;max-width:980px;margin-bottom:18px}
+.pay-tariffe-wrap{margin-top:8px}
+.pay-ctl-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.pay-ctl-row input[type="text"],.pay-ctl-row input:not([type]){min-width:200px;max-width:360px}
 `;
   document.head.appendChild(s);
 })();
@@ -5087,9 +5178,9 @@ function PayCollabPick({value,options,onChange,placeholder,inclInterni,style,dis
 }
 const PAY_MACROAREE=["Sindacato", "Patronato", "CAF"];
 const PAY_COMP_SEZIONI=[{"macro": "Sindacato", "tit": "Mensilit\u00e0 pensionati", "codCanale": "MENSILITA", "slot": "del", "kind": "mensilita", "voci": ["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL"]}, {"macro": "Sindacato", "tit": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "voci": ["ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "tit": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "voci": ["PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO"]}, {"macro": "CAF", "tit": "CAF", "codCanale": "CAF", "slot": "caf", "voci": ["M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_FRANCHIGIA", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"]}];
-const PAY_LISTINO_MACROAREE=[{"macro": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "categorie": ["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "categorie": ["PATRONATO"]}, {"macro": "CAF", "codCanale": "CAF", "slot": "caf", "categorie": ["M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"]}];
-const PAY_LISTINO_ORDINE=["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI", "PATRONATO", "M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"];
-const PAY_CAT_LBL={"MENS_INPS": "Pensionati INPS", "DELEGHE_INPS": "Deleghe INPS", "MENS_INPDAP": "Pensionati INPDAP", "DELEGHE_INPDAP": "Deleghe INPDAP", "MENS_IPOST": "Pensionati IPOST", "MENS_ENPALS": "Pensionati ENPALS", "DELEGHE_ENPALS": "Deleghe ENPALS", "MENS_INAIL": "Pensionati INAIL", "ART_COM_INPS": "ART/COM (INPS)", "ART_COM_INAIL": "ART/COM (INAIL)", "AZIENDE_AGRICOLE": "AZIENDE AGRICOLE", "DS_AGRICOLE": "Disoccupazioni AGRICOLE", "DS_ORD": "Disoccupazioni ORD - R/RID", "CONFIAL_VOCE": "CONFIAL 2024", "IMPRESE": "IMPRESE", "BOLLETTINI": "BOLLETTINI", "PATR_PREALI_PRES": "Punto reale PATRONATO", "PATR_PT_PRES": "Punto telematico PATRONATO", "PATR_P_RDC": "Punto RDC", "PATR_P_T_ADI": "Punto REM", "PATR_P_ORG": "Punto ORG. PATRONATO", "PATR_PUNTI_ESTERO": "PUNTI ESTERO ANNO 2020", "PENALE_SCOSTAMENTO": "Penale applicata per scostamento", "M730_SENZA_MOD": "MOD 730 SENZA MODIFICHE", "M730_ESONERO": "MOD 730 ESONERO PRES.", "M730_MODIFICATO": "MOD 730 CON MODIFICHE", "M730_INTEGRATIVO": "MOD 730 CON INTEGRAZIONE", "M730_FRANCHIGIA": "Franchigia 730", "M730_TOT_SOGGETTI": "730 totale soggetti", "ISEE_F1": "MOD ISEE I FASCIA", "ISEE_F2": "MOD ISEE II FASCIA", "ISEE_F3": "MOD ISEE III FASCIA", "ISEE_INVIATE": "DSU totale inviate", "RED_ASSEVERATI": "MOD RED ASSEVERATI", "RED_AUTOCERT": "MOD RED AUTOCERTIFICATI", "RED_BREVI": "MOD. RED BREVI", "ICRIC_ICLAV_ACCAS": "ICRIC01 - ICLAV - ACCA/PS", "RDC_PDC": "RdC/PdC", "RDC_COMUNICAZIONE": "COMUNICAZIONE RdC/PdC", "ADI": "ADI", "ADI_COMUNICAZIONE": "COMUNICAZIONE ADI", "F24_INVIO": "Invio F24", "UNICO_INVIO": "Invio UNICO", "LOCAZIONI": "Locazioni", "CATASTO": "Catasto", "DISOCCUPAZIONI": "Disoccupazioni AGRICOLE", "NASPI": "Disoccupazioni ORD - R/RID", "CONFIAL": "CONFIAL 2024", "PATRONATO": "Patronato", "M730": "Mod. 730", "ISEE": "ISEE / DSU", "RED": "RED", "RDC": "RdC / PdC", "ICRIC": "ICRIC / ICLAV / ACCAS", "F24": "Invio F24", "UNICO": "Invio UNICO"};
+const PAY_LISTINO_MACROAREE=[{"macro": "Sindacato", "codCanale": "MENSILITA", "slot": "del", "categorie": ["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI"]}, {"macro": "Patronato", "codCanale": "PATRONATO", "slot": "patronato", "categorie": ["PATRONATO", "PATR_P_ORG"]}, {"macro": "CAF", "codCanale": "CAF", "slot": "caf", "categorie": ["M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"]}];
+const PAY_LISTINO_ORDINE=["MENS_INPS", "MENS_INPDAP", "MENS_IPOST", "MENS_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DISOCCUPAZIONI", "NASPI", "CONFIAL", "IMPRESE", "BOLLETTINI", "PATRONATO", "PATR_P_ORG", "M730", "ISEE", "RED", "RDC", "ADI", "ICRIC", "F24", "UNICO", "LOCAZIONI", "CATASTO"];
+const PAY_CAT_LBL={"MENS_INPS": "Pensionati INPS", "DELEGHE_INPS": "Deleghe INPS", "MENS_INPDAP": "Pensionati INPDAP", "DELEGHE_INPDAP": "Deleghe INPDAP", "MENS_IPOST": "Pensionati IPOST", "MENS_ENPALS": "Pensionati ENPALS", "DELEGHE_ENPALS": "Deleghe ENPALS", "MENS_INAIL": "Pensionati INAIL", "ART_COM_INPS": "ART/COM (INPS)", "ART_COM_INAIL": "ART/COM (INAIL)", "AZIENDE_AGRICOLE": "AZIENDE AGRICOLE", "DS_AGRICOLE": "Disoccupazioni AGRICOLE", "DS_ORD": "Disoccupazioni ORD - R/RID", "CONFIAL_VOCE": "CONFIAL 2024", "IMPRESE": "IMPRESE", "BOLLETTINI": "BOLLETTINI", "PATR_PREALI_PRES": "Punto reale PATRONATO", "PATR_PT_PRES": "Punto telematico PATRONATO", "PATR_P_RDC": "Punto RDC", "PATR_P_T_ADI": "Punto REM", "PATR_P_ORG": "Punto organizzativo", "PATR_PUNTI_ESTERO": "PUNTI ESTERO ANNO 2020", "PENALE_SCOSTAMENTO": "Penale applicata per scostamento", "M730_SENZA_MOD": "MOD 730 SENZA MODIFICHE", "M730_ESONERO": "MOD 730 ESONERO PRES.", "M730_MODIFICATO": "MOD 730 CON MODIFICHE", "M730_INTEGRATIVO": "MOD 730 CON INTEGRAZIONE", "M730_FRANCHIGIA": "Franchigia 730", "M730_TOT_SOGGETTI": "730 totale soggetti", "ISEE_F1": "MOD ISEE I FASCIA", "ISEE_F2": "MOD ISEE II FASCIA", "ISEE_F3": "MOD ISEE III FASCIA", "ISEE_INVIATE": "DSU totale inviate", "RED_ASSEVERATI": "MOD RED ASSEVERATI", "RED_AUTOCERT": "MOD RED AUTOCERTIFICATI", "RED_BREVI": "MOD. RED BREVI", "ICRIC_ICLAV_ACCAS": "ICRIC01 - ICLAV - ACCA/PS", "RDC_PDC": "RdC/PdC", "RDC_COMUNICAZIONE": "COMUNICAZIONE RdC/PdC", "ADI": "ADI", "ADI_COMUNICAZIONE": "COMUNICAZIONE ADI", "F24_INVIO": "Invio F24", "UNICO_INVIO": "Invio UNICO", "LOCAZIONI": "Locazioni", "CATASTO": "Catasto", "DISOCCUPAZIONI": "Disoccupazioni AGRICOLE", "NASPI": "Disoccupazioni ORD - R/RID", "CONFIAL": "CONFIAL 2024", "PATRONATO": "Punti di patronato", "M730": "Mod. 730", "ISEE": "ISEE / DSU", "RED": "RED", "RDC": "RdC / PdC", "ICRIC": "ICRIC / ICLAV / ACCAS", "F24": "Invio F24", "UNICO": "Invio UNICO"};
 const PAY_VOCE_ORDINE=["MENS_INPS", "DELEGHE_INPS", "MENS_INPDAP", "DELEGHE_INPDAP", "MENS_IPOST", "MENS_ENPALS", "DELEGHE_ENPALS", "MENS_INAIL", "ART_COM_INPS", "ART_COM_INAIL", "AZIENDE_AGRICOLE", "DS_AGRICOLE", "DS_ORD", "CONFIAL_VOCE", "IMPRESE", "BOLLETTINI", "PATR_PREALI_PRES", "PATR_PT_PRES", "PATR_P_RDC", "PATR_P_T_ADI", "PATR_P_ORG", "PATR_PUNTI_ESTERO", "PENALE_SCOSTAMENTO", "M730_SENZA_MOD", "M730_ESONERO", "M730_MODIFICATO", "M730_INTEGRATIVO", "M730_FRANCHIGIA", "M730_TOT_SOGGETTI", "ISEE_F1", "ISEE_F2", "ISEE_F3", "ISEE_INVIATE", "RED_ASSEVERATI", "RED_AUTOCERT", "RED_BREVI", "ICRIC_ICLAV_ACCAS", "RDC_PDC", "RDC_COMUNICAZIONE", "ADI", "ADI_COMUNICAZIONE", "F24_INVIO", "UNICO_INVIO", "LOCAZIONI", "CATASTO"];
 function payLblVoce(c, p){ return (p&&p._lbl)||PAY_CAT_LBL[c]||(c||'—'); }
 function payLblCategoria(c, p){ return payLblVoce(c, p); }
@@ -8761,8 +8852,10 @@ function PayRomaNuovo({toast, collab}){
           <p>Ultimo: <b>{ultimo.file_nome}</b> · {(ultimo.eseguito_il||'').slice(0,16)} · anni {(ultimo.anni||[]).join(', ')} · {ultimo.righe} righe</p>
           {(ultimo.pagamenti_da_sganciare||[]).length>0 &&
             <p className="muted small">Attenzione: {(ultimo.pagamenti_da_sganciare||[]).length} pagamenti successivi all&apos;import finiranno in «Da abbinare».</p>}
-          <input value={annullaTxt} onChange={e=>setAnnullaTxt(e.target.value)} placeholder="Digita ANNULLA" style={{marginRight:8}}/>
-          <button className="btn btn-g" disabled={busy||annullaTxt.trim().toUpperCase()!=='ANNULLA'} onClick={doAnnulla}>Annulla import</button>
+          <div className="pay-ctl-row" style={{marginTop:8}}>
+            <input value={annullaTxt} onChange={e=>setAnnullaTxt(e.target.value)} placeholder="Digita ANNULLA"/>
+            <button className="btn btn-g" disabled={busy||annullaTxt.trim().toUpperCase()!=='ANNULLA'} onClick={doAnnulla}>Annulla import</button>
+          </div>
         </React.Fragment>}
       </div>
     </div>
@@ -8775,16 +8868,16 @@ function PayRomaNuovo({toast, collab}){
         {resetStep===0 && <button className="btn btn-g" disabled={busy} onClick={()=>setResetStep(1)}>Avvia azzeramento…</button>}
         {resetStep===1 && <React.Fragment>
           <p className="small">Passo 1 — digita esattamente <b className="mono">AZZERA PRODUZIONE</b></p>
-          <input value={resetC1} onChange={e=>setResetC1(e.target.value)} placeholder="AZZERA PRODUZIONE" style={{width:'100%',maxWidth:360,marginBottom:10}}/>
+          <input value={resetC1} onChange={e=>setResetC1(e.target.value)} placeholder="AZZERA PRODUZIONE" style={{width:'100%',maxWidth:360,marginBottom:10,display:'block'}}/>
           <button className="btn btn-g btn-sm" disabled={resetC1.trim().toUpperCase()!=='AZZERA PRODUZIONE'} onClick={()=>setResetStep(2)}>Continua</button>
-          <button className="btn btn-sm" style={{marginLeft:8}} onClick={()=>{setResetStep(0);setResetC1('');setResetC2('');}}>Annulla</button>
+          <button className="btn btn-g btn-sm" style={{marginLeft:8}} onClick={()=>{setResetStep(0);setResetC1('');setResetC2('');}}>Annulla</button>
         </React.Fragment>}
         {resetStep===2 && <React.Fragment>
           <p className="small">Passo 2 — digita esattamente <b className="mono">CONFERMO</b> per eseguire</p>
           <p className="muted small" style={{margin:'0 0 8px'}}>Passo 1 confermato: <b className="mono">AZZERA PRODUZIONE</b></p>
-          <input value={resetC2} onChange={e=>setResetC2(e.target.value)} placeholder="CONFERMO" style={{width:'100%',maxWidth:360,marginBottom:10}}/>
+          <input value={resetC2} onChange={e=>setResetC2(e.target.value)} placeholder="CONFERMO" style={{width:'100%',maxWidth:360,marginBottom:10,display:'block'}}/>
           <button className="btn btn-g" disabled={busy||resetC2.trim().toUpperCase()!=='CONFERMO'} onClick={doReset}>Esegui azzeramento</button>
-          <button className="btn btn-sm" style={{marginLeft:8}} onClick={()=>{setResetStep(0);setResetC1('');setResetC2('');}}>Annulla</button>
+          <button className="btn btn-g btn-sm" style={{marginLeft:8}} onClick={()=>{setResetStep(0);setResetC1('');setResetC2('');}}>Annulla</button>
         </React.Fragment>}
       </div>
     </div>
@@ -10853,18 +10946,18 @@ function PayTariffeRiferimento({toast, focusAnno, highlightVoci, scrollKey}){
   };
   if(err) return <div className="infobox">⚠ {err}</div>;
   return <div className="panel pay-tariffe-wrap" ref={wrapRef} style={{padding:14,marginBottom:16}}>
+    <div id="pay-tariffe-anchor"/>
     <div style={{display:'flex',justifyContent:'space-between',gap:10,flexWrap:'wrap',alignItems:'center'}}>
       <div>
         <h3 className="disp" style={{margin:0}}>Tariffe di riferimento per anno</h3>
         <p className="muted small" style={{margin:'4px 0 0'}}>
-          Base ufficiale: per i MOD 730 = tariffa nominale AE + % taglio annuale (importo netto = base × (1 − taglio)).
-          ISEE fissi (10,81 / 14,33 / 17,35). I listini collaboratore applicano %/fisso sul netto. L&apos;import produzione resta la fonte delle quantità.
-          Per il 2026 il taglio AE non è ancora ufficiale: solo nominale.
+          Entra nel calcolo come <b>base €/unità</b> quando il file Roma porta solo quantità (730, ISEE, punti patronato, RED…).
+          Non sostituisce i listini collaboratore (sopra): lì definisci solo %/fisso. Mensilità, NASPI, F24 ecc. di solito non sono qui perché l&apos;importo arriva già dal file.
         </p>
       </div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-        <label className="muted small">Anno
-          <select value={anno} onChange={e=>setAnno(+e.target.value)} style={{marginLeft:6}}>
+      <div className="pay-listini-toolbar">
+        <label className="pay-field">Anno
+          <select className="pay-sel" value={anno} onChange={e=>setAnno(+e.target.value)}>
             {(anni.length?anni:[anno]).map(y=><option key={y} value={y}>{y}</option>)}
           </select>
         </label>
@@ -10912,8 +11005,15 @@ function PayListini({toast, navHint, onNavConsumed}){
   const [navFlash,setNavFlash]=useState('');
   const [lisAnno,setLisAnno]=useState(null);
   const [lisAnni,setLisAnni]=useState([]);
+  const [selListino,setSelListino]=useState('');
   const resetDraft=lst=>{ const d={}; lst.forEach(x=>d[x.listino]=payListinoCompleta(payClona(x.profilo||[]))); setDraft(d); };
-  const caricaListini=async (annoWant)=>{
+  const pickDefaultListino=(sorted, prefer)=>{
+    if(prefer && sorted.some(x=>x.listino===prefer)) return prefer;
+    const base=payFindListinoBase(sorted);
+    if(base) return base;
+    return sorted[0]?.listino||'';
+  };
+  const caricaListini=async (annoWant, preferListino)=>{
     const qs=annoWant!=null?('?anno='+annoWant):'';
     const [resp,c]=await Promise.all([payApi('/listini'+qs),payApi('/collaboratori')]);
     const parsed=payParseListiniResp(resp);
@@ -10921,6 +11021,7 @@ function PayListini({toast, navHint, onNavConsumed}){
     setLisAnni(parsed.anni||[]);
     setLisAnno(parsed.anno!=null?+parsed.anno:(annoWant!=null?+annoWant:null));
     setRows(sorted); setCollab(c); resetDraft(sorted); setErr('');
+    setSelListino(prev=>pickDefaultListino(sorted, preferListino!=null?preferListino:prev));
     return parsed;
   };
   useEffect(()=>{ ensurePayAuth().then(()=>caricaListini(null))
@@ -10935,14 +11036,15 @@ function PayListini({toast, navHint, onNavConsumed}){
     if(navHint.tab==='tariffe'&&navHint.gap?.voci) setTarVoci((navHint.gap.voci||[]).map(v=>v.codice).filter(Boolean));
     if(navHint.tab==='tariffe') setNavFlash('Tariffe mancanti per l\'anno '+ (navHint.anno||'') + ' — evidenziate sotto.');
     onNavConsumed&&onNavConsumed();
-    setTimeout(()=>document.getElementById('pay-listini-top')?.scrollIntoView({behavior:'smooth',block:'start'}),150);
+    const scrollId=navHint.tab==='tariffe'?'pay-tariffe-anchor':'pay-listini-top';
+    setTimeout(()=>document.getElementById(scrollId)?.scrollIntoView({behavior:'smooth',block:'start'}),150);
   },[navHint]);
   if(err) return <div className="infobox">⚠ Listini: {err}</div>;
   if(!rows) return <p className="muted">Caricamento listini…</p>;
   const blocca=()=>{ resetDraft(rows); setEditMode(false); setShowVoce(false); };
   const cambiaAnno=async a=>{
     try{
-      await caricaListini(+a);
+      await caricaListini(+a, selListino);
       setEditMode(false);
     }catch(e){ toast(e.detail||'Errore cambio anno',1); }
   };
@@ -10954,7 +11056,7 @@ function PayListini({toast, navHint, onNavConsumed}){
     await payApi('/listini/applica',{method:'POST',body:JSON.stringify({listino,collaboratore_id:+cidv,anno:lisAnno})});
     toast('Listino applicato a '+nomeColl+' · '+lisAnno+(PAY_USE_API?' — compensi ricalcolati':''));
     if(!PAY_USE_API){
-      await caricaListini(lisAnno);
+      await caricaListini(lisAnno, listino);
     }
   };
   const salvaProfilo=async nome=>{
@@ -10976,7 +11078,7 @@ function PayListini({toast, navHint, onNavConsumed}){
         propaga_altri:voce._propaga!==false,
         anno:lisAnno,
       })});
-      await caricaListini(lisAnno);
+      await caricaListini(lisAnno, selListino);
       const msg=r.propagato
         ? 'Voce "'+(voce._lbl||voce.categoria)+'" creata nel listino base e replicata su '+((r.listini_aggiornati||[]).length)+' listini (altri a 0 — da impostare)'
         : 'Voce "'+(voce._lbl||voce.categoria)+'" applicata a '+listiniSel.length+' listin'+(listiniSel.length===1?'o':'i');
@@ -10996,7 +11098,7 @@ function PayListini({toast, navHint, onNavConsumed}){
   const salva=async nome=>{
     try{
       await salvaProfilo(nome);
-      await caricaListini(lisAnno);
+      await caricaListini(lisAnno, nome);
       toast('Listino aggiornato per il '+lisAnno+' (gli altri anni restano invariati)');
     }catch(e){ toast(e.detail||'Errore salvataggio',1); }
   };
@@ -11006,7 +11108,7 @@ function PayListini({toast, navHint, onNavConsumed}){
     if(!confirm('Copiare il profilo di "'+nome+'" da '+da+' a '+lisAnno+'?\nSovrascrive solo l\'anno '+lisAnno+'.')) return;
     try{
       await payApi('/listini/copia-anno',{method:'POST',body:JSON.stringify({listino:nome,da_anno:da,a_anno:lisAnno})});
-      await caricaListini(lisAnno);
+      await caricaListini(lisAnno, nome);
       toast('Profilo copiato da '+da+' → '+lisAnno);
     }catch(e){ toast(e.detail||'Copia non riuscita',1); }
   };
@@ -11016,16 +11118,17 @@ function PayListini({toast, navHint, onNavConsumed}){
     const copia_da = rows[0]?.listino || null;
     try{
       await payApi('/listini/nuovo',{method:'POST',body:JSON.stringify({listino:nome,copia_da})});
-      await caricaListini(lisAnno);
+      await caricaListini(lisAnno, nome);
       setEditMode(true);
       toast('Nuovo listino creato');
     }catch(e){ toast(e.detail||'Errore creazione listino',1); }
   };
   const fmt=(p)=>p.tipo==='perc' ? (Number(p.valore||0)*100).toFixed(0)+'%' : eur(p.valore||0)+' €';
   const baseName=payFindListinoBase(rows);
+  const l=rows.find(x=>x.listino===selListino)||rows[0]||null;
+  const nZero=l?((draft[l.listino]||l.profilo||[]).filter(p=>Number(p.valore||0)===0).length):0;
   return <React.Fragment>
     <div id="pay-listini-top"/>
-    <PayTariffeRiferimento toast={toast} focusAnno={tarAnno} highlightVoci={tarVoci} scrollKey={navHint&&navHint.tab==='tariffe'?navHint.anno:null}/>
     {navFlash&&<div className="infobox pay-listini-nav-flash">{navFlash}</div>}
     {showVoce&&<ModalAggiungiVoceListino rows={rows} draft={draft} preselect={vocePreselect}
       onClose={()=>{setShowVoce(false);setVocePreselect(null);}}
@@ -11034,56 +11137,69 @@ function PayListini({toast, navHint, onNavConsumed}){
       <div className="sub">{editMode?'Modifica abilitata — salva ogni listino prima di bloccare. Le modifiche valgono solo per l\'anno selezionato.':'Percentuali/fisso per anno — puoi usare fisso fino al 2022 e % dal 2023 sullo stesso listino.'}</div>
       {baseName&&<div className="sub muted">Listino base: <b>{baseName}</b> — le nuove pratiche si creano da qui e si propagano automaticamente.</div>}
       </div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
-        <label className="muted small" style={{display:'flex',alignItems:'center',gap:6}}>Anno listino
-          <select value={lisAnno||''} onChange={e=>cambiaAnno(e.target.value)} style={{minWidth:90}}>
+      <div className="pay-listini-toolbar">
+        <label className="pay-field">Anno
+          <select className="pay-sel" value={lisAnno||''} onChange={e=>cambiaAnno(e.target.value)}>
             {(lisAnni||[]).map(a=><option key={a} value={a}>{a}</option>)}
+          </select>
+        </label>
+        <label className="pay-field">Listino
+          <select className="pay-sel pay-sel-wide" value={selListino||''} onChange={e=>setSelListino(e.target.value)}>
+            {rows.map(x=><option key={x.listino} value={x.listino}>
+              {x.listino}{payIsListinoBase(x.listino)?' (BASE)':''} · {x.membri} collab.
+            </option>)}
           </select>
         </label>
         {!editMode ? <button className="btn btn-p" onClick={()=>setEditMode(true)}>Modifica</button>
           : <button className="btn btn-g" onClick={blocca}>Blocca</button>}
-        <button className="btn btn-g" onClick={()=>{setVocePreselect(baseName);setShowVoce(true);}}>+ Nuova pratica</button>
+        <button className="btn btn-g" onClick={()=>{setVocePreselect(baseName||selListino);setShowVoce(true);}}>+ Nuova pratica</button>
         {editMode && <button className="btn btn-p" onClick={nuovo}>+ Nuovo listino</button>}
       </div></div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:12}}>
-    {rows.map(l=><div className="panel" key={l.listino} style={{padding:14,opacity:editMode?1:.98}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:8}}>
-        <div><b>{l.listino}</b>{payIsListinoBase(l.listino)&&<span className="pay-listini-base-tag" style={{marginLeft:8}}>BASE</span>}
-          <div className="muted small">{l.membri} collaboratori · anno {lisAnno}</div></div>
-        {editMode&&<button type="button" className="btn btn-g btn-sm" title="Aggiungi voce a questo listino"
-          onClick={()=>{setVocePreselect(l.listino);setShowVoce(true);}}>+ Voce</button>}
+    {!l ? <div className="empty"><div className="big">🏷</div>Nessun listino per {lisAnno||'questo anno'}.</div>
+    : <div className="panel pay-listini-panel">
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:10,flexWrap:'wrap'}}>
+        <div>
+          <b style={{fontSize:16}}>{l.listino}</b>
+          {payIsListinoBase(l.listino)&&<span className="pay-listini-base-tag" style={{marginLeft:8}}>BASE</span>}
+          <div className="muted small" style={{marginTop:4}}>{l.membri} collaboratori · anno {lisAnno}
+            {nZero>0 && <span style={{marginLeft:8,color:'var(--amber)',fontWeight:700}}>· {nZero} voci da impostare</span>}
+          </div>
+        </div>
+        {editMode&&<div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <button type="button" className="btn btn-g btn-sm" title="Aggiungi voce a questo listino"
+            onClick={()=>{setVocePreselect(l.listino);setShowVoce(true);}}>+ Voce</button>
+          <button className="btn btn-g btn-sm" onClick={()=>copiaDaPrec(l.listino)}>Copia da {lisAnno-1}</button>
+          <button className="btn btn-p btn-sm" onClick={()=>salva(l.listino)}>Salva {lisAnno}</button>
+        </div>}
       </div>
-      {!editMode ? <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:10}}>
+      {!editMode ? <div style={{display:'flex',flexWrap:'wrap',gap:6,marginTop:12}}>
         {payListinoPerMacro(l.profilo||[]).map(g=><React.Fragment key={g.macro}>
           <span className="chip" style={{background:'#EEF4FC',color:'var(--navy)',fontWeight:700,width:'100%',marginBottom:2}}>{g.macro}</span>
           {g.righe.map((p,i)=><span key={i} className={'chip'+(Number(p.valore||0)===0?' pay-chip-zero':'')}>{payLblCategoria(p.categoria,p)}: {Number(p.valore||0)===0?'da impostare':fmt(p)}</span>)}
         </React.Fragment>)}
       </div> : <React.Fragment>
-      <table className="tbl" style={{marginTop:10}}>
+      <table className="tbl" style={{marginTop:12}}>
         <thead><tr><th>Voce</th><th>Tipo</th><th className="r">Valore</th></tr></thead>
         <tbody>{payListinoPerMacro(draft[l.listino]||[]).map(g=><React.Fragment key={g.macro}>
           <tr className="pay-listino-macro"><td colSpan={3}>{g.macro}</td></tr>
           {g.righe.map((p,i)=><tr key={p.categoria||i} className={Number(p.valore||0)===0?'pay-listino-zero':''}>
           <td>{payLblCategoria(p.categoria,p)}{Number(p.valore||0)===0&&<span className="pay-zero-tag">da impostare</span>}</td>
-          <td style={{width:120}}><select value={p.tipo} onChange={e=>setCampo(l.listino,p.categoria,'tipo',e.target.value)}>
+          <td style={{width:120}}><select className="pay-sel" value={p.tipo} onChange={e=>setCampo(l.listino,p.categoria,'tipo',e.target.value)}>
             <option value="perc">%</option><option value="fisso">fisso</option>
           </select></td>
           <td className="r" style={{width:130}}><input type="number" step="0.01" value={p.valore}
-            onChange={e=>setCampo(l.listino,p.categoria,'valore',e.target.value)} style={{width:110,textAlign:'right'}}/></td>
+            onChange={e=>setCampo(l.listino,p.categoria,'valore',e.target.value)} style={{width:110,textAlign:'right',height:34,border:'1.5px solid var(--line)',borderRadius:8,padding:'0 10px',background:'#FBFDFF',fontWeight:600}}/></td>
         </tr>)}
         </React.Fragment>)}
         </tbody>
       </table>
-      <div style={{display:'flex',justifyContent:'flex-end',gap:8,marginTop:8,flexWrap:'wrap'}}>
-        <button className="btn btn-g btn-sm" onClick={()=>copiaDaPrec(l.listino)}>Copia da {lisAnno-1}</button>
-        <button className="btn btn-g btn-sm" onClick={()=>salva(l.listino)}>Salva {lisAnno}</button>
-      </div>
       </React.Fragment>}
       <PayCollabPick value="" options={collab.filter(c=>!c.interno)} inclInterni={false}
         placeholder={'Applica a collaboratore ('+lisAnno+')…'} labelSuffix={c=>c.listino?'· '+c.listino:''}
-        onChange={v=>{ if(v) applica(l.listino,v); }} style={{marginTop:10,width:'100%'}}/>
-    </div>)}
-    </div>
+        onChange={v=>{ if(v) applica(l.listino,v); }} style={{marginTop:12,width:'100%'}}/>
+      <div className="muted small" style={{marginTop:10}}>{rows.length} listini disponibili — cambiali dal menu «Listino» in alto.</div>
+    </div>}
+    <PayTariffeRiferimento toast={toast} focusAnno={tarAnno} highlightVoci={tarVoci} scrollKey={navHint&&navHint.tab==='tariffe'?navHint.anno:null}/>
   </React.Fragment>;
 }
 
