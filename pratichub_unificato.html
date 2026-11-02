@@ -914,7 +914,7 @@ select.search{height:42px;padding-top:0;padding-bottom:0;cursor:pointer}
 .area-main .ar-app{min-height:calc(100vh - 0px)}
 /* Pratiche guidate: campi form senza padding lente ricerca */
 .panel textarea.search,.panel select.search,.panel input.search{padding-left:14px!important;padding-right:14px!important;line-height:1.5;box-sizing:border-box;}
-.panel .searchwrap input.search,.panel .searchwrap .search{padding:14px 16px 14px 46px!important;}
+.searchwrap input.search,.searchwrap .search,.panel .searchwrap input.search,.panel .searchwrap .search{padding:14px 16px 14px 46px!important;}
 .tbl th{font-size:12px;letter-spacing:.02em;}
 </style>
 </head>
@@ -4875,6 +4875,19 @@ async function payApiMock(path, opts={}){
     payCommitLocal();
     return {ok:true};
   }
+  if(path==='/listini/rinomina' && metodo==='POST'){
+    const da=String(corpo.listino||'').trim();
+    const a=String(corpo.nuovo_nome||'').trim();
+    if(!da||!a) throw {status:422, detail:'nome obbligatorio'};
+    const row=PAY_D.listini.find(x=>x.listino===da);
+    if(!row) throw {status:404, detail:'listino non trovato'};
+    if(PAY_D.listini.some(x=>x.listino!==da && x.listino.toUpperCase()===a.toUpperCase()))
+      throw {status:409, detail:'esiste già un listino con questo nome'};
+    row.listino=a;
+    (PAY_D.collaboratori||[]).forEach(c=>{ if(c.listino===da) c.listino=a; });
+    payCommitLocal();
+    return {ok:true, listino:a, da, collaboratori:(PAY_D.collaboratori||[]).filter(c=>c.listino===a).length};
+  }
   if(path==='/listini/aggiungi-voce' && metodo==='POST'){
     const cat=String(corpo.categoria||'').trim().toUpperCase();
     if(!cat) throw {status:422, detail:'categoria obbligatoria'};
@@ -8198,12 +8211,14 @@ function PayCode({toast}){
           <PayCollabPick value={frCid} options={collab} inclInterni={false} placeholder="Seleziona…"
             onChange={v=>{ setFrCid(v); setFrAnno(''); }}/></div>
         <div className="f" style={{margin:0}}><label>Anno franchigia</label>
-          <select value={frAnno} onChange={e=>setFrAnno(e.target.value)}>
+          <select className="pay-sel" value={frAnno} onChange={e=>setFrAnno(e.target.value)}>
             <option value="">Seleziona…</option>
-            {(frCid?fr730.filter(x=>String(x.collaboratore_id)===String(frCid)):fr730)
-              .map(x=>x.anno).filter((a,i,arr)=>arr.indexOf(a)===i).sort((a,b)=>b-a)
+            {(frCid
+              ? fr730.filter(x=>String(x.collaboratore_id)===String(frCid)).map(x=>x.anno)
+              : frAnni)
+              .filter((a,i,arr)=>a!=null&&arr.indexOf(a)===i)
+              .sort((a,b)=>b-a)
               .map(a=><option key={a} value={a}>{a}</option>)}
-            {!frCid && frAnni.map(a=><option key={a} value={a}>{a}</option>)}
           </select></div>
         <div className="f" style={{margin:0}}><label>Importo da restituire (€)</label>
           <input value={frImp} onChange={e=>setFrImp(e.target.value)} placeholder="es. 608,09"
@@ -8885,7 +8900,8 @@ function PayRomaNuovo({toast, collab}){
 }
 
 function PayImport({toast,onNav}){
-  const [tab,setTab]=useState('roma');
+  // Nessun tab pre-selezionato: obbliga a scegliere il tipo di import (evita errori).
+  const [tab,setTab]=useState(null);
   const [showImpDett,setShowImpDett]=useState(true);
   const [esito,setEsito]=useState(null); const [busy,setBusy]=useState(false);
   const [storico,setStorico]=useState(null);
@@ -9034,18 +9050,18 @@ function PayImport({toast,onNav}){
     if(/cost[oi].*dipendent|dipendent.*cost|costi.?total/i.test(f.name)||low.includes('costo dipendenti')||low.includes('costi_dipendenti')||low.includes('esempio_costi')) return 'costi';
     return null;
   };
+  const lblImportTab={roma:'Produzione Nazionale',pat:'Patronato dettaglio',pag:'Pagamenti storici',costi:'Costi dipendenti',fat:'Fatture Nazionale',prov:'Import provvisori'};
   const su=async e=>{
     const f=e.target.files[0]; if(!f)return;
     const low=f.name.toLowerCase();
     const hint=hintFile(f);
+    // Non cambiare tab automaticamente: solo avviso. L'utente deve scegliere il tab giusto.
     if(hint==='pag'||hint==='pat'||hint==='costi'){
-      setTab(hint);
-      toast(hint==='pag'
-        ?'File Pagamenti: usa il tab «Pagamenti storici» qui sotto'
-        : hint==='pat'
-          ?'File Patronato: usa il tab «Patronato dettaglio» qui sotto'
-          :'File Costi dipendenti: usa il tab «Costi dipendenti» qui sotto',1);
-      e.target.value=''; return;
+      const nomeTab=lblImportTab[hint]||hint;
+      if(tab!==hint){
+        toast('Questo file sembra di tipo «'+nomeTab+'». Seleziona quel tab e carica da lì (nessun tab è cambiato in automatico).',1);
+        e.target.value=''; return;
+      }
     }
     if(low.endsWith('.xlsx')||(!low.endsWith('.xls')&&!low.endsWith('.xlsx'))){
       toast('Produzione Nazionale accetta solo file .xls (Excel 97-2003). Costi / Patronato / Pagamenti / Fatture / Provvisori → tab dedicati (.xlsx).',1);
@@ -9310,11 +9326,46 @@ function PayImport({toast,onNav}){
     }catch(x){ toast(x.detail||'Errore conferma costi',1); }
     setCostiBusy(false);
   };
+  const importTabs=[['roma','Produzione Nazionale'],['pat','Patronato dettaglio'],['pag','Pagamenti storici'],['costi','Costi dipendenti'],['fat','Fatture Nazionale'],['prov','Import provvisori']];
+  const apriCostiGestione=(anno,q)=>{
+    if(onNav) onNav({view:'costi', anno:anno||null, tab:'gestione', q:q||''});
+    else toast('Apri Costi dipendenti → Gestione'+(anno?' · anno '+anno:'')+(q?' · cerca «'+q+'»':''),1);
+  };
+  const bloccaImportTab=(k)=>{
+    setTab(k);
+    setEsito(null); setRomaPrev(null); setRomaFile(null);
+    setPatPrev(null); setPagPrev(null); setPagConf(null);
+    setCostiPrev(null); setCostiConf(null); setCostiFile(null);
+    setFatPrev(null); setProvPrev(null); setProvErr('');
+    setShowImpDett(true);
+  };
+  const sbloccaImportTab=()=>{
+    if(!confirm('Uscire da «'+(lblImportTab[tab]||tab)+'»?\nDovrai scegliere di nuovo il tipo di import. Anteprime non confermate di questo tipo andranno perse dalla schermata.')) return;
+    setTab(null);
+    setEsito(null); setRomaPrev(null); setRomaFile(null);
+    setPatPrev(null); setPagPrev(null); setPagConf(null); setPagDaAbb(null);
+    setCostiPrev(null); setCostiConf(null); setCostiFile(null);
+    setFatPrev(null); setProvPrev(null); setProvErr('');
+  };
   return <React.Fragment>
     <div className="top"><div><h1>Import dati</h1>
-      <div className="sub">Produzione · Patronato · Pagamenti · Costi dipendenti · Fatture · Provvisori</div></div></div>
-    <PayTabs tabs={[['roma','Produzione Nazionale'],['pat','Patronato dettaglio'],['pag','Pagamenti storici'],['costi','Costi dipendenti'],['fat','Fatture Nazionale'],['prov','Import provvisori']]} active={tab} onChange={setTab}/>
-    <PayConfrontoTariffe toast={toast}/>
+      <div className="sub">{tab
+        ? ('Modalità bloccata: '+ (lblImportTab[tab]||tab) +' — per cambiare tipo usa «Cambia tipo di import»')
+        : 'Obbligatorio scegliere un solo tipo di import; poi resta bloccato finché non lo cambi esplicitamente'}</div></div></div>
+    {!tab && <div className="panel" style={{padding:14,marginBottom:14}}>
+      <div className="ph" style={{marginBottom:10}}><h3>Cosa stai importando?</h3>
+        <span className="sp muted small">Scegli una voce: poi resta bloccata finché non la cambi esplicitamente</span></div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
+        {importTabs.map(([k,l])=>
+          <button key={k} type="button" className="btn btn-g" onClick={()=>bloccaImportTab(k)}>{l}</button>)}
+      </div>
+    </div>}
+    {!!tab && <div className="infobox" style={{marginBottom:14,display:'flex',alignItems:'center',justifyContent:'space-between',gap:12,flexWrap:'wrap'}}>
+      <div><b>Import bloccato:</b> {lblImportTab[tab]||tab}
+        <span className="muted"> — gli altri tipi non sono disponibili finché non cambi modalità.</span></div>
+      <button type="button" className="btn btn-g btn-sm" onClick={sbloccaImportTab}>Cambia tipo di import…</button>
+    </div>}
+    {!!tab && <PayConfrontoTariffe toast={toast}/>}
     {tab==='roma' && <React.Fragment>
     <PayRomaNuovo toast={toast} collab={pagCollab}/>
     {btnRicalcolaImport(busy||patBusy||pagBusy||costiBusy)}
@@ -9872,51 +9923,75 @@ function PayImport({toast,onNav}){
         </h3>
         <div className="row"><span className="l">Inseriti correttamente</span><span className="r mono pos">{num(costiConf.inseriti)}</span></div>
         <div className="row"><span className="l">Abbinati a collaboratore</span><span className="r mono pos">{num(costiConf.abbinati)}</span></div>
-        <div className="row"><span className="l">Da attribuire</span><span className={'r mono '+(Number(costiConf.da_attribuire||0)>0?'neg':'pos')}>{num(costiConf.da_attribuire)}</span></div>
+        <div className="row"><span className="l">Da attribuire / confermare</span><span className={'r mono '+(Number(costiConf.da_attribuire||0)>0?'neg':'pos')}>{num(costiConf.da_attribuire)}</span></div>
         {(costiConf.anni||[]).length>0 && <div className="row"><span className="l">Anni</span><span className="r mono">{costiConf.anni.join(', ')}</span></div>}
-        {Number(costiConf.da_attribuire||0)>0
-          ? <div className="infobox" style={{marginTop:10,fontSize:12.5,borderColor:'var(--red)'}}>
-              Le righe senza collaboratore (o senza regola struttura) sono in <b>Costi dipendenti → Gestione</b>
-              {(costiConf.anni||[]).length?<> — seleziona l&apos;anno <b>{(costiConf.anni||[]).join(', ')}</b></>:null}.
-              <div style={{marginTop:8}}>
+        {(()=>{
+          const det=costiConf.dettaglio_inseriti||[];
+          const daAttrLista=(costiConf.dettaglio_da_attribuire||[]).length
+            ? costiConf.dettaglio_da_attribuire
+            : det.filter(e=>!e.collaboratore_id||e.stato==='da_attribuire');
+          const daConf=det.filter(e=>e.stato==='proposta'||e.stato==='da_attribuire');
+          const nAzione=Math.max(Number(costiConf.da_attribuire||0), daAttrLista.length, daConf.length);
+          if(nAzione>0){
+            return <div className="infobox" style={{marginTop:10,fontSize:12.5,borderColor:'var(--red)'}}>
+              Le righe <b>da_attribuire</b> / <b>proposta</b> non si risolvono qui in Import: vanno in
+              {' '}<b>Costi dipendenti → Gestione</b> (anno giusto + filtro «Da confermare») oppure nel tab <b>Righe da controllare</b>.
+              {(costiConf.anni||[]).length?<> Anni file: <b>{(costiConf.anni||[]).join(', ')}</b>.</>:null}
+              <div style={{marginTop:8,display:'flex',flexWrap:'wrap',gap:8}}>
                 <button type="button" className="btn btn-p btn-sm" onClick={()=>{
                   const y=(costiConf.anni&&costiConf.anni[0])||null;
-                  const q=((costiConf.dettaglio_da_attribuire||[])[0]||{}).nome||'';
-                  if(onNav) onNav({view:'costi', anno:y, tab:'gestione', q:q});
-                  else toast('Apri Costi dipendenti → Gestione, anno '+(y||'…')+(q?' · cerca «'+q+'»':''),1);
-                }}>Apri in Costi dipendenti → Gestione</button>
+                  const q=(daAttrLista[0]||daConf[0]||{}).nome||'';
+                  apriCostiGestione(y,q);
+                }}>Apri Costi dipendenti → Gestione</button>
               </div>
-            </div>
-          : <div className="infobox" style={{marginTop:10,fontSize:12.5}}>
-              Tutte le righe di questo import hanno un collaboratore: niente da attribuire. Lo storico Import riflette lo stato attuale di Gestione.
-            </div>}
-        {(costiConf.dettaglio_inseriti||[]).length>0 && <details style={{marginTop:12}}>
-          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Importati correttamente ({costiConf.dettaglio_inseriti.length}) — clicca per espandere</summary>
+            </div>;
+          }
+          return <div className="infobox" style={{marginTop:10,fontSize:12.5}}>
+            Nessuna riga ancora da attribuire o confermare. Lo storico Import riflette lo stato attuale di Gestione.
+          </div>;
+        })()}
+        {(costiConf.dettaglio_inseriti||[]).length>0 && <details style={{marginTop:12}} open={(costiConf.dettaglio_inseriti||[]).some(e=>e.stato==='da_attribuire'||e.stato==='proposta')}>
+          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Importati ({costiConf.dettaglio_inseriti.length}) — clicca per espandere</summary>
           <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:280}}>
           <table className="tbl" style={{margin:0,fontSize:12}}>
-            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th>Collaboratore</th><th className="n">Quota</th><th>Stato</th></tr></thead>
-            <tbody>{costiConf.dettaglio_inseriti.map((e,i)=><tr key={i}>
+            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th>Collaboratore</th><th className="n">Quota</th><th>Stato</th><th></th></tr></thead>
+            <tbody>{costiConf.dettaglio_inseriti.map((e,i)=><tr key={i} style={(e.stato==='da_attribuire'||e.stato==='proposta')?{background:'#FEF2F2'}:undefined}>
               <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
               <td>{e.collaboratore||<span className="muted">—</span>}</td>
               <td className="n mono">{eur(e.quota||e.costo_totale)}</td>
-              <td className="small">{e.stato||'—'}</td>
-            </tr>)}</tbody>
-          </table></div>
-        </details>}
-        {Number(costiConf.da_attribuire||0)>0 && (costiConf.dettaglio_da_attribuire||[]).length>0 && <details style={{marginTop:12}} open>
-          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--red)'}}>Da attribuire ({costiConf.dettaglio_da_attribuire.length})</summary>
-          <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:220}}>
-          <table className="tbl" style={{margin:0,fontSize:12}}>
-            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th className="n">Costo totale</th></tr></thead>
-            <tbody>{costiConf.dettaglio_da_attribuire.map((e,i)=><tr key={i}>
-              <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
-              <td className="n mono neg">{eur(e.costo_totale)}</td>
+              <td className="small">{e.stato||'—'}{e.motivo? <span className="muted"> · {e.motivo}</span>:null}</td>
+              <td>{(e.stato==='da_attribuire'||e.stato==='proposta')
+                ? <button type="button" className="btn btn-p btn-sm" onClick={()=>apriCostiGestione(e.anno,e.nome)}>Apri Gestione</button>
+                : null}</td>
             </tr>)}</tbody>
           </table></div>
           <p className="muted small" style={{marginTop:8}}>
-            Per abbinarle: bottone sopra oppure <b>Costi dipendenti → Gestione</b>, anno {(costiConf.anni||[]).join(', ')||'del file'}.
+            Se vedi <b>da_attribuire</b> anche con collaboratore già indicato, di solito manca la <b>regola struttura</b> o va confermata la quota in Gestione / Righe da controllare (anno della riga).
           </p>
         </details>}
+        {(()=>{
+          const det=costiConf.dettaglio_inseriti||[];
+          const lista=(costiConf.dettaglio_da_attribuire||[]).length
+            ? costiConf.dettaglio_da_attribuire
+            : det.filter(e=>!e.collaboratore_id||e.stato==='da_attribuire');
+          if(!lista.length) return null;
+          return <details style={{marginTop:12}} open>
+          <summary style={{cursor:'pointer',fontWeight:600,color:'var(--red)'}}>Da attribuire / sbloccare ({lista.length})</summary>
+          <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:220}}>
+          <table className="tbl" style={{margin:0,fontSize:12}}>
+            <thead><tr><th>Anno</th><th>Dipendente</th><th>Struttura</th><th className="n">Costo totale</th><th>Collaboratore</th><th></th></tr></thead>
+            <tbody>{lista.map((e,i)=><tr key={i}>
+              <td className="mono">{e.anno}</td><td><b>{e.nome}</b></td><td>{e.struttura}</td>
+              <td className="n mono neg">{eur(e.costo_totale)}</td>
+              <td>{e.collaboratore||<span className="neg">manca</span>}</td>
+              <td><button type="button" className="btn btn-p btn-sm" onClick={()=>apriCostiGestione(e.anno,e.nome)}>Apri Gestione</button></td>
+            </tr>)}</tbody>
+          </table></div>
+          <p className="muted small" style={{marginTop:8}}>
+            Percorso: menu <b>Costi dipendenti</b> → tab <b>Gestione</b> → anno della riga → cerca il nome → imposta regola/collaboratore e Salva (oppure tab <b>Righe da controllare</b> → Conferma).
+          </p>
+        </details>;
+        })()}
       </div>}
       <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
         <h3 className="disp" style={{margin:0}}>Storico import costi ({(costiStorico||[]).length})</h3>
@@ -11123,6 +11198,24 @@ function PayListini({toast, navHint, onNavConsumed}){
       toast('Nuovo listino creato');
     }catch(e){ toast(e.detail||'Errore creazione listino',1); }
   };
+  const rinominaListino=async nome=>{
+    if(!nome) return;
+    const base=payIsListinoBase(nome);
+    const sugerito=nome.replace(/^LISTINO\s+/i,'').trim();
+    const nuovoNome=prompt(
+      (base?'Attenzione: stai rinominando il listino BASE.\n\n':'')
+      +'Nuovo nome per «'+nome+'»\n(le %/fissi restano invariati; si aggiornano anche i collaboratori assegnati)',
+      sugerito||nome);
+    if(nuovoNome==null) return;
+    const nn=String(nuovoNome).trim();
+    if(!nn || nn===nome) return;
+    if(!confirm('Rinominare «'+nome+'» in «'+nn+'»?\nProfili e assegnazioni collaboratore verranno aggiornati.')) return;
+    try{
+      const r=await payApi('/listini/rinomina',{method:'POST',body:JSON.stringify({listino:nome,nuovo_nome:nn})});
+      await caricaListini(lisAnno, r.listino||nn);
+      toast('Listino rinominato: '+nn+(r.collaboratori!=null?' · '+r.collaboratori+' collaboratori':'') );
+    }catch(e){ toast(e.detail||'Rinomina non riuscita',1); }
+  };
   const fmt=(p)=>p.tipo==='perc' ? (Number(p.valore||0)*100).toFixed(0)+'%' : eur(p.valore||0)+' €';
   const baseName=payFindListinoBase(rows);
   const l=rows.find(x=>x.listino===selListino)||rows[0]||null;
@@ -11166,6 +11259,8 @@ function PayListini({toast, navHint, onNavConsumed}){
           </div>
         </div>
         {editMode&&<div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+          <button type="button" className="btn btn-g btn-sm" title="Cambia solo il nome (non le percentuali)"
+            onClick={()=>rinominaListino(l.listino)}>Rinomina…</button>
           <button type="button" className="btn btn-g btn-sm" title="Aggiungi voce a questo listino"
             onClick={()=>{setVocePreselect(l.listino);setShowVoce(true);}}>+ Voce</button>
           <button className="btn btn-g btn-sm" onClick={()=>copiaDaPrec(l.listino)}>Copia da {lisAnno-1}</button>
