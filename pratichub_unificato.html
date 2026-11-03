@@ -7936,9 +7936,18 @@ function PayCode({toast}){
   const nAnomPag=(d.anomalie_import||[]).filter(a=>a.tipo==='pagamenti').length;
   const nAnomScost=(d.anomalie_import||[]).filter(a=>a.tipo==='listino_scostamento').length;
   const nAnomNom=(d.anomalie_import||[]).filter(a=>a.tipo==='produzione_nominativo').length;
-  const lblAnomTipo={pagamenti:'Pagamenti',patronato:'Patronato',fatture_nazionale:'Fatture Naz.',provvisori:'Provvisori',listino_scostamento:'% Listino',produzione_nominativo:'Prod. nominativo'};
+  const nAnomConf=(d.anomalie_import||[]).filter(a=>String(a.tipo||'').endsWith('_conflitto')).length;
+  const lblAnomTipo={pagamenti:'Pagamenti',patronato:'Patronato',fatture_nazionale:'Fatture Naz.',provvisori:'Provvisori',listino_scostamento:'% Listino',produzione_nominativo:'Prod. nominativo',produzione_conflitto:'Prod. conflitto',pagamenti_conflitto:'Pag. conflitto',fatture_conflitto:'Fat. conflitto',costi_conflitto:'Costi conflitto',provvisori_conflitto:'Prov. conflitto',patronato_conflitto:'Pat. conflitto'};
   const isScost=t=>t==='listino_scostamento';
   const isNomMismatch=t=>t==='produzione_nominativo';
+  const isProdConf=t=>String(t||'').endsWith('_conflitto');
+  const risolviProdConf=async(aid,azione)=>{
+    try{
+      await payApi('/import/anomalie/'+aid+'/risolvi',{method:'POST',body:JSON.stringify({azione})});
+      toast(azione==='usa_file'?'Applicato il valore del file':'Mantenuto il valore in DB');
+      carica();
+    }catch(e){ toast(e.detail||'Errore',1); }
+  };
   const righePopolate=()=>{
     const sanzioni=sanzFiltrate.filter(s=>getSanzCid(s)).map(s=>({
       id:s.id, collaboratore_id:+getSanzCid(s),
@@ -7997,6 +8006,12 @@ function PayCode({toast}){
           <option value="provvisori">Provvisori</option>
           <option value="listino_scostamento">% Listino ({nAnomScost})</option>
           <option value="produzione_nominativo">Prod. nominativo ({nAnomNom})</option>
+          <option value="produzione_conflitto">Prod. conflitto</option>
+          <option value="pagamenti_conflitto">Pag. conflitto</option>
+          <option value="fatture_conflitto">Fat. conflitto</option>
+          <option value="costi_conflitto">Costi conflitto</option>
+          <option value="provvisori_conflitto">Prov. conflitto</option>
+          {(nAnomConf>0) && <option value="" disabled>— conflitti aperti: {nAnomConf} —</option>}
         </select></div>}
       {(filtro||filtAnno||filtAnomTipo)&&<button type="button" className="btn btn-g btn-sm reset" onClick={()=>{setFiltro('');setFiltAnno('');setFiltAnomTipo('');}}>Azzera filtri</button>}
     </div>
@@ -8036,6 +8051,7 @@ function PayCode({toast}){
         {nAnomPag>0 && <span> · <b style={{color:'var(--red)'}}>{nAnomPag} da pagamenti storici</b></span>}
         {nAnomScost>0 && <span> · <b style={{color:'#a65c00'}}>{nAnomScost} scostamenti %</b></span>}
         {nAnomNom>0 && <span> · <b style={{color:'var(--red)'}}>{nAnomNom} nominativo ≠ codice</b></span>}
+        {nAnomConf>0 && <span> · <b style={{color:'#a65c00'}}>{nAnomConf} conflitti qta/importo</b></span>}
       </p>
       {anomFiltrati.length===0
         ? <p className="muted">{nAnomTot? 'Nessuna anomalia con i filtri attuali.':'Nessuna anomalia import aperta.'}</p>
@@ -8072,21 +8088,34 @@ function PayCode({toast}){
             produzione attribuita a {x.sede||x.dettaglio_json?.collaboratore_nome||'—'}
             {x.dettaglio_json?.nominativo_in_anagrafica===false?' · assente in anagrafica':''}
           </div>}
+          {isProdConf(x.tipo) && x.dettaglio_json && <div className="muted small">
+            {x.tipo==='produzione_conflitto'
+              ? <>DB qta {x.dettaglio_json.quantita_db} / € {x.dettaglio_json.importo_db}
+                {' · '}file qta {x.dettaglio_json.quantita_file} / € {x.dettaglio_json.importo_file}</>
+              : <>DB € {x.dettaglio_json.importo_db??x.dettaglio_json.costo_db??'—'}
+                {' · '}file € {x.dettaglio_json.importo_file??x.dettaglio_json.costo_file??'—'}</>}
+          </div>}
         </td>
         <td className="mono small">{x.ref_excel||(x.foglio&&x.riga_excel?x.foglio+'!'+x.riga_excel:'—')}</td>
-        <td className="small">{isNomMismatch(x.tipo)?(x.codice||'—'):(x.sede||'—')}{x.codice&&!isNomMismatch(x.tipo)&&<div className="muted mono">{x.codice}</div>}</td>
+        <td className="small">{isNomMismatch(x.tipo)||isProdConf(x.tipo)?(x.codice||x.dettaglio_json?.codice||'—'):(x.sede||'—')}{x.codice&&!isNomMismatch(x.tipo)&&!isProdConf(x.tipo)&&<div className="muted mono">{x.codice}</div>}</td>
         <td className="mono">{x.anno||'—'}</td>
-        <td className="r mono neg">{x.importo!=null?(isNomMismatch(x.tipo)?num(x.importo):eur(x.importo)):'—'}</td>
+        <td className="r mono neg">{x.importo!=null?(isNomMismatch(x.tipo)||isProdConf(x.tipo)?num(x.importo):eur(x.importo)):'—'}</td>
         <td className="small muted">{x.motivo}</td>
         <td className="noprint">
-          {isScost(x.tipo)
-            ? <span className="muted small">solo Ignora</span>
+          {isScost(x.tipo)||isProdConf(x.tipo)
+            ? <span className="muted small">{isProdConf(x.tipo)?'scegli azione':'solo Ignora'}</span>
             : <PayCollabPick value={dr.cid} options={collab} inclInterni
                 onChange={cid=>setDraftA(d=>({...d,[x.id]:{cid}}))}/>}
         </td>
         <td className="noprint" style={{whiteSpace:'nowrap'}}>
-          {!isScost(x.tipo) && <button className="btn btn-p btn-sm" style={{marginRight:4}} onClick={()=>risolviAnom(x.id)}>Assegna</button>}
-          <button className="btn btn-g btn-sm" onClick={()=>ignoraAnom(x.id)}>Ignora</button>
+          {isProdConf(x.tipo) ? <React.Fragment>
+            <button className="btn btn-p btn-sm" style={{marginRight:4}} onClick={()=>risolviProdConf(x.id,'usa_file')}>Usa file</button>
+            <button className="btn btn-g btn-sm" style={{marginRight:4}} onClick={()=>risolviProdConf(x.id,'mantieni')}>Mantieni DB</button>
+            <button className="btn btn-g btn-sm" onClick={()=>ignoraAnom(x.id)}>Ignora</button>
+          </React.Fragment> : <React.Fragment>
+            {!isScost(x.tipo) && <button className="btn btn-p btn-sm" style={{marginRight:4}} onClick={()=>risolviAnom(x.id)}>Assegna</button>}
+            <button className="btn btn-g btn-sm" onClick={()=>ignoraAnom(x.id)}>Ignora</button>
+          </React.Fragment>}
         </td>
       </tr>;})}</tbody></table></div>
       </React.Fragment>}
@@ -8310,6 +8339,52 @@ function payImportErroriPanel(errori, opts){
       </tr>)}</tbody>
     </table></div>
   </div>;
+}
+
+/** Pannello conflitti merge: Usa file / Mantieni / Da gestire (default Da gestire). */
+function PayMergeDecisioni({merge, decisioni, onDecisioni, colonne}){
+  if(!merge||!(merge.conflitti||[]).length) return null;
+  const dec=decisioni||{};
+  const cols=colonne||[
+    {k:'chiave',l:'Chiave'},
+    {k:'importo_db',l:'DB',fmt:'eur'},
+    {k:'importo_file',l:'File',fmt:'eur'},
+  ];
+  const fmt=(c,col)=>{
+    const v=c[col.k];
+    if(v==null||v==='') return '—';
+    if(col.fmt==='eur') return eur(v);
+    if(col.fmt==='num') return num(v);
+    return String(v);
+  };
+  const setTutti=az=>onDecisioni(Object.fromEntries((merge.conflitti||[]).map(c=>[c.chiave,az])));
+  return <div style={{marginBottom:14,marginTop:10}}>
+    <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:8}}>
+      <h4 style={{margin:0,fontSize:13,color:'#a65c00'}}>Conflitti file ↔ già in DB ({merge.conflitti.length})</h4>
+      <span className="muted small">Nuove {merge.nuove_n||0} · Invariate {merge.invariate_n||0}</span>
+      <button type="button" className="btn btn-g btn-sm" onClick={()=>setTutti('usa_file')}>Tutti: usa file</button>
+      <button type="button" className="btn btn-g btn-sm" onClick={()=>setTutti('mantieni')}>Tutti: mantieni DB</button>
+      <button type="button" className="btn btn-g btn-sm" onClick={()=>setTutti('da_gestire')}>Tutti: Da gestire</button>
+    </div>
+    <p className="muted small" style={{marginTop:0}}>Stessa chiave con valori diversi. «Da gestire» conferma il resto e lascia il conflitto in coda.</p>
+    <div className="panel" style={{padding:0,overflow:'auto',maxHeight:320}}>
+    <table className="tbl" style={{margin:0,fontSize:12}}>
+      <thead><tr>{cols.map(col=><th key={col.k} className={col.fmt?'n':undefined}>{col.l}</th>)}<th>Scelta</th></tr></thead>
+      <tbody>{merge.conflitti.map(c=><tr key={c.chiave}>
+        {cols.map(col=><td key={col.k} className={(col.fmt?'n ':'')+'mono'+(col.k==='nome'||col.k==='chiave'?'':'')}>{col.k==='nome'?<b>{fmt(c,col)}</b>:fmt(c,col)}</td>)}
+        <td style={{whiteSpace:'nowrap'}}>
+          <label style={{marginRight:6}}><input type="radio" name={'mg'+c.chiave} checked={dec[c.chiave]==='usa_file'} onChange={()=>onDecisioni({...dec,[c.chiave]:'usa_file'})}/> Usa file</label>
+          <label style={{marginRight:6}}><input type="radio" name={'mg'+c.chiave} checked={dec[c.chiave]==='mantieni'} onChange={()=>onDecisioni({...dec,[c.chiave]:'mantieni'})}/> Mantieni</label>
+          <label><input type="radio" name={'mg'+c.chiave} checked={!dec[c.chiave]||dec[c.chiave]==='da_gestire'} onChange={()=>onDecisioni({...dec,[c.chiave]:'da_gestire'})}/> Da gestire</label>
+        </td>
+      </tr>)}</tbody>
+    </table></div>
+  </div>;
+}
+function mergeInitDec(merge){
+  const d={};
+  (merge&&merge.conflitti||[]).forEach(c=>{ d[c.chiave]='da_gestire'; });
+  return d;
 }
 
 const romaVoceKey=v=>JSON.stringify([v.anno,v.canale,v.codice,v.voce]);
@@ -8558,6 +8633,7 @@ function PayRomaNuovo({toast, collab}){
   const [ultimo,setUltimo]=useState(null);
   const [annullaTxt,setAnnullaTxt]=useState('');
   const [draft,setDraft]=useState({});
+  const [romaDec,setRomaDec]=useState({});
   const [resetStep,setResetStep]=useState(0);
   const [resetC1,setResetC1]=useState('');
   const [resetC2,setResetC2]=useState('');
@@ -8568,9 +8644,16 @@ function PayRomaNuovo({toast, collab}){
     ])).then(([s,u])=>{ setStorico(s); setUltimo(u&&u.id?u:null); });
   };
   useEffect(()=>{ carica(); },[]);
+  const initRomaDec=r=>{
+    const dec={};
+    ((r&&r.merge&&r.merge.conflitti)||[]).forEach(c=>{
+      if(c.chiave) dec[c.chiave]='da_gestire';
+    });
+    setRomaDec(dec);
+  };
   const doConverti=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setBusy(true); setConv(null); setConvErr(''); setPrev(null); setStdFile(null);
+    setBusy(true); setConv(null); setConvErr(''); setPrev(null); setStdFile(null); setRomaDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
@@ -8594,13 +8677,16 @@ function PayRomaNuovo({toast, collab}){
   };
   const doAnteprima=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setBusy(true); setStdFile(f); setConvErr('');
+    setBusy(true); setStdFile(f); setConvErr(''); setRomaDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import-roma/anteprima',{method:'POST',body:fd});
-      setPrev(r);
-      toast(r.importabile?'Anteprima: file importabile':'Anteprima: '+((r.bloccanti||[]).length)+' codici da agganciare o ignorare');
+      setPrev(r); initRomaDec(r);
+      const nC=(r.merge&&r.merge.conflitti_n)||0;
+      toast(r.importabile
+        ? ('Anteprima merge: '+(r.merge&&r.merge.nuove_n||0)+' nuove · '+(r.merge&&r.merge.invariate_n||0)+' invariate · '+nC+' conflitti')
+        : ('Anteprima: '+((r.bloccanti||[]).length)+' codici da agganciare o ignorare'));
     }catch(x){ const msg=payFmtErr(x.detail)||'Anteprima fallita'; setConvErr(msg); toast(msg,1); setStdFile(null); }
     setBusy(false); e.target.value='';
   };
@@ -8613,7 +8699,8 @@ function PayRomaNuovo({toast, collab}){
       toast('Agganciato '+cod);
       if(stdFile){
         const fd=new FormData(); fd.append('file',stdFile);
-        setPrev(await payApi('/import-roma/anteprima',{method:'POST',body:fd}));
+        const r=await payApi('/import-roma/anteprima',{method:'POST',body:fd});
+        setPrev(r); initRomaDec(r);
       }
     }catch(x){ toast(payFmtErr(x.detail),1); }
     setBusy(false);
@@ -8625,22 +8712,38 @@ function PayRomaNuovo({toast, collab}){
       await payApi('/import-roma/codici/ignora',{method:'POST',body:JSON.stringify({codice:cod,tipologia:tip})});
       if(stdFile){
         const fd=new FormData(); fd.append('file',stdFile);
-        setPrev(await payApi('/import-roma/anteprima',{method:'POST',body:fd}));
+        const r=await payApi('/import-roma/anteprima',{method:'POST',body:fd});
+        setPrev(r); initRomaDec(r);
       }
     }catch(x){ toast(payFmtErr(x.detail),1); }
     setBusy(false);
   };
+  const setTuttiConflitti=val=>{
+    const dec={};
+    ((prev&&prev.merge&&prev.merge.conflitti)||[]).forEach(c=>{ if(c.chiave) dec[c.chiave]=val; });
+    setRomaDec(dec);
+  };
   const conferma=async()=>{
     if(!stdFile||!prev||!prev.importabile) return;
-    if(!confirm('Confermi l\'import del file standard? Verrà sostituita la produzione Roma degli anni '+((prev.anni||[]).join(', '))+'. Il Patronato dettaglio non viene toccato.')) return;
+    const nC=(prev.merge&&prev.merge.conflitti_n)||0;
+    const nDg=Object.values(romaDec).filter(v=>v==='da_gestire').length;
+    const msg='Confermi il merge sugli anni '+((prev.anni||[]).join(', '))+'?\n'
+      +'Nuove: '+(prev.merge&&prev.merge.nuove_n||0)
+      +' · Invariate: '+(prev.merge&&prev.merge.invariate_n||0)
+      +' · Conflitti: '+nC+(nDg?(' (di cui '+nDg+' → Da gestire)'):'')
+      +'\nNiente wipe globale: si aggiunge/aggiorna solo quanto scelto.';
+    if(!confirm(msg)) return;
     setBusy(true);
     const fd=new FormData(); fd.append('file',stdFile);
+    fd.append('decisioni', JSON.stringify(romaDec||{}));
     try{
       const r=await payApi('/import-roma/conferma',{method:'POST',body:fd});
       const nSc=(r.scostamenti_listino&&r.scostamenti_listino.totale)||0;
-      toast('Import Roma #'+r.import_id+' · '+r.inserite+' righe'
-        +(nSc?(' · '+nSc+' scostamenti % → Da gestire'):''));
-      setPrev(null); setStdFile(null); carica();
+      toast('Merge Roma #'+r.import_id
+        +' · +'+(r.nuove||0)+' nuove · '+(r.sovrascritte||0)+' sovrascritte · '+(r.mantenute||0)+' mantenute'
+        +((r.conflitti_da_gestire)?(' · '+r.conflitti_da_gestire+' conflitti → Da gestire'):'')
+        +(nSc?(' · '+nSc+' scostamenti %'):''));
+      setPrev(null); setStdFile(null); setRomaDec({}); carica();
     }catch(x){ toast(payFmtErr(x.detail)||'Conferma rifiutata',1); }
     setBusy(false);
   };
@@ -8680,14 +8783,17 @@ function PayRomaNuovo({toast, collab}){
   };
   const nBloc=(prev&&prev.bloccanti||[]).length;
   const nCalo=(prev&&prev.da_verificare_n)||0;
+  const nMergeC=(prev&&prev.merge&&prev.merge.conflitti_n)||0;
   const barraConferma=(extraStyle)=>prev?<div style={{marginTop:14,padding:'12px 14px',borderRadius:8,background:'#f4faf9',border:'1px solid var(--teal,#0a7e72)',...extraStyle}}>
     {nBloc>0?<p className="small" style={{margin:'0 0 8px',color:'var(--red)'}}>
       <b>{nBloc} codici bloccanti</b> — aggancia o ignora per abilitare l&apos;import.
-    </p>:nCalo>0?<p className="small" style={{margin:'0 0 8px',color:'#a65c00'}}>
-      <b>{nCalo} voci nel confronto da verificare</b> — non bloccano l&apos;import.
-    </p>:<p className="small muted" style={{margin:'0 0 8px'}}>File pronto per l&apos;import.</p>}
+    </p>:nMergeC>0?<p className="small" style={{margin:'0 0 8px',color:'#a65c00'}}>
+      <b>{nMergeC} conflitti</b> — scegli Usa file / Mantieni / Da gestire (default: Da gestire).
+    </p>:<p className="small muted" style={{margin:'0 0 8px'}}>
+      Merge pronto: {(prev.merge&&prev.merge.nuove_n)||0} nuove · {(prev.merge&&prev.merge.invariate_n)||0} invariate.
+    </p>}
     <button className="btn btn-p" disabled={busy||!prev.importabile} onClick={conferma}>
-      {busy?'Import…':'✓ Conferma import'}
+      {busy?'Import…':'✓ Conferma merge'}
     </button>
     {!prev.importabile && <span className="muted small" style={{marginLeft:10}}>Risolvi i codici bloccanti sopra.</span>}
   </div>:null;
@@ -8696,12 +8802,10 @@ function PayRomaNuovo({toast, collab}){
       <div className="ph"><h3>Import Roma — file Excel modello</h3></div>
       <div className="pad">
         <p className="muted small" style={{marginTop:0}}>
-          Compila il modello con i <b>numeri del file che carichi</b> (qta/importi). Le % collaboratore le decide
-          solo <b>Listini</b> — mai RC33, mai una % nel foglio come legge di calcolo.
-          Se su DS ASPI/AGRICOLE valorizzi la colonna opzionale <b>Percentuale</b> e diverge dal listino
-          (es. file 76% · listino 75%), compare una segnalazione in <b>Da gestire</b>; il calcolo resta sul listino
-          finché non lo modifichi tu. RC33/storico serve solo come linea guida sulle voci, non come verità numerica.
-          Non modificare nomi fogli né intestazioni riga 1; i dati partono dalla <b>riga 3</b>.
+          Compila il modello con i <b>numeri del file che carichi</b> (qta/importi). L&apos;import fa <b>merge</b>:
+          aggiunge le voci nuove, lascia invariate quelle uguali, e sui conflitti (stessa sede+voce con numeri diversi)
+          scegli in anteprima <b>Usa file</b>, <b>Mantieni DB</b> o <b>Da gestire</b> (più tardi).
+          Le % le decide solo <b>Listini</b>. Non modificare nomi fogli né intestazioni riga 1; dati dalla <b>riga 3</b>.
         </p>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
           <div style={{display:'flex',gap:10,alignItems:'center',flexWrap:'wrap'}}>
@@ -8722,10 +8826,40 @@ function PayRomaNuovo({toast, collab}){
             <span>Anni <b>{(prev.anni||[]).join(', ')}</b></span>
             <span>Righe <b>{prev.righe}</b></span>
             <span>Sanzioni <b>{prev.sanzioni_n}</b></span>
+            {prev.merge && <span className="pos">Nuove <b>{prev.merge.nuove_n||0}</b></span>}
+            {prev.merge && <span>Invariate <b>{prev.merge.invariate_n||0}</b></span>}
+            {prev.merge && <span style={{color:(prev.merge.conflitti_n||0)?'#a65c00':undefined}}>Conflitti <b>{prev.merge.conflitti_n||0}</b></span>}
             <span style={{color:prev.importabile?'var(--ok, #0a7)':'var(--red)',fontWeight:700}}>
-              {prev.importabile?'Importabile':'Non importabile'}
+              {prev.importabile?'Importabile (merge)':'Non importabile'}
             </span>
           </div>
+          {(prev.merge&&(prev.merge.conflitti||[]).length>0) && <div style={{marginBottom:14}}>
+            <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center',marginBottom:8}}>
+              <h4 style={{margin:0,fontSize:13,color:'#a65c00'}}>Conflitti file ↔ già in DB ({prev.merge.conflitti.length})</h4>
+              <button type="button" className="btn btn-g btn-sm" onClick={()=>setTuttiConflitti('usa_file')}>Tutti: usa file</button>
+              <button type="button" className="btn btn-g btn-sm" onClick={()=>setTuttiConflitti('mantieni')}>Tutti: mantieni DB</button>
+              <button type="button" className="btn btn-g btn-sm" onClick={()=>setTuttiConflitti('da_gestire')}>Tutti: Da gestire</button>
+            </div>
+            <p className="muted small" style={{marginTop:0}}>Stessa chiave (anno+codice+voce) con numeri diversi. «Da gestire» conferma l&apos;import delle altre voci e lascia il conflitto in coda.</p>
+            <div className="panel" style={{padding:0,overflow:'auto',maxHeight:320}}>
+            <table className="tbl" style={{margin:0,fontSize:12}}>
+              <thead><tr><th>Anno</th><th>Codice</th><th>Voce</th><th className="n">Qta DB</th><th className="n">Qta file</th><th className="n">€ DB</th><th className="n">€ file</th><th>Scelta</th></tr></thead>
+              <tbody>{prev.merge.conflitti.map(c=><tr key={c.chiave}>
+                <td className="mono">{c.anno}</td>
+                <td className="mono"><b>{c.codice}</b></td>
+                <td className="small">{c.voce}</td>
+                <td className="n mono">{c.quantita_db}</td>
+                <td className="n mono">{c.quantita_file}</td>
+                <td className="n mono">{c.importo_db}</td>
+                <td className="n mono">{c.importo_file}</td>
+                <td style={{whiteSpace:'nowrap'}}>
+                  <label style={{marginRight:6}}><input type="radio" name={'rc'+c.chiave} checked={romaDec[c.chiave]==='usa_file'} onChange={()=>setRomaDec(d=>({...d,[c.chiave]:'usa_file'}))}/> Usa file</label>
+                  <label style={{marginRight:6}}><input type="radio" name={'rc'+c.chiave} checked={romaDec[c.chiave]==='mantieni'} onChange={()=>setRomaDec(d=>({...d,[c.chiave]:'mantieni'}))}/> Mantieni</label>
+                  <label><input type="radio" name={'rc'+c.chiave} checked={romaDec[c.chiave]==='da_gestire'||!romaDec[c.chiave]} onChange={()=>setRomaDec(d=>({...d,[c.chiave]:'da_gestire'}))}/> Da gestire</label>
+                </td>
+              </tr>)}</tbody>
+            </table></div>
+          </div>}
           {(prev.avvisi||[]).length>0 && <div className="notebox" style={{marginBottom:12,fontSize:12.5,lineHeight:1.45}}>
             <b>Avvisi</b>
             <ul style={{margin:'6px 0 0',paddingLeft:18}}>{(prev.avvisi||[]).map((a,i)=><li key={i}>{a}</li>)}</ul>
@@ -8838,10 +8972,10 @@ function PayRomaNuovo({toast, collab}){
               catch(x){ toast(payFmtErr(x.detail)||'Download non disponibile — reimporta il file',1); }
             }}>Scarica file</button>}
             <button className="btn btn-g btn-sm" style={{marginRight:6}} onClick={()=>{
-              if(confirm('Seleziona il file Roma aggiornato (sostituisce la produzione degli stessi anni dopo conferma).')){
+              if(confirm('Seleziona il file Roma aggiornato: in anteprima farà merge (nuove + conflitti da decidere), senza wipe globale.')){
                 const el=document.getElementById('pay-roma-file'); if(el){ el.value=''; el.click(); }
               }
-            }}>Sostituisci</button>
+            }}>Aggiorna (merge)</button>
             <button className="btn btn-g btn-sm" disabled={busy} onClick={async()=>{
               const msg=r.stato==='attivo'
                 ? ('Eliminare import Roma #'+r.id+' «'+r.file_nome+'»? Verrà ripristinata la produzione precedente (se presente) e il file sarà rimosso dallo storico.')
@@ -8908,6 +9042,7 @@ function PayImport({toast,onNav}){
   const [patPrev,setPatPrev]=useState(null); const [patRec,setPatRec]=useState(null); const [patBusy,setPatBusy]=useState(false);
   const [patStorico,setPatStorico]=useState(null);
   const [pagPrev,setPagPrev]=useState(null); const [pagConf,setPagConf]=useState(null); const [pagBusy,setPagBusy]=useState(false);
+  const [pagDec,setPagDec]=useState({});
   const [pagStorico,setPagStorico]=useState(null);
   const [pagDettOpen,setPagDettOpen]=useState(null);
   const [pagCollab,setPagCollab]=useState([]);
@@ -8917,14 +9052,17 @@ function PayImport({toast,onNav}){
   const [fatAnno,setFatAnno]=useState(new Date().getFullYear());
   const [fatPrev,setFatPrev]=useState(null); const [fatBusy,setFatBusy]=useState(false); const [fatStorico,setFatStorico]=useState(null);
   const [fatFile,setFatFile]=useState(null);
+  const [fatDec,setFatDec]=useState({});
   const [fatErrOpen,setFatErrOpen]=useState(null);
   const [provVoce,setProvVoce]=useState('DS_AGRICOLE'); const [provAnno,setProvAnno]=useState(new Date().getFullYear());
   const [provVoci,setProvVoci]=useState([{codice:'DS_AGRICOLE',label:'Disoccupazioni AGRICOLE'}]);
   const [provPrev,setProvPrev]=useState(null); const [provBusy,setProvBusy]=useState(false); const [provStorico,setProvStorico]=useState(null);
   const [provFile,setProvFile]=useState(null);
+  const [provDec,setProvDec]=useState({});
   const [provErr,setProvErr]=useState('');
   const [provErrOpen,setProvErrOpen]=useState(null);
   const [costiPrev,setCostiPrev]=useState(null); const [costiBusy,setCostiBusy]=useState(false); const [costiFile,setCostiFile]=useState(null);
+  const [costiDec,setCostiDec]=useState({});
   const [costiStorico,setCostiStorico]=useState(null);
   const [costiConf,setCostiConf]=useState(null);
   const [costiDettOpen,setCostiDettOpen]=useState(null);
@@ -9170,26 +9308,48 @@ function PayImport({toast,onNav}){
   };
   const anteprimaPagamenti=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setPagBusy(true); setPagPrev(null); setPagConf(null);
+    setPagBusy(true); setPagPrev(null); setPagConf(null); setPagDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/pagamenti-storici/anteprima',{method:'POST',body:fd});
+      const confl=[...(r.conflitti_modifiche||[]),...(r.conflitti_manuali||[])];
+      const dec=mergeInitDec(r.merge);
+      confl.forEach(c=>{ if(c.pagamento_id!=null) dec[String(c.pagamento_id)]='usa_file'; });
+      setPagDec(dec);
       setPagPrev({...r,_file:f});
-      toast('Anteprima pagamenti: '+r.inseribili_n+' inseribili'+(r.riporti_n?(' · '+r.riporti_n+' riporti apertura'):'')+', '+r.errori_n+' errori');
+      const nMerge=(r.merge&&r.merge.conflitti_n)||0;
+      toast('Anteprima pagamenti: '+r.inseribili_n+' inseribili · '+(r.possibili_duplicati_n||0)+' possibili duplicati · '+r.errori_n+' errori'
+        +(nMerge?(' · '+nMerge+' conflitti merge'):'')
+        +(confl.length?(' · '+confl.length+' protezioni modifiche'):''));
     }catch(x){
       const msg = payFmtErr((x&&x.detail)!=null ? x.detail : x);
       toast('Errore anteprima pagamenti: '+msg,1);
     }
     setPagBusy(false); e.target.value='';
   };
-  const confermaPagamenti=async allowDuplicati=>{
+  const setPagDecisione=(pid,val)=>setPagDec(d=>({...d,[String(pid)]:val}));
+  const pagConflittiMancanti=()=>{
+    if(!pagPrev) return [];
+    const confl=[...(pagPrev.conflitti_modifiche||[]),...(pagPrev.conflitti_manuali||[])];
+    return confl.filter(c=>!pagDec[String(c.pagamento_id)]||!['mantieni','usa_file','da_gestire'].includes(pagDec[String(c.pagamento_id)]));
+  };
+  const confermaPagamenti=async()=>{
     if(!pagPrev?._file) return;
+    const manc=pagConflittiMancanti();
+    if(manc.length){
+      toast('Scegli mantieni/usa file/Da gestire per tutti i conflitti ('+manc.length+' senza decisione)',1);
+      return;
+    }
+    const nM=(pagPrev.merge&&pagPrev.merge.nuove_n)||0;
+    const nC=(pagPrev.merge&&pagPrev.merge.conflitti_n)||0;
+    if(!confirm('Confermi merge pagamenti da «'+pagPrev.file+'»?\nNuove: '+nM+' · conflitti: '+nC+' (scelte in anteprima).\nNessuna scrittura senza questa conferma.')) return;
     setPagBusy(true);
     const fd=new FormData(); fd.append('file',pagPrev._file);
+    fd.append('decisioni', JSON.stringify(pagDec||{}));
     try{
       await ensurePayAuth();
-      const r=await payApi('/import/pagamenti-storici/conferma?allow_duplicati='+(allowDuplicati?'true':'false'),{method:'POST',body:fd});
+      const r=await payApi('/import/pagamenti-storici/conferma',{method:'POST',body:fd});
       setPagConf({
         batch_id:r.batch_id, inseriti:r.inseriti||r.riporti_inseriti||0, saltati:r.saltati, errori:r.errori,
         file:r.file, dettaglio_errori:r.dettaglio_errori||[],
@@ -9197,11 +9357,10 @@ function PayImport({toast,onNav}){
         sintesi_errori:r.sintesi_errori||[], importo_non_importato:r.importo_non_importato||0,
         anomalie_in_coda:r.anomalie_in_coda!=null?r.anomalie_in_coda:(r.errori||0),
         stato:r.stato, riporti:r.riporti||r.riporti_inseriti||0,
-      }); setPagPrev(null); caricaPagStorico(); if(r.batch_id) caricaPagDaAbbinare(r.batch_id);
-      toast(r.stato==='aggiornato_riporti'
-        ? ('Riporti aggiornati: '+(r.riporti_inseriti||0)+' inseriti')
-        : ('Pagamenti importati: '+r.inseriti+' ok · '+(r.errori||0)+' da sistemare in Da gestire'));
-    }catch(x){ toast(x.detail||'Errore conferma pagamenti',1); }
+        possibili_duplicati:r.possibili_duplicati||0,
+      }); setPagPrev(null); setPagDec({}); caricaPagStorico(); if(r.batch_id) caricaPagDaAbbinare(r.batch_id);
+      toast('Pagamenti merge: '+r.inseriti+' ok · '+(r.errori||0)+' da sistemare · '+(r.possibili_duplicati||0)+' possibili duplicati in Da gestire');
+    }catch(x){ toast(payFmtErr(x.detail)||x.detail||'Errore conferma pagamenti',1); }
     setPagBusy(false);
   };
   const abbinaPagNome=async(g, ignora)=>{
@@ -9230,39 +9389,45 @@ function PayImport({toast,onNav}){
   };
   const anteprimaFatture=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setFatBusy(true); setFatPrev(null); setFatFile(f);
+    setFatBusy(true); setFatPrev(null); setFatFile(f); setFatDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/fatture-nazionale/anteprima?anno='+fatAnno,{method:'POST',body:fd});
+      setFatDec(mergeInitDec(r.merge));
       setFatPrev(r);
-      toast('Anteprima fatture: '+r.inseribili_n+' · da saldare '+r.da_saldare_n+' · saldate '+r.saldate_n);
+      toast('Anteprima fatture: '+r.inseribili_n+' · merge nuove '+(r.merge&&r.merge.nuove_n||0)+' · conflitti '+(r.merge&&r.merge.conflitti_n||0));
     }catch(x){ toast(x.detail||'Errore anteprima fatture',1); }
     setFatBusy(false); e.target.value='';
   };
   const confermaFatture=async()=>{
     if(!fatFile) return;
-    if(!confirm('Sostituire le fatture Nazionale già caricate per l\'anno '+fatAnno+'?')) return;
+    const nM=(fatPrev&&fatPrev.merge&&fatPrev.merge.nuove_n)||0;
+    const nC=(fatPrev&&fatPrev.merge&&fatPrev.merge.conflitti_n)||0;
+    if(!confirm('Confermi merge fatture Nazionale anno '+fatAnno+'?\nNuove: '+nM+' · conflitti: '+nC+' (scelte in anteprima).')) return;
     setFatBusy(true);
     const fd=new FormData(); fd.append('file',fatFile);
+    fd.append('decisioni', JSON.stringify(fatDec||{}));
     try{
       await ensurePayAuth();
       const r=await payApi('/import/fatture-nazionale/conferma?anno='+fatAnno,{method:'POST',body:fd});
-      toast('Fatture importate: '+r.inseriti+' (da saldare '+r.da_saldare_n+', saldate '+r.saldate_n+')'
-        +(r.errori?(' · '+r.errori+' errori → Da gestire'):''));
-      setFatPrev(null); setFatFile(null); caricaFatStorico();
+      toast('Fatture merge: '+r.inseriti+' (da saldare '+r.da_saldare_n+', saldate '+r.saldate_n+')'
+        +(r.errori?(' · '+r.errori+' errori → Da gestire'):'')
+        +(r.anomalie_in_coda?(' · anomalie '+r.anomalie_in_coda):''));
+      setFatPrev(null); setFatFile(null); setFatDec({}); caricaFatStorico();
     }catch(x){ toast(x.detail||'Errore conferma fatture',1); }
     setFatBusy(false);
   };
   const anteprimaProv=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setProvBusy(true); setProvPrev(null); setProvFile(f); setProvErr('');
+    setProvBusy(true); setProvPrev(null); setProvFile(f); setProvDec({}); setProvErr('');
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/provvisori/anteprima?voce='+encodeURIComponent(provVoce)+'&anno='+provAnno,{method:'POST',body:fd});
+      setProvDec(mergeInitDec(r.merge));
       setProvPrev(r);
-      toast('Anteprima: '+r.inseribili_n+' inseribili · totale '+eur(r.importo_totale)+(r.errori_n?(' · '+r.errori_n+' errori'):''));
+      toast('Anteprima: '+r.inseribili_n+' inseribili · conflitti '+(r.merge&&r.merge.conflitti_n||0)+(r.errori_n?(' · '+r.errori_n+' errori'):''));
     }catch(x){
       const msg=x.detail||'Errore anteprima provvisorio';
       setProvErr(msg); toast(msg,1);
@@ -9271,13 +9436,18 @@ function PayImport({toast,onNav}){
   };
   const confermaProv=async()=>{
     if(!provFile) return;
+    const nM=(provPrev&&provPrev.merge&&provPrev.merge.nuove_n)||0;
+    const nC=(provPrev&&provPrev.merge&&provPrev.merge.conflitti_n)||0;
+    if(!confirm('Confermi merge provvisori?\nNuove: '+nM+' · conflitti: '+nC)) return;
     setProvBusy(true);
     const fd=new FormData(); fd.append('file',provFile);
+    fd.append('decisioni', JSON.stringify(provDec||{}));
     try{
       await ensurePayAuth();
       const r=await payApi('/import/provvisori/conferma?voce='+encodeURIComponent(provVoce)+'&anno='+provAnno,{method:'POST',body:fd});
-      toast('Provvisorio #'+r.batch_id+': '+r.inseriti+' righe · '+eur(r.importo_totale));
-      setProvPrev(null); setProvFile(null); caricaProvStorico();
+      toast('Provvisorio #'+r.batch_id+': '+r.inseriti+' righe · '+eur(r.importo_totale)
+        +(r.anomalie_in_coda?(' · anomalie '+r.anomalie_in_coda):''));
+      setProvPrev(null); setProvFile(null); setProvDec({}); caricaProvStorico();
     }catch(x){ toast(x.detail||'Errore conferma provvisorio',1); }
     setProvBusy(false);
   };
@@ -9291,35 +9461,39 @@ function PayImport({toast,onNav}){
   };
   const anteprimaCostiDip=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setCostiBusy(true); setCostiPrev(null); setCostiConf(null); setCostiFile(f);
+    setCostiBusy(true); setCostiPrev(null); setCostiConf(null); setCostiFile(f); setCostiDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/costi-dipendenti/anteprima',{method:'POST',body:fd});
+      setCostiDec(mergeInitDec(r.merge));
       setCostiPrev({...r,_file:f});
-      toast('Anteprima costi: '+r.n+' dipendenti · '+(r.abbinati_n||0)+' abbinabili · '+(r.da_attribuire_n||0)+' da attribuire'
+      toast('Anteprima costi: '+r.n+' dipendenti · conflitti '+(r.merge&&r.merge.conflitti_n||0)
         +(r.anni&&r.anni.length?' · anni '+r.anni.join(', '):''));
     }catch(x){ toast(x.detail||'Errore anteprima costi dipendenti',1); setCostiFile(null); }
     setCostiBusy(false); e.target.value='';
   };
   const confermaCostiDip=async()=>{
     const f=costiFile||costiPrev?._file; if(!f) return;
-    if(!confirm('Confermi l\'import di '+((costiPrev&&costiPrev.n)||'?')+' costi dipendenti? Le righe con stesso nome/struttura/ditta nello stesso anno vengono sostituite.')) return;
+    const nM=(costiPrev&&costiPrev.merge&&costiPrev.merge.nuove_n)||0;
+    const nC=(costiPrev&&costiPrev.merge&&costiPrev.merge.conflitti_n)||0;
+    if(!confirm('Confermi merge costi dipendenti?\nNuove: '+nM+' · conflitti: '+nC+' (scelte in anteprima).')) return;
     setCostiBusy(true);
     const fd=new FormData(); fd.append('file',f);
+    fd.append('decisioni', JSON.stringify(costiDec||{}));
     try{
       await ensurePayAuth();
       const r=await payApi('/import/costi-dipendenti/conferma',{method:'POST',body:fd});
       setCostiConf({
         batch_id:r.batch_id||r.import_id, inseriti:r.inseriti||r.costi_dipendenti||0,
-        abbinati:r.abbinati||0, da_attribuire:r.da_attribuire||0, saltati:0,
+        abbinati:r.abbinati||0, da_attribuire:r.da_attribuire||0, saltati:r.saltati||0,
         errori:r.da_attribuire||0, file:r.file, anni:r.anni||[],
         dettaglio_inseriti:r.dettaglio_inseriti||[],
         dettaglio_da_attribuire:r.dettaglio_da_attribuire||[],
         scaricabile:true,
       });
-      setCostiPrev(null); setCostiFile(null); caricaCostiStorico(); caricaImportAlert();
-      toast('Costi importati: '+(r.costi_dipendenti||r.inseriti||0)+' righe'
+      setCostiPrev(null); setCostiFile(null); setCostiDec({}); caricaCostiStorico(); caricaImportAlert();
+      toast('Costi merge: '+(r.costi_dipendenti||r.inseriti||0)+' righe'
         +(r.abbinati?' · '+r.abbinati+' abbinati':'')
         +(r.da_attribuire?' · '+r.da_attribuire+' da attribuire in Gestione':'')
         +(r.anni&&r.anni.length?' · anni '+r.anni.join(', '):''));
@@ -9334,7 +9508,7 @@ function PayImport({toast,onNav}){
   const bloccaImportTab=(k)=>{
     setTab(k);
     setEsito(null); setRomaPrev(null); setRomaFile(null);
-    setPatPrev(null); setPagPrev(null); setPagConf(null);
+    setPatPrev(null); setPagPrev(null); setPagConf(null); setPagDec({});
     setCostiPrev(null); setCostiConf(null); setCostiFile(null);
     setFatPrev(null); setProvPrev(null); setProvErr('');
     setShowImpDett(true);
@@ -9343,7 +9517,7 @@ function PayImport({toast,onNav}){
     if(!confirm('Uscire da «'+(lblImportTab[tab]||tab)+'»?\nDovrai scegliere di nuovo il tipo di import. Anteprime non confermate di questo tipo andranno perse dalla schermata.')) return;
     setTab(null);
     setEsito(null); setRomaPrev(null); setRomaFile(null);
-    setPatPrev(null); setPagPrev(null); setPagConf(null); setPagDaAbb(null);
+    setPatPrev(null); setPagPrev(null); setPagConf(null); setPagDec({}); setPagDaAbb(null);
     setCostiPrev(null); setCostiConf(null); setCostiFile(null);
     setFatPrev(null); setProvPrev(null); setProvErr('');
   };
@@ -9590,6 +9764,7 @@ function PayImport({toast,onNav}){
     </div>
     {patPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
       <h3 className="disp" style={{marginTop:0}}>Anteprima {patPrev.file}</h3>
+      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge per chiave (anno+codice/sede+voce): aggiorna solo le voci del file, senza cancellare il resto dell&apos;anno.</div>
       <div className="row"><span className="l">Righe</span><span className="r mono">{num(patPrev.righe)}</span></div>
       <div className="row"><span className="l">Quarantena</span><span className="r mono neg">{num(patPrev.quarantena_n)}</span></div>
       {payImportErroriPanel(patPrev.quarantena, {titolo:'Quarantena / senza match ('+(patPrev.quarantena_n||0)+')', hint:'Queste sedi/operatori non sono in anagrafica: correggi i codici o aggiungi il collaboratore, poi ricarica.', defaultMotivo:'senza match anagrafica'})}
@@ -9675,15 +9850,75 @@ function PayImport({toast,onNav}){
     </div>
     {pagPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
       <h3 className="disp" style={{marginTop:0}}>Anteprima {pagPrev.file}</h3>
+      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge: aggiunge le nuove, lascia invariate le uguali, sui conflitti scegli Usa file / Mantieni / Da gestire. Nessuna scrittura finché non confermi.</div>
       <div className="row"><span className="l">Righe movimento</span><span className="r mono">{num(pagPrev.righe)}</span></div>
-      <div className="row"><span className="l">Inseribili (match certi)</span><span className="r mono pos">{num(pagPrev.inseribili_n)}</span></div>
+      <div className="row"><span className="l">Inseribili</span><span className="r mono pos">{num(pagPrev.inseribili_n)}</span></div>
+      {pagPrev.merge && <div className="row"><span className="l">Merge nuove / invariate / conflitti</span><span className="r mono">{num(pagPrev.merge.nuove_n)} / {num(pagPrev.merge.invariate_n)} / <span style={{color:(pagPrev.merge.conflitti_n||0)?'#a65c00':undefined}}>{num(pagPrev.merge.conflitti_n)}</span></span></div>}
       <div className="row"><span className="l">di cui riporti apertura</span><span className="r mono">{num(pagPrev.riporti_n||0)}</span></div>
       <div className="row"><span className="l">Saltati</span><span className="r mono">{num(pagPrev.saltati_n)}</span></div>
-      <div className="row"><span className="l">Da sistemare a mano</span><span className="r mono neg">{num(pagPrev.errori_n)}</span></div>
+      <div className="row"><span className="l">In errore</span><span className="r mono neg">{num(pagPrev.errori_n)}</span></div>
+      <div className="row"><span className="l">Possibili duplicati → Da gestire</span><span className="r mono">{num(pagPrev.possibili_duplicati_n||0)}</span></div>
       <div className="row"><span className="l">Importo non importabile</span><span className="r mono neg">{eur(pagPrev.importo_non_importato||0)}</span></div>
-      <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
-        <button className="btn btn-p" onClick={()=>confermaPagamenti(false)} disabled={pagBusy||!pagPrev.inseribili_n}>Conferma import ({num(pagPrev.inseribili_n)})</button>
-        <button className="btn btn-g" onClick={()=>confermaPagamenti(true)} disabled={pagBusy||!pagPrev.inseribili_n}>Conferma (consenti duplicati)</button>
+
+      {(pagPrev.totali_per_collaboratore||[]).length>0 && <div style={{marginTop:14}}>
+        <h4 style={{margin:'0 0 8px'}}>Totali per collaboratore / anno (prima → dopo)</h4>
+        <div className="panel" style={{padding:0,overflow:'auto',maxHeight:320}}>
+        <table className="tbl" style={{margin:0,fontSize:12}}>
+          <thead><tr><th>Collaboratore</th><th>Anno</th><th className="n">Pag. prima</th><th className="n">Pag. dopo</th><th className="n">Δ pag.</th><th className="n">Rip. prima</th><th className="n">Rip. dopo</th><th className="n">Δ rip.</th></tr></thead>
+          <tbody>{pagPrev.totali_per_collaboratore.map((t,i)=><tr key={i}>
+            <td><b>{t.collaboratore||('#'+t.collaboratore_id)}</b></td>
+            <td className="mono">{t.anno}</td>
+            <td className="n mono">{eur(t.pagamenti_prima)}</td>
+            <td className="n mono">{eur(t.pagamenti_dopo)}</td>
+            <td className={'n mono '+(t.delta_pagamenti<0?'neg':t.delta_pagamenti>0?'pos':'')}>{eur(t.delta_pagamenti)}</td>
+            <td className="n mono">{eur(t.riporti_prima)}</td>
+            <td className="n mono">{eur(t.riporti_dopo)}</td>
+            <td className={'n mono '+(t.delta_riporti<0?'neg':t.delta_riporti>0?'pos':'')}>{eur(t.delta_riporti)}</td>
+          </tr>)}</tbody>
+        </table></div>
+      </div>}
+
+      <PayMergeDecisioni merge={pagPrev.merge} decisioni={pagDec} onDecisioni={setPagDec}
+        colonne={[{k:'nome',l:'Nome'},{k:'importo_db',l:'€ DB',fmt:'eur'},{k:'importo_file',l:'€ file',fmt:'eur'},{k:'motivo',l:'Motivo'}]}/>
+      {((pagPrev.conflitti_modifiche||[]).length+(pagPrev.conflitti_manuali||[]).length)>0 && <div style={{marginTop:14}}>
+        <h4 style={{margin:'0 0 8px',color:'var(--amber,#b45309)'}}>Protezione modifiche — scegli riga per riga</h4>
+        <p className="muted small" style={{marginTop:0}}>«Mantieni la modifica» riapplica lo stato attuale dopo il reimport (o tiene il pagamento a mano). «Usa il file» applica quanto c&apos;è nel file.</p>
+        <div className="panel" style={{padding:0,overflow:'auto',maxHeight:360}}>
+        <table className="tbl" style={{margin:0,fontSize:12}}>
+          <thead><tr><th>Id</th><th>Origine</th><th>Data</th><th className="n">Importo</th><th>Motivi</th><th>Scelta</th></tr></thead>
+          <tbody>
+            {(pagPrev.conflitti_modifiche||[]).map(c=><tr key={'m'+c.pagamento_id}>
+              <td className="mono">#{c.pagamento_id}</td>
+              <td>batch{c.riga_origine!=null?(' riga '+c.riga_origine):''}</td>
+              <td className="mono">{c.data}</td>
+              <td className="n mono">{eur(c.importo)}</td>
+              <td className="small">{(c.motivi||[]).join(', ')}</td>
+              <td style={{whiteSpace:'nowrap'}}>
+                <label style={{marginRight:8}}><input type="radio" name={'pd'+c.pagamento_id} checked={pagDec[String(c.pagamento_id)]==='mantieni'} onChange={()=>setPagDecisione(c.pagamento_id,'mantieni')}/> Mantieni</label>
+                <label><input type="radio" name={'pd'+c.pagamento_id} checked={pagDec[String(c.pagamento_id)]==='usa_file'} onChange={()=>setPagDecisione(c.pagamento_id,'usa_file')}/> Usa file</label>
+              </td>
+            </tr>)}
+            {(pagPrev.conflitti_manuali||[]).map(c=><tr key={'u'+c.pagamento_id}>
+              <td className="mono">#{c.pagamento_id}</td>
+              <td>manuale{c.riga_file!=null?(' ↔ file riga '+c.riga_file):''}</td>
+              <td className="mono">{c.data}</td>
+              <td className="n mono">{eur(c.importo)}</td>
+              <td className="small">{(c.motivi||[c.motivo]||[]).join(', ')}</td>
+              <td style={{whiteSpace:'nowrap'}}>
+                <label style={{marginRight:8}}><input type="radio" name={'pd'+c.pagamento_id} checked={pagDec[String(c.pagamento_id)]==='mantieni'} onChange={()=>setPagDecisione(c.pagamento_id,'mantieni')}/> Mantieni</label>
+                <label><input type="radio" name={'pd'+c.pagamento_id} checked={pagDec[String(c.pagamento_id)]==='usa_file'} onChange={()=>setPagDecisione(c.pagamento_id,'usa_file')}/> Usa file</label>
+              </td>
+            </tr>)}
+          </tbody>
+        </table></div>
+      </div>}
+
+      <div style={{display:'flex',gap:8,marginTop:12,flexWrap:'wrap',alignItems:'center'}}>
+        <button className="btn btn-p" onClick={confermaPagamenti} disabled={pagBusy||!pagPrev.inseribili_n||pagConflittiMancanti().length>0}>
+          Conferma import ({num(pagPrev.inseribili_n)})
+        </button>
+        <button className="btn btn-g" onClick={()=>{setPagPrev(null); setPagDec({});}} disabled={pagBusy}>Annulla</button>
+        {pagConflittiMancanti().length>0 && <span className="muted small">Completa le scelte sui conflitti</span>}
       </div>
       {(pagPrev.inseribili||[]).length>0 && <details style={{marginTop:12}}>
         <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Cosa verrà importato ({pagPrev.inseribili.length}) — clicca per espandere</summary>
@@ -9696,8 +9931,20 @@ function PayImport({toast,onNav}){
           </tr>)}</tbody>
         </table></div>
       </details>}
+      {(pagPrev.possibili_duplicati||[]).length>0 && <details style={{marginTop:12}}>
+        <summary style={{cursor:'pointer',fontWeight:600}}>Possibili duplicati ({pagPrev.possibili_duplicati.length}) — importati e segnalati in Da gestire</summary>
+        <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:220}}>
+        <table className="tbl" style={{margin:0,fontSize:12}}>
+          <thead><tr><th>Riga</th><th>Data</th><th>Nome</th><th className="n">Importo</th><th>Esistenti</th></tr></thead>
+          <tbody>{pagPrev.possibili_duplicati.map((e,i)=><tr key={i}>
+            <td className="mono">{e.riga}</td><td className="mono">{e.data}</td><td>{e.nome}</td>
+            <td className="n mono">{eur(e.importo)}</td>
+            <td className="small mono">{(e.esistenti||[]).map(x=>'#'+x.id).join(', ')}</td>
+          </tr>)}</tbody>
+        </table></div>
+      </details>}
       {(pagPrev.sintesi_errori||[]).length>0 && <div style={{marginTop:12}}>
-        <h4 style={{margin:'0 0 8px',color:'var(--red)'}}>Da sistemare dopo conferma → Da gestire · Anomalie import ({pagPrev.sintesi_errori.length})</h4>
+        <h4 style={{margin:'0 0 8px',color:'var(--red)'}}>Da sistemare dopo conferma → Da gestire ({pagPrev.sintesi_errori.length})</h4>
         <div className="panel" style={{padding:0,overflow:'auto'}}>
         <table className="tbl" style={{margin:0,fontSize:12.5}}>
           <thead><tr><th>Nome nel file</th><th className="n">Righe</th><th className="n">Importo</th><th>Anni</th><th>Motivo</th></tr></thead>
@@ -9884,12 +10131,16 @@ function PayImport({toast,onNav}){
       </div>
       {costiPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
         <h3 className="disp" style={{marginTop:0}}>Anteprima {costiPrev.file}</h3>
+        <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge: nuove aggiunte, invariate lasciate, conflitti da scegliere (default Da gestire).</div>
         <div className="row"><span className="l">Dipendenti</span><span className="r mono pos">{num(costiPrev.n)}</span></div>
         <div className="row"><span className="l">Abbinabili (match certo)</span><span className="r mono pos">{num(costiPrev.abbinati_n||0)}</span></div>
         <div className="row"><span className="l">Da attribuire dopo conferma</span><span className="r mono neg">{num(costiPrev.da_attribuire_n||0)}</span></div>
+        {costiPrev.merge && <div className="row"><span className="l">Merge nuove / invariate / conflitti</span><span className="r mono">{num(costiPrev.merge.nuove_n)} / {num(costiPrev.merge.invariate_n)} / <span style={{color:(costiPrev.merge.conflitti_n||0)?'#a65c00':undefined}}>{num(costiPrev.merge.conflitti_n)}</span></span></div>}
         <div className="row"><span className="l">Anni</span><span className="r mono">{(costiPrev.anni||[]).join(', ')||'—'}</span></div>
         {(costiPrev.senza_regola||[]).length>0 && <div className="row"><span className="l">Strutture senza regola</span><span className="r mono neg">{costiPrev.senza_regola.join(', ')}</span></div>}
         {(costiPrev.avvisi||[]).length>0 && <ul className="muted small" style={{marginTop:8}}>{costiPrev.avvisi.map((a,i)=><li key={i}>{a}</li>)}</ul>}
+        <PayMergeDecisioni merge={costiPrev.merge} decisioni={costiDec} onDecisioni={setCostiDec}
+          colonne={[{k:'anno',l:'Anno'},{k:'nome',l:'Dipendente'},{k:'struttura',l:'Struttura'},{k:'costo_db',l:'€ DB',fmt:'eur'},{k:'costo_file',l:'€ file',fmt:'eur'}]}/>
         {(costiPrev.righe||[]).length>0 && <details style={{marginTop:12}} open>
           <summary style={{cursor:'pointer',fontWeight:600,color:'var(--teal)'}}>Cosa verrà importato ({costiPrev.righe.length}) — clicca per espandere</summary>
           <div className="panel" style={{padding:0,overflow:'auto',marginTop:8,maxHeight:280}}>
@@ -10085,12 +10336,16 @@ function PayImport({toast,onNav}){
     </div>
     {fatPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
       <h3 className="disp" style={{marginTop:0}}>Anteprima {fatPrev.file} · {fatAnno}</h3>
+      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge: non cancella più tutto l&apos;anno. Nuove aggiunte; conflitti da scegliere.</div>
       <div className="row"><span className="l">Inseribili</span><span className="r mono pos">{num(fatPrev.inseribili_n)}</span></div>
+      {fatPrev.merge && <div className="row"><span className="l">Merge nuove / invariate / conflitti</span><span className="r mono">{num(fatPrev.merge.nuove_n)} / {num(fatPrev.merge.invariate_n)} / <span style={{color:(fatPrev.merge.conflitti_n||0)?'#a65c00':undefined}}>{num(fatPrev.merge.conflitti_n)}</span></span></div>}
       <div className="row"><span className="l">Da saldare</span><span className="r mono neg">{num(fatPrev.da_saldare_n)}</span></div>
       <div className="row"><span className="l">Saldate</span><span className="r mono">{num(fatPrev.saldate_n)}</span></div>
       <div className="row"><span className="l">Errori</span><span className="r mono neg">{num(fatPrev.errori_n)}</span></div>
+      <PayMergeDecisioni merge={fatPrev.merge} decisioni={fatDec} onDecisioni={setFatDec}
+        colonne={[{k:'nome',l:'Nome'},{k:'codice_sede',l:'Sede'},{k:'importo_db',l:'€ DB',fmt:'eur'},{k:'importo_file',l:'€ file',fmt:'eur'}]}/>
       {payImportErroriPanel(fatPrev.errori)}
-      <button className="btn btn-p" style={{marginTop:10}} onClick={confermaFatture} disabled={fatBusy||!fatPrev.inseribili_n}>Conferma import</button>
+      <button className="btn btn-p" style={{marginTop:10}} onClick={confermaFatture} disabled={fatBusy||!fatPrev.inseribili_n}>Conferma merge</button>
     </div>}
     <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
     <h3 className="disp" style={{margin:0}}>Storico fatture Nazionale ({(fatStorico||[]).length})</h3>
@@ -10118,7 +10373,7 @@ function PayImport({toast,onNav}){
             nome:row.nome_file,
             onSostituisci:()=>{
               setFatAnno(+row.anno||fatAnno);
-              if(confirm('Seleziona il file Fatture aggiornato (sostituisce l\'anno '+row.anno+').')) clickFile('pay-fat-file');
+              if(confirm('Seleziona il file Fatture aggiornato (merge sull\'anno '+row.anno+').')) clickFile('pay-fat-file');
             },
             onElimina:async()=>{
               if(!confirm('Eliminare import fatture #'+row.id+'?')) return;
@@ -10171,11 +10426,15 @@ function PayImport({toast,onNav}){
     </div>}
     {provPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
       <h3 className="disp" style={{marginTop:0}}>Anteprima {provPrev.file} · {provPrev.voce_lbl} · {provAnno}</h3>
+      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge: aggiunge solo le nuove; sui conflitti scegli Usa file / Mantieni / Da gestire.</div>
       <div className="row"><span className="l">Inseribili</span><span className="r mono pos">{num(provPrev.inseribili_n)}</span></div>
+      {provPrev.merge && <div className="row"><span className="l">Merge nuove / invariate / conflitti</span><span className="r mono">{num(provPrev.merge.nuove_n)} / {num(provPrev.merge.invariate_n)} / <span style={{color:(provPrev.merge.conflitti_n||0)?'#a65c00':undefined}}>{num(provPrev.merge.conflitti_n)}</span></span></div>}
       <div className="row"><span className="l">Importo totale</span><span className="r mono">{eur(provPrev.importo_totale)}</span></div>
       <div className="row"><span className="l">Errori</span><span className="r mono neg">{num(provPrev.errori_n)}</span></div>
+      <PayMergeDecisioni merge={provPrev.merge} decisioni={provDec} onDecisioni={setProvDec}
+        colonne={[{k:'nome',l:'Nome'},{k:'importo_db',l:'€ DB',fmt:'eur'},{k:'importo_file',l:'€ file',fmt:'eur'},{k:'motivo',l:'Motivo'}]}/>
       {payImportErroriPanel(provPrev.errori)}
-      <button className="btn btn-p" style={{marginTop:10}} onClick={confermaProv} disabled={provBusy||!provPrev.inseribili_n}>Conferma import</button>
+      <button className="btn btn-p" style={{marginTop:10}} onClick={confermaProv} disabled={provBusy||!provPrev.inseribili_n}>Conferma merge</button>
     </div>}
     <div style={{display:'flex',alignItems:'center',gap:10,flexWrap:'wrap',marginBottom:8}}>
     <h3 className="disp" style={{margin:0}}>Storico import provvisori ({(provStorico||[]).length})</h3>
