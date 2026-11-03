@@ -9040,6 +9040,7 @@ function PayImport({toast,onNav}){
   const [esito,setEsito]=useState(null); const [busy,setBusy]=useState(false);
   const [storico,setStorico]=useState(null);
   const [patPrev,setPatPrev]=useState(null); const [patRec,setPatRec]=useState(null); const [patBusy,setPatBusy]=useState(false);
+  const [patDec,setPatDec]=useState({});
   const [patStorico,setPatStorico]=useState(null);
   const [pagPrev,setPagPrev]=useState(null); const [pagConf,setPagConf]=useState(null); const [pagBusy,setPagBusy]=useState(false);
   const [pagDec,setPagDec]=useState({});
@@ -9272,32 +9273,37 @@ function PayImport({toast,onNav}){
   };
   const anteprimaPatronato=async e=>{
     const f=e.target.files[0]; if(!f)return;
-    setPatBusy(true); setPatPrev(null); setPatRec(null);
+    setPatBusy(true); setPatPrev(null); setPatRec(null); setPatDec({});
     const fd=new FormData(); fd.append('file',f);
     try{
       await ensurePayAuth();
       const r=await payApi('/import/patronato-dettaglio/anteprima',{method:'POST',body:fd});
+      setPatDec(mergeInitDec(r.merge));
       setPatPrev({...r,_file:f});
-      toast('Anteprima patronato: '+r.righe+' righe, quarantena '+r.quarantena_n);
+      toast('Anteprima patronato merge: '+r.righe+' righe · nuove '+(r.merge&&r.merge.nuove_n||0)+' · conflitti '+(r.merge&&r.merge.conflitti_n||0)+' · quarantena '+r.quarantena_n);
     }catch(x){ toast(x.detail||'Errore anteprima patronato',1); }
     setPatBusy(false); e.target.value='';
   };
   const confermaPatronato=async forza=>{
     if(!patPrev?._file) return;
+    const nM=(patPrev.merge&&patPrev.merge.nuove_n)||0;
+    const nC=(patPrev.merge&&patPrev.merge.conflitti_n)||0;
+    if(!forza && !confirm('Confermi merge Patronato?\nNuove: '+nM+' · conflitti: '+nC+' (scelte in anteprima).\nGli altri collaboratori/anni già in DB restano.')) return;
     setPatBusy(true);
     const fd=new FormData(); fd.append('file',patPrev._file);
+    fd.append('decisioni', JSON.stringify(patDec||{}));
     try{
       await ensurePayAuth();
       const r=await payApi('/import/patronato-dettaglio/conferma?forza='+(forza?'true':'false'),{method:'POST',body:fd});
       if(!r.import_id){ toast(payFmtErr(r)||'Conferma senza import_id',1); setPatBusy(false); return; }
       const rec=await payApi('/import/patronato-dettaglio/riconciliazione?import_id='+r.import_id);
-      setPatRec(rec); setPatPrev(null); caricaPatStorico();
-      toast('Patronato confermato e compensi ricalcolati (import #'+r.import_id+')');
+      setPatRec(rec); setPatPrev(null); setPatDec({}); caricaPatStorico();
+      toast('Patronato merge #'+r.import_id+': nuove '+(r.nuove||0)+' · sovrascritte '+(r.sovrascritte||0)+(r.anomalie_in_coda?(' · anomalie '+r.anomalie_in_coda):''));
     }catch(x){
       const d=(typeof x.detail==='object'&&x.detail)?x.detail:((x.payload&&x.payload.detail)||{});
       const msg=payFmtErr(x.detail);
       if((d.serve_forza||x.status===409) && !forza){
-        if(confirm(msg+'\n\nConfermare comunque? Le righe senza match restano in quarantena; le altre vengono importate. Solo gli anni presenti nel file vengono aggiornati.')){
+        if(confirm(msg+'\n\nConfermare comunque? Le righe senza match restano in quarantena; le altre vengono importate (merge, senza wipe anno).')){
           setPatBusy(false);
           return confermaPatronato(true);
         }
@@ -9744,9 +9750,9 @@ function PayImport({toast,onNav}){
     </React.Fragment>}
     {tab==='pat' && <React.Fragment>
     <div className="infobox" style={{marginBottom:12,fontSize:12.5}}>
-      Carica <b>Patronato YYYY-YYYY</b> (.xlsx/.xls/.csv): ogni foglio annuale aggiorna <b>solo quell&apos;anno</b>
-      (comparti stagni). Se carichi un file solo 2021, il 2022 già confermato resta.
-      Il dettaglio per collaboratore <b>non viene cancellato</b> quando re-importi la produzione Roma.
+      Carica <b>Patronato YYYY-YYYY</b> (.xlsx/.xls/.csv): <b>merge</b> come i pagamenti —
+      aggiunge le voci nuove, lascia invariate quelle uguali, sui conflitti scegli Usa file / Mantieni / Da gestire.
+      Un file parziale (es. solo un collaboratore) <b>non</b> sostituisce il resto dell&apos;anno.
       Dopo la conferma i compensi (IMP/COMP) vengono ricalcolati automaticamente.
     </div>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',flexWrap:'wrap',gap:10,marginBottom:12,width:'100%'}}>
@@ -9764,12 +9770,15 @@ function PayImport({toast,onNav}){
     </div>
     {patPrev && <div className="panel" style={{padding:14,marginBottom:12}}>
       <h3 className="disp" style={{marginTop:0}}>Anteprima {patPrev.file}</h3>
-      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge per chiave (anno+codice/sede+voce): aggiorna solo le voci del file, senza cancellare il resto dell&apos;anno.</div>
+      <div className="infobox" style={{marginBottom:10,fontSize:12.5}}>Merge: non sostituisce l&apos;anno. Nuove aggiunte; conflitti da scegliere (default Da gestire). Gli import precedenti restano confermati.</div>
       <div className="row"><span className="l">Righe</span><span className="r mono">{num(patPrev.righe)}</span></div>
+      {patPrev.merge && <div className="row"><span className="l">Merge nuove / invariate / conflitti</span><span className="r mono">{num(patPrev.merge.nuove_n)} / {num(patPrev.merge.invariate_n)} / <span style={{color:(patPrev.merge.conflitti_n||0)?'#a65c00':undefined}}>{num(patPrev.merge.conflitti_n)}</span></span></div>}
       <div className="row"><span className="l">Quarantena</span><span className="r mono neg">{num(patPrev.quarantena_n)}</span></div>
+      <PayMergeDecisioni merge={patPrev.merge} decisioni={patDec} onDecisioni={setPatDec}
+        colonne={[{k:'anno',l:'Anno'},{k:'nome',l:'Nome/sede'},{k:'voce',l:'Voce'},{k:'quantita_db',l:'Qta DB',fmt:'num'},{k:'quantita_file',l:'Qta file',fmt:'num'}]}/>
       {payImportErroriPanel(patPrev.quarantena, {titolo:'Quarantena / senza match ('+(patPrev.quarantena_n||0)+')', hint:'Queste sedi/operatori non sono in anagrafica: correggi i codici o aggiungi il collaboratore, poi ricarica.', defaultMotivo:'senza match anagrafica'})}
       <div style={{display:'flex',gap:8,marginTop:10,flexWrap:'wrap'}}>
-        <button className="btn btn-p" onClick={()=>confermaPatronato(false)} disabled={patBusy}>Conferma</button>
+        <button className="btn btn-p" onClick={()=>confermaPatronato(false)} disabled={patBusy}>Conferma merge</button>
         <button className="btn btn-g" onClick={()=>confermaPatronato(true)} disabled={patBusy}>Conferma forzata</button>
       </div>
     </div>}
@@ -9813,7 +9822,7 @@ function PayImport({toast,onNav}){
         <td>{btnAzioniImport({
           download: row.scaricabile!==false ? '/import/patronato-dettaglio/'+row.id+'/download' : null,
           nome: row.nome_file,
-          onSostituisci: ()=>{ if(confirm('Seleziona il file Patronato: aggiorna solo gli anni presenti nel file; gli altri restano.')) clickFile('pay-pat-file'); },
+          onSostituisci: ()=>{ if(confirm('Seleziona il file Patronato: farà merge (nuove + conflitti), senza wipe dell\'anno.')) clickFile('pay-pat-file'); },
           onElimina: async()=>{
             if(!confirm('Eliminare import patronato #'+row.id+'? Solo gli anni di questo file verranno tolti dalle schede (se non coperti da un altro import).')) return;
             try{ await payApi('/import/patronato-dettaglio/'+row.id,{method:'DELETE'}); toast('Import eliminato'); caricaPatStorico(); caricaPatUltimo(); }
